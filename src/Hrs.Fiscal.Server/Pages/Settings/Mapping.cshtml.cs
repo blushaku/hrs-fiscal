@@ -15,6 +15,7 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
     public IReadOnlyList<TrxMapping> Trx { get; private set; } = [];
     public IReadOnlyList<PaymentMapping> Payments { get; private set; } = [];
     public IReadOnlyList<VatRateRow> Vat { get; private set; } = [];
+    public bool OverridesEnabled { get; private set; }
 
     [BindProperty] public TrxMapping TrxInput { get; set; } = new();
     [BindProperty] public PaymentMapping PaymentInput { get; set; } = new();
@@ -77,5 +78,6 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
         Trx = await settings.TrxMappingsAsync();
         Payments = await settings.PaymentMappingsAsync();
         Vat = await settings.VatRatesAsync();
+        OverridesEnabled = await settings.OperaOverridesEnabledAsync();
     }
 }

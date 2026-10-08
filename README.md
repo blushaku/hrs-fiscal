@@ -60,7 +60,8 @@ Every settings change is written to the audit log with its old and new values. F
 account is blocked for 15 minutes after 5 failures. Users and workstations are deactivated, never deleted.
 
 All receipt fields (item name, unit, quantity, price, VAT letter, ATK category, payment type) come from OPERA via
-FLIP. The per-code mappings in Settings are **optional overrides** for exceptions. HRS validates every folio
+FLIP. The per-code mappings in Settings are **optional overrides** for exceptions, switched on or off under Settings › General
+(`opera_overrides_enabled`, off by default). HRS validates every folio
 (known VAT letter, VAT consistent with the rates, totals = payments) before sending it to ATK.
 
 No fiscal printer is involved. OPERA prints the fiscal data (SEF ID, receipt no., NUIKF, ATK transaction, QR,

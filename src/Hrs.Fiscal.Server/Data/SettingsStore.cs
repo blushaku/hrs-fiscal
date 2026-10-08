@@ -92,6 +92,10 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         return changed;
     }
 
+    /// <summary>Whether the optional per-code OPERA overrides are applied (setting opera_overrides_enabled).</summary>
+    public async Task<bool> OperaOverridesEnabledAsync(CancellationToken ct = default) =>
+        await GetAsync("opera_overrides_enabled", false, ct);
+
     // ---- business / branch --------------------------------------------------------------
 
     public async Task<BusinessInfo?> BusinessAsync(CancellationToken ct = default)

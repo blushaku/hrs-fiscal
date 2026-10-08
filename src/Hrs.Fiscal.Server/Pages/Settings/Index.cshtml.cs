@@ -18,6 +18,7 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
         [Range(1, 60)] public int AtkRetryMinutes { get; set; } = 2;
         public string? AlertEmails { get; set; }
         [RegularExpression("RoundTaxHalfUp|TruncateNet")] public string VatRounding { get; set; } = "RoundTaxHalfUp";
+        public bool OperaOverridesEnabled { get; set; }
     }
 
     [BindProperty] public GeneralSettings Input { get; set; } = new();
@@ -27,6 +28,7 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
         var all = await settings.AllAsync();
         int Int(string k, int d) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : d;
         long Long(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
+        bool Bool(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.True;
         string Str(string k, string d) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : d;
         Input = new GeneralSettings
         {
@@ -38,6 +40,7 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
             AtkRetryMinutes = Int("atk_retry_minutes", 2),
             AlertEmails = Str("alert_emails", ""),
             VatRounding = Str("vat_rounding", "RoundTaxHalfUp"),
+            OperaOverridesEnabled = Bool("opera_overrides_enabled"),
         };
     }
 
@@ -54,6 +57,7 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
             ["atk_retry_minutes"] = Input.AtkRetryMinutes,
             ["alert_emails"] = Input.AlertEmails ?? "",
             ["vat_rounding"] = Input.VatRounding,
+            ["opera_overrides_enabled"] = Input.OperaOverridesEnabled,
         }, User.Identity!.Name!);
         TempData["Message"] = changed == 0 ? "No changes." : $"{changed} setting(s) saved and logged.";
         return RedirectToPage();

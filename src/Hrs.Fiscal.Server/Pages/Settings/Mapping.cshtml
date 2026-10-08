@@ -9,6 +9,14 @@
 <div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 <div asp-validation-summary="All" class="validation"></div>
+@if (Model.OverridesEnabled)
+{
+    <div class="notice warn"><strong>Overrides are ON.</strong> Entries below replace OPERA's values for those codes. Turn them off under <a href="/Settings">General</a>.</div>
+}
+else
+{
+    <div class="notice neutral"><strong>Overrides are OFF.</strong> Receipts are fiscalized exactly as OPERA sends them; the entries below are kept but ignored. Turn them on under <a href="/Settings">General</a>.</div>
+}
 
 <section class="card">
     <h2>OPERA transaction codes → receipt items <span class="badge neutral" style="vertical-align: middle">optional</span></h2>

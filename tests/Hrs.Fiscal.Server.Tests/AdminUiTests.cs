@@ -101,6 +101,27 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
     }
 
     [PgFact]
+    public async Task Overrides_switch_defaults_off_and_is_audited_when_turned_on()
+    {
+        Assert.Equal("false", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'opera_overrides_enabled'"));
+        var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
+        Assert.Contains("Overrides are OFF", await client.GetStringAsync("/Settings/Mapping"));
+
+        var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings");
+        var current = await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'retention_years'");
+        var response = await client.PostAsync("/Settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.RetentionYears"] = current!, ["Input.AtkEnvironment"] = "Test", ["Input.AtkApplicationId"] = "0",
+            ["Input.AtkTimeoutSeconds"] = "10", ["Input.AtkRetryMinutes"] = "2", ["Input.VatRounding"] = "RoundTaxHalfUp",
+            ["Input.OperaOverridesEnabled"] = "true", ["__RequestVerificationToken"] = token,
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("true", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'opera_overrides_enabled'"));
+        Assert.Equal(1L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'SETTING_CHANGED' AND entity_id = 'opera_overrides_enabled'"));
+        Assert.Contains("Overrides are ON", await client.GetStringAsync("/Settings/Mapping"));
+    }
+
+    [PgFact]
     public async Task Integrity_check_passes_on_demo_data_and_is_logged()
     {
         var client = await app.SignedInAsync("auditor", "demo-password-3");
