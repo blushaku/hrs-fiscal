@@ -210,3 +210,10 @@ Prerequisites:
   - sync/async behaviour and timeout
   - whether FLIP calls one partner address or each Fiscal Terminal address
   - how FLIP connects to OPERA Cloud
+
+## 10. First ATK TEST run (08.10.2026), full report in repo docs/atk-test-results-2026-10-08.md
+- Test business MARIGONA TOWER SH.P.K (NUI 811159898), unit 1, ApplicationId 356526644730.
+- POS 1 was registered with ATK's onboarder; POS 901 with hrs-fiscal-cli, so HRS onboarding works.
+- Sales, multi-VAT, discount, 4-decimal price and return were accepted. A tampered signature and a return without a reference were rejected. The citizen QR verification returned our exact totals.
+- ATK does NOT de-duplicate: a resent payload and a reused CouponId were both accepted. HRS must guarantee uniqueness and avoid blind resends.
+- ATK does not check VAT rounding on intake. `/citizen/coupon` needs citizen_id as a number.
