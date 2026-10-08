@@ -17,9 +17,10 @@ OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ HRS Fiscal Server �
 | Path | What |
 |---|---|
 | `src/Hrs.Fiscal.Core` | Shared fiscal library: ATK protobuf model, coupon builder and validation, VAT, ECDSA signing (DER), QR, CSR, ATK API client |
-| `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): FLIP endpoint on the LAN, routing, archive, queue, admin. **Skeleton** |
+| `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): **admin web UI** (receipts, audit log, exports, settings), archive, migrations. The FLIP endpoint, routing and offline queue are still to come |
 | `src/Hrs.Fiscal.Client` | Workstation client (Windows service): key and certificate, onboarding, signing, transmission. **Skeleton** |
 | `tests/Hrs.Fiscal.Core.Tests` | Unit tests (xUnit) |
+| `tests/Hrs.Fiscal.Server.Tests` | Integration tests against PostgreSQL (set `HRS_TEST_PG`) |
 | `db/migrations` | PostgreSQL schema |
 | `db/tests` | Schema self-test (immutability, hash chain, tamper detection) |
 | `docs/` | Requirements and design notes |
@@ -42,6 +43,59 @@ psql -d hrs_fiscal -v ON_ERROR_STOP=1 -f db/migrations/V001__initial_schema.sql
 createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initial_schema.sql \
   && psql -d hrs_fiscal_test -v ON_ERROR_STOP=1 -f db/tests/schema_test.sql
 ```
+
+## Admin web UI (HRS Fiscal Server)
+
+| Page | What it does | Roles |
+|---|---|---|
+| Dashboard | Today's receipts, accepted, waiting to send (with the 48 h deadline), rejected; workstation status; certificate expiry; alerts | all |
+| Receipts | Search by receipt no., NUIKF, folio or cashier; filter by date, workstation, type and status; paging | all |
+| Receipt detail | Fiscal data, QR, every send attempt to ATK, items and VAT, linked returns, original OPERA/FLIP message, signed payload | all |
+| Download copy (PDF) | Receipt copy marked "KOPJE E KUPONIT", logged as REPRINT | Cashier, Supervisor, Admin |
+| Audit log | Search all events; **integrity check** of both hash chains (logged) | all |
+| Export | Receipts, unsent receipts or audit log as CSV (UTF-8) or PDF; every export logged with a SHA-256 | Supervisor, Admin, Auditor |
+| Settings | General (retention, backup, ATK environment and ApplicationId, timeouts, VAT rounding); business and unit; workstations (POS ID ↔ OPERA Fiscal Terminal); OPERA transaction code and payment mapping; VAT rates; users | Admin |
+
+Every settings change is written to the audit log with its old and new values. Failed logins are logged, and an
+account is blocked for 15 minutes after 5 failures. Users and workstations are deactivated, never deleted.
+
+No fiscal printer is involved. OPERA prints the fiscal data (SEF ID, receipt no., NUIKF, ATK transaction, QR,
+"e-kupon") on the folio from the FLIP response. The OPERA folio template needs a fiscal block for this.
+
+### Run it locally
+
+```bash
+# 1. PostgreSQL database and owner (migrations run automatically on start)
+createdb hrs_fiscal
+# 2. Configure src/Hrs.Fiscal.Server/appsettings.json (ConnectionStrings:Fiscal), or use environment variables:
+export ConnectionStrings__Fiscal="Host=localhost;Database=hrs_fiscal;Username=postgres;Password=..."
+# 3. Optional: demo data (empty database only). It creates users admin/supervisor/cashier/auditor
+#    with the passwords demo-password-0..3. Change them before any real use.
+dotnet run --project src/Hrs.Fiscal.Server -- seed-demo
+# 4. Start it and open http://localhost:5080
+dotnet run --project src/Hrs.Fiscal.Server
+```
+
+Without demo data, create the first admin with `Bootstrap:AdminPassword` (used once, then remove it) or with
+`dotnet run --project src/Hrs.Fiscal.Server -- create-user admin Admin "Administrator"`, which reads the password from stdin.
+
+Integration tests: `HRS_TEST_PG="Host=localhost;Username=postgres;Password=..." dotnet test`. Each run creates and drops
+its own database.
+
+### Configuration layers
+- **appsettings.json** on each machine: DB connection, Kestrel endpoints (LAN IP and port), time zone (default Europe/Belgrade).
+- **Database settings** (Admin UI): everything business-related, audited.
+
+### TLS inside the hotel (planned)
+No public certificates are needed; nothing is exposed to the internet. The server will create a property CA at
+install, issue its own HTTPS certificate and a client certificate for each workstation on enrolment, and use
+mutual TLS between server and clients. The CA certificate is installed on admin PCs once, e.g. through group policy.
+ATK signing certificates are separate: one per workstation, issued by ATK's CA.
+
+### Licences
+- QuestPDF (PDF exports) is used under its **Community licence**: free for companies under USD 1M annual revenue.
+  Confirm HRS's eligibility; otherwise buy a Professional licence or swap the PDF library.
+- QRCoder, Dapper, Npgsql, Google.Protobuf: MIT / Apache 2.0 / BSD.
 
 ## Key implementation decisions
 

@@ -1,0 +1,108 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.MappingModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "OPERA mapping & VAT";
+    var editingTrx = Model.EditTrx is not null;
+    var editingPay = Model.EditPayment is not null;
+}
+<div class="page-head"><div><h1>Settings</h1></div></div>
+<partial name="_SettingsNav" />
+<div asp-validation-summary="All" class="validation"></div>
+
+<section class="card">
+    <h2>OPERA transaction codes → receipt items</h2>
+    <p class="small muted" style="margin: 0 0 12px">Every OPERA transaction code that can appear on a folio must be mapped. Folios with an unmapped code will be refused (not fiscalized) and raise an alert.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>OPERA code</th><th>Item name on receipt</th><th>Unit</th><th>ATK category</th><th>VAT</th><th>Active</th><th><span class="sr-only">Edit</span></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Trx)
+            {
+                <tr>
+                    <td class="mono">@t.TrxCode</td><td>@t.ItemName</td><td>@t.Unit</td><td>@t.Category</td>
+                    <td>@t.VatLetter</td><td>@(t.Active ? "yes" : "no")</td>
+                    <td><a class="btn small" href="/Settings/Mapping?EditTrx=@Uri.EscapeDataString(t.TrxCode)#trx-form">Edit</a></td>
+                </tr>
+            }
+            @if (Model.Trx.Count == 0) { <tr><td colspan="7" class="muted">No transaction codes mapped yet.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+    <form method="post" asp-page-handler="Trx" id="trx-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px">
+        <h2 style="margin: 0; font-size: 15px">@(editingTrx ? $"Edit code {Model.TrxInput.TrxCode}" : "Add transaction code")</h2>
+        <div class="form-grid">
+            <label class="field">OPERA code <input type="text" asp-for="TrxInput.TrxCode" readonly="@editingTrx"></label>
+            <label class="field wide">Item name on receipt <input type="text" asp-for="TrxInput.ItemName"></label>
+            <label class="field">Unit <input type="text" asp-for="TrxInput.Unit" placeholder="cope, nate…"></label>
+            <label class="field">ATK category
+                <input type="text" asp-for="TrxInput.Category" list="categories" placeholder="HT">
+                <datalist id="categories">@foreach (var c in Hrs.Fiscal.Server.Pages.Settings.MappingModel.SuggestedCategories) { <option value="@c"></option> }</datalist>
+            </label>
+            <label class="field">VAT letter
+                <select asp-for="TrxInput.VatLetter">
+                    @foreach (var v in Model.Vat) { <option value="@v.Letter">@v.Letter — @v.Percent.ToString("0.##", CultureInfo.InvariantCulture)% @v.Description</option> }
+                </select>
+            </label>
+            <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink)">
+                <input type="checkbox" asp-for="TrxInput.Active" style="width: 20px; height: 20px"> Active
+            </label>
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn primary">Save code</button>
+            @if (editingTrx) { <a class="btn" href="/Settings/Mapping">Cancel</a> }
+        </div>
+    </form>
+</section>
+
+<div class="grid">
+    <section class="card">
+        <h2>OPERA payment methods → ATK payment type</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>OPERA code</th><th>Description</th><th>ATK type</th><th><span class="sr-only">Edit</span></th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Payments)
+                {
+                    <tr>
+                        <td class="mono">@p.PaymentCode</td><td>@p.Description</td>
+                        <td>@Hrs.Fiscal.Server.Pages.Settings.MappingModel.AtkPaymentTypes.First(x => x.Value == p.AtkPaymentType).Label</td>
+                        <td><a class="btn small" href="/Settings/Mapping?EditPayment=@Uri.EscapeDataString(p.PaymentCode)#pay-form">Edit</a></td>
+                    </tr>
+                }
+                @if (Model.Payments.Count == 0) { <tr><td colspan="4" class="muted">No payment methods mapped yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+        <form method="post" asp-page-handler="Payment" id="pay-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px">
+            <div class="form-grid">
+                <label class="field">OPERA code <input type="text" asp-for="PaymentInput.PaymentCode" readonly="@editingPay"></label>
+                <label class="field">Description <input type="text" asp-for="PaymentInput.Description"></label>
+                <label class="field">ATK payment type
+                    <select asp-for="PaymentInput.AtkPaymentType">
+                        @foreach (var (value, label) in Hrs.Fiscal.Server.Pages.Settings.MappingModel.AtkPaymentTypes) { <option value="@value">@label</option> }
+                    </select>
+                </label>
+            </div>
+            <div class="actions">
+                <button type="submit" class="btn primary">Save payment method</button>
+                @if (editingPay) { <a class="btn" href="/Settings/Mapping">Cancel</a> }
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>VAT rates</h2>
+        <p class="small muted" style="margin: 0 0 12px">The letters are fixed by ATK. Change a percentage only when the law changes; it applies to receipts issued afterwards.</p>
+        @foreach (var v in Model.Vat)
+        {
+            <form method="post" asp-page-handler="Vat" class="filters" style="padding: 8px 0; border-bottom: 1px solid var(--line-soft)">
+                <input type="hidden" name="VatInput.Letter" value="@v.Letter">
+                <div style="font-weight: 600; font-size: 18px; width: 28px; align-self: center">@v.Letter</div>
+                <label class="field">Percent <input type="number" name="VatInput.Percent" value="@v.Percent.ToString("0.##", CultureInfo.InvariantCulture)" step="0.01" min="0" max="99.99"></label>
+                <label class="field wide">Description <input type="text" name="VatInput.Description" value="@v.Description"></label>
+                <button type="submit" class="btn small">Save</button>
+            </form>
+        }
+    </section>
+</div>

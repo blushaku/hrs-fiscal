@@ -1,0 +1,62 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.UsersModel
+@{
+    ViewData["Title"] = "Users";
+    var editing = Model.Input.Id != 0;
+}
+<div class="page-head"><div><h1>Settings</h1></div></div>
+<partial name="_SettingsNav" />
+
+<div class="grid">
+    <section class="card">
+        <h2>Users</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th><span class="sr-only">Edit</span></th></tr></thead>
+                <tbody>
+                @foreach (var u in Model.All)
+                {
+                    <tr>
+                        <td class="mono">@u.Username</td><td>@u.DisplayName</td><td>@u.Role</td>
+                        <td><span class="badge @(u.Active ? "accepted" : "neutral")">@(u.Active ? "active" : "inactive")</span></td>
+                        <td><a class="btn small" href="/Settings/Users?Edit=@u.Id">Edit</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="small muted" style="margin-top: 12px; line-height: 1.6">
+            <strong>Cashier</strong> — view receipts, download copies ·
+            <strong>Supervisor</strong> — also exports ·
+            <strong>Auditor</strong> — read-only plus exports ·
+            <strong>Admin</strong> — everything including settings.
+            Users are never deleted; deactivate them instead.
+        </div>
+    </section>
+
+    <form method="post" class="card" style="display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0">@(editing ? $"Edit {Model.Input.Username}" : "Add user")</h2>
+        <div asp-validation-summary="All" class="validation"></div>
+        <input type="hidden" asp-for="Input.Id">
+        <label class="field">Username <input type="text" asp-for="Input.Username" readonly="@editing" autocomplete="off"></label>
+        <label class="field">Full name <input type="text" asp-for="Input.DisplayName"></label>
+        <label class="field">Role
+            <select asp-for="Input.Role">
+                @foreach (var r in Roles.All) { <option value="@r">@r</option> }
+            </select>
+        </label>
+        <label class="field">@(editing ? "New password (leave empty to keep)" : "Password") (min. @UserStore.MinPasswordLength characters)
+            <input type="password" asp-for="Input.Password" autocomplete="new-password">
+        </label>
+        @if (editing)
+        {
+            <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink)">
+                <input type="checkbox" asp-for="Input.Active" style="width: 20px; height: 20px"> Active
+            </label>
+        }
+        <div class="actions">
+            <button type="submit" class="btn primary">@(editing ? "Save" : "Add user")</button>
+            @if (editing) { <a class="btn" href="/Settings/Users">Cancel</a> }
+        </div>
+    </form>
+</div>

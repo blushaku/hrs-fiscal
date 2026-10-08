@@ -1,0 +1,35 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.BusinessModel
+@{
+    ViewData["Title"] = "Business & unit";
+}
+<div class="page-head"><div><h1>Settings</h1></div></div>
+<partial name="_SettingsNav" />
+
+<form method="post" class="card" style="display: flex; flex-direction: column; gap: 16px; max-width: 900px">
+    <div asp-validation-summary="All" class="validation"></div>
+    <h2 style="margin: 0">Business (taxpayer)</h2>
+    <div class="form-grid">
+        <label class="field">NUI (fiscal number)
+            <input type="number" asp-for="Input.Nui" readonly="@Model.Locked">
+        </label>
+        <label class="field wide">Registered name <input type="text" asp-for="Input.Name"></label>
+        <label class="field">VAT number <input type="text" asp-for="Input.VatNo"></label>
+        <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo"></label>
+    </div>
+    <h2 style="margin: 8px 0 0">Unit (business premises)</h2>
+    <div class="form-grid">
+        <label class="field">Unit number registered with ATK
+            <input type="number" asp-for="Input.BranchId" readonly="@Model.Locked">
+        </label>
+        <label class="field wide">Unit name <input type="text" asp-for="Input.BranchName"></label>
+        <label class="field">City / location (printed) <input type="text" asp-for="Input.Location"></label>
+        <label class="field wide">Address <input type="text" asp-for="Input.Address"></label>
+        <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode"></label>
+    </div>
+    @if (Model.Locked)
+    {
+        <p class="small muted" style="margin: 0">NUI and unit number are locked once set: they are part of every receipt number, certificate and SEF ID.</p>
+    }
+    <div><button type="submit" class="btn primary">Save</button></div>
+</form>

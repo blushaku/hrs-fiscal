@@ -1,0 +1,137 @@
+@page "{id:long}"
+@model Hrs.Fiscal.Server.Pages.Receipts.DetailModel
+@using System.Globalization
+@{
+    var r = Model.R;
+    var c = Model.Coupon;
+    ViewData["Title"] = $"Receipt {r.CouponId}";
+    var inv = CultureInfo.InvariantCulture;
+}
+<div><a href="/Receipts">← Back to receipts</a></div>
+
+<div class="page-head">
+    <div>
+        <h1>Receipt <span class="mono" style="font-size: 22px">@r.CouponId</span></h1>
+        <p>@CouponTypes.Label(r.CouponType) · @Model.Clock.Format(r.IssuedAt) · @(r.SourceDocument ?? "no source document")</p>
+    </div>
+    <div class="actions">
+        <a class="btn primary" href="/receipts/@r.Id/copy.pdf">Download copy (PDF)</a>
+    </div>
+</div>
+
+<div class="grid">
+    <section class="card">
+        <h2>Fiscal data</h2>
+        <div class="kv">
+            <div>Status</div>
+            <div><span class="badge @r.Status">@(r.Status switch { "accepted" => "Accepted by ATK", "pending" => "Waiting to send · offline", _ => "Rejected by ATK" })</span></div>
+            <div>NUIKF</div><div class="mono">@r.VerificationNo</div>
+            <div>ATK transaction</div><div class="mono">@(r.AtkTransactionId?.ToString("0", inv) ?? "—")</div>
+            <div>SEF ID</div><div class="mono">@r.BranchId-@r.BusinessNui-@r.PosId</div>
+            <div>Workstation</div><div>@r.TerminalLabel · POS @r.PosId</div>
+            <div>Cashier</div><div>@r.OperatorId</div>
+            <div>Application ID</div><div class="mono">@r.ApplicationId</div>
+            <div>Issued offline</div><div>@(r.IssuedOffline ? "Yes — marked OFFLINE" : "No")</div>
+            <div>Record hash</div><div class="mono muted">@(r.RowHash is null ? "—" : Convert.ToHexString(r.RowHash)[..8].ToLowerInvariant() + "…")</div>
+        </div>
+    </section>
+    <section class="card" style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start">
+        <div>
+            <h2>QR code</h2>
+            <img class="qr" src="/receipts/@r.Id/qr.svg" alt="Fiscal QR code for receipt @r.CouponId">
+        </div>
+        <div style="flex: 1 1 200px; min-width: 0">
+            <h2>Sending to ATK</h2>
+            @foreach (var a in Model.Attempts)
+            {
+                <div style="display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px">
+                    <div>
+                        <div style="font-weight: 500">@(a.Outcome switch { "accepted" => "Accepted", "rejected" => "Rejected", _ => "Not delivered" })@(a.HttpStatus is { } h ? $" · HTTP {h}" : "")</div>
+                        <div class="small muted">@a.SentBy@(string.IsNullOrEmpty(a.Message) ? "" : " · " + a.Message)</div>
+                    </div>
+                    <div class="mono muted">@Model.Clock.Format(a.AttemptedAt)</div>
+                </div>
+            }
+            @if (Model.Attempts.Count == 0) { <p class="muted">No attempts yet.</p> }
+        </div>
+    </section>
+</div>
+
+<section class="card">
+    <h2>Items</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Item</th><th>Category</th><th style="text-align: right">Qty</th><th>Unit</th><th style="text-align: right">Unit price</th><th>VAT</th><th style="text-align: right">Amount</th></tr></thead>
+            <tbody>
+            @foreach (var i in c.Items)
+            {
+                <tr>
+                    <td>@i.Name</td><td>@i.Type</td>
+                    <td class="num">@i.Quantity.ToString("0.###", inv)</td><td>@i.Unit</td>
+                    <td class="num">@Fmt.Eur4(i.Price)</td><td>@i.TaxRate</td>
+                    <td class="num">@Fmt.Eur(Hrs.Fiscal.Core.Money.PriceUnitsToCents(i.Total))</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 12px">
+        <div class="kv" style="grid-template-columns: auto auto; justify-items: end">
+            @foreach (var g in c.TaxGroups)
+            {
+                <div>VAT @g.TaxRate (base @Fmt.Eur(g.TotalForTax))</div><div class="mono">@Fmt.Eur(g.TotalTax)</div>
+            }
+            <div>Excl. VAT</div><div class="mono">@Fmt.Eur(c.TotalNoTax)</div>
+            @if (c.TotalDiscount > 0) { <div>Discount</div><div class="mono">@Fmt.Eur(c.TotalDiscount)</div> }
+            <div style="font-weight: 600; color: var(--ink)">Total</div><div class="mono" style="font-weight: 600">@Fmt.Eur(c.Total)</div>
+            @foreach (var p in c.Payments)
+            {
+                <div>@Hrs.Fiscal.Server.Pages.Receipts.DetailModel.PaymentLabel(p.Type)</div><div class="mono">@Fmt.Eur(p.Amount)</div>
+            }
+        </div>
+    </div>
+</section>
+
+@if (Model.Related.Count > 0)
+{
+    <section class="card">
+        <h2>Linked receipts</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Issued</th><th>Receipt no.</th><th>Type</th><th style="text-align: right">Total</th><th><span class="sr-only">Open</span></th></tr></thead>
+                <tbody>
+                @foreach (var x in Model.Related)
+                {
+                    <tr>
+                        <td>@Model.Clock.Format(x.IssuedAt)</td><td class="mono">@x.CouponId</td>
+                        <td>@CouponTypes.Label(x.CouponType)@(x.CouponId == r.ReferenceCouponId ? " (original)" : "")</td>
+                        <td class="num">@Fmt.Eur(x.TotalCents)</td>
+                        <td><a class="btn small" href="/Receipts/Detail/@x.Id">Open</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+<details class="card">
+    <summary style="cursor: pointer; font-weight: 600">Original message from OPERA (FLIP)</summary>
+    @if (Model.Payload is null)
+    {
+        <p class="muted">No source message stored.</p>
+    }
+    else
+    {
+        <p class="small muted">@Model.Payload.Source · event @Model.Payload.SourceEventId · received @Model.Clock.Format(Model.Payload.ReceivedAt) · stored unchanged · SHA-256 @Model.PayloadSha[..12]…</p>
+        <pre class="payload">@Model.Payload.Body</pre>
+    }
+</details>
+
+<details class="card">
+    <summary style="cursor: pointer; font-weight: 600">Signed data sent to ATK</summary>
+    <p class="small muted">Base64 protobuf PosCoupon and its ECDSA signature, exactly as transmitted.</p>
+    <pre class="payload">details: @Convert.ToBase64String(r.PosCoupon)
+
+signature: @r.Signature</pre>
+</details>

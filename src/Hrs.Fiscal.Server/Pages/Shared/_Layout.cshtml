@@ -1,0 +1,62 @@
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authz
+@inject SettingsStore Settings
+@{
+    var path = Context.Request.Path.Value ?? "/";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var canExport = signedIn && (await Authz.AuthorizeAsync(User, Policies.Export)).Succeeded;
+    var isAdmin = signedIn && (await Authz.AuthorizeAsync(User, Policies.Admin)).Succeeded;
+    var business = signedIn ? await Settings.BusinessAsync() : null;
+    string Active(string prefix) => (prefix == "/" ? path == "/" : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ? "nav-link active" : "nav-link";
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] · HRS Fiscal</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
+</head>
+<body>
+@if (!signedIn)
+{
+    <main class="login-shell">@RenderBody()</main>
+}
+else
+{
+    <div class="shell">
+        <nav class="sidebar" aria-label="Main">
+            <div class="brand">
+                <div class="brand-name">HRS Fiscal</div>
+                <div class="brand-sub">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</div>
+            </div>
+            <div class="nav">
+                <a class="@Active("/")" href="/">Dashboard</a>
+                <a class="@Active("/Receipts")" href="/Receipts">Receipts</a>
+                <a class="@Active("/Audit")" href="/Audit">Audit log</a>
+                @if (canExport) { <a class="@Active("/Export")" href="/Export">Export</a> }
+                @if (isAdmin) { <a class="@Active("/Settings")" href="/Settings">Settings</a> }
+            </div>
+            <div class="sidebar-foot">
+                <div>@User.Display() · @User.Role()</div>
+                <form method="post" action="/logout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="link-button">Sign out</button>
+                </form>
+            </div>
+        </nav>
+        <main class="content">
+            @if (TempData["Message"] is string msg)
+            {
+                <div class="notice ok" role="status">@msg</div>
+            }
+            @if (TempData["Error"] is string err)
+            {
+                <div class="notice warn" role="alert">@err</div>
+            }
+            @RenderBody()
+        </main>
+    </div>
+}
+</body>
+</html>

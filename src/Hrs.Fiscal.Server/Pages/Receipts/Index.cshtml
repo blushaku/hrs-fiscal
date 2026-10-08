@@ -1,0 +1,85 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Receipts.IndexModel
+@{
+    ViewData["Title"] = "Receipts";
+    var statuses = new (string? Key, string Label)[] { (null, "All"), ("accepted", "Accepted"), ("pending", "Waiting to send"), ("rejected", "Rejected") };
+}
+<div class="page-head">
+    <div>
+        <h1>Receipts</h1>
+        <p>All fiscal receipts are kept permanently and cannot be edited or deleted.</p>
+    </div>
+    <a class="btn" href="/Export">Export…</a>
+</div>
+
+<form method="get" class="card filters" role="search">
+    <label class="field wide">Search
+        <input type="search" asp-for="Q" placeholder="Receipt no., NUIKF, folio, cashier…">
+    </label>
+    <label class="field">From <input type="date" asp-for="From"></label>
+    <label class="field">To <input type="date" asp-for="To"></label>
+    <label class="field">Workstation
+        <select asp-for="Terminal">
+            <option value="">All</option>
+            @foreach (var t in Model.Terminals) { <option value="@t.Id">@t.Label</option> }
+        </select>
+    </label>
+    <label class="field">Type
+        <select asp-for="Type">
+            <option value="">All</option>
+            <option value="1">Sale</option>
+            <option value="3">Return</option>
+        </select>
+    </label>
+    <input type="hidden" asp-for="Status">
+    <button type="submit" class="btn primary">Search</button>
+</form>
+
+<div class="pills" role="group" aria-label="Filter by status">
+    @foreach (var (key, label) in statuses)
+    {
+        <a class="pill @(Model.Status == key ? "on" : "")" href="@Model.Link(key)" aria-current="@(Model.Status == key ? "true" : null)">@label</a>
+    }
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Issued</th><th>Receipt no.</th><th>Type</th><th>Folio / document</th><th>Workstation</th><th>Cashier</th>
+                <th style="text-align: right">Total</th><th>Status</th><th><span class="sr-only">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var r in Model.Result.Items)
+        {
+            <tr>
+                <td>@Model.Clock.Format(r.IssuedAt)</td>
+                <td class="mono">@r.CouponId</td>
+                <td>@CouponTypes.Label(r.CouponType)</td>
+                <td>@(r.SourceDocument ?? "—")</td>
+                <td>@r.TerminalLabel</td>
+                <td>@r.OperatorId</td>
+                <td class="num">@Fmt.Eur(r.TotalCents)</td>
+                <td>
+                    <span class="badge @r.Status">@(r.Status switch { "accepted" => "Accepted", "pending" => "Waiting · offline", _ => "Rejected" })</span>
+                </td>
+                <td><a class="btn small" href="/Receipts/Detail/@r.Id">Open</a></td>
+            </tr>
+        }
+        @if (Model.Result.Items.Count == 0)
+        {
+            <tr><td colspan="9" class="muted">No receipts match these filters.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="pager">
+    <div>@Model.Result.Total receipts</div>
+    <div class="actions">
+        @if (Model.Result.Page > 1) { <a class="btn small" href="@Model.Link(Model.Status, Model.Result.Page - 1, true)">Previous</a> }
+        <span style="align-self: center">Page @Model.Result.Page of @Model.Result.PageCount</span>
+        @if (Model.Result.Page < Model.Result.PageCount) { <a class="btn small" href="@Model.Link(Model.Status, Model.Result.Page + 1, true)">Next</a> }
+    </div>
+</div>

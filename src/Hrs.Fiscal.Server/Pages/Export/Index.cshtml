@@ -1,0 +1,41 @@
+@page
+@inject PropertyClock Clock
+@{
+    ViewData["Title"] = "Export";
+    var today = Clock.Today;
+}
+<div class="page-head">
+    <div>
+        <h1>Export</h1>
+        <p>For ATK or another state authority on request. Every export is recorded in the audit log with a SHA-256 fingerprint of the file.</p>
+    </div>
+</div>
+
+<form method="get" class="card" style="display: flex; flex-direction: column; gap: 16px; max-width: 760px" id="export">
+    <fieldset style="border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px">
+        <legend style="font-weight: 600; margin-bottom: 8px">Data</legend>
+        <label style="display: flex; gap: 10px; align-items: center; min-height: 36px"><input type="radio" name="dataset" value="receipts" checked> Receipts</label>
+        <label style="display: flex; gap: 10px; align-items: center; min-height: 36px"><input type="radio" name="dataset" value="pending"> Receipts not yet sent to ATK</label>
+        <label style="display: flex; gap: 10px; align-items: center; min-height: 36px"><input type="radio" name="dataset" value="audit"> Audit log</label>
+    </fieldset>
+    <div class="filters">
+        <label class="field">From <input type="date" name="from" value="@today.AddDays(-30).ToString("yyyy-MM-dd")"></label>
+        <label class="field">To <input type="date" name="to" value="@today.ToString("yyyy-MM-dd")"></label>
+        <label class="field wide">Requested by <input type="text" name="requestedBy" placeholder="e.g. ATK inspector, reference no."></label>
+    </div>
+    <div class="actions">
+        <button type="submit" name="format" value="csv" class="btn primary">Export CSV</button>
+        <button type="submit" name="format" value="pdf" class="btn">Export PDF</button>
+    </div>
+    <p class="small muted" style="margin: 0">CSV opens in Excel (UTF-8). PDF is A4 landscape with the business details, period and the name of the person exporting.</p>
+</form>
+
+<script>
+    // Send the chosen dataset as part of the path: /export/{dataset}?format=…
+    document.getElementById('export').addEventListener('submit', function (e) {
+        var ds = this.querySelector('input[name=dataset]:checked').value;
+        this.action = '/export/' + ds;
+        this.querySelectorAll('input[name=dataset]').forEach(function (r) { r.disabled = true; });
+        setTimeout(() => this.querySelectorAll('input[name=dataset]').forEach(function (r) { r.disabled = false; }), 0);
+    });
+</script>

@@ -1,0 +1,74 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Audit.IndexModel
+@{
+    ViewData["Title"] = "Audit log";
+}
+<div class="page-head">
+    <div>
+        <h1>Audit log</h1>
+        <p>Every login, receipt, transmission, reprint, export and settings change. Entries are chained and cannot be altered.</p>
+    </div>
+    <form method="post" asp-page-handler="Check">
+        <button type="submit" class="btn primary">Run integrity check</button>
+    </form>
+</div>
+
+@if (Model.Integrity is { } i)
+{
+    if (i.Intact)
+    {
+        <div class="notice ok" role="status"><strong>Integrity verified.</strong> @i.ReceiptCount receipts and @i.AuditCount audit entries checked — nothing changed, removed or inserted. The check was logged.</div>
+    }
+    else
+    {
+        <div class="notice bad" role="alert">
+            <strong>Integrity check FAILED.</strong>
+            @if (i.Receipt is { } rb) { <div>Receipt chain broken at record @rb.BrokenId: @rb.Reason.</div> }
+            @if (i.Audit is { } ab) { <div>Audit chain broken at entry @ab.BrokenId: @ab.Reason.</div> }
+            <div>Do not change anything. Secure the server and the latest backup, and contact HRS support.</div>
+        </div>
+    }
+}
+
+<form method="get" class="card filters" role="search">
+    <label class="field wide">Search <input type="search" asp-for="Q" placeholder="User, receipt no., text…"></label>
+    <label class="field">Event
+        <select asp-for="Action">
+            <option value="">All</option>
+            @foreach (var a in Model.ActionsInUse) { <option value="@a">@a</option> }
+        </select>
+    </label>
+    <label class="field">From <input type="date" asp-for="From"></label>
+    <label class="field">To <input type="date" asp-for="To"></label>
+    <button type="submit" class="btn primary">Search</button>
+</form>
+
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>#</th><th>Time</th><th>User / component</th><th>Workstation</th><th>Event</th><th>Subject</th><th>Details</th></tr></thead>
+        <tbody>
+        @foreach (var e in Model.Result.Items)
+        {
+            <tr>
+                <td class="mono muted">@e.Id</td>
+                <td class="mono">@Model.Clock.Format(e.At)</td>
+                <td>@e.Actor</td>
+                <td>@(e.TerminalLabel ?? "—")</td>
+                <td><span class="badge neutral">@e.Action</span></td>
+                <td class="mono">@(e.EntityId ?? "")</td>
+                <td class="wrap mono" style="font-size: 12px">@(e.Details == "{}" ? "" : e.Details)</td>
+            </tr>
+        }
+        @if (Model.Result.Items.Count == 0) { <tr><td colspan="7" class="muted">No entries.</td></tr> }
+        </tbody>
+    </table>
+</div>
+
+<div class="pager">
+    <div>@Model.Result.Total entries</div>
+    <div class="actions">
+        @if (Model.Result.Page > 1) { <a class="btn small" href="@Model.PageLink(Model.Result.Page - 1)">Newer</a> }
+        <span style="align-self: center">Page @Model.Result.Page of @Model.Result.PageCount</span>
+        @if (Model.Result.Page < Model.Result.PageCount) { <a class="btn small" href="@Model.PageLink(Model.Result.Page + 1)">Older</a> }
+    </div>
+</div>

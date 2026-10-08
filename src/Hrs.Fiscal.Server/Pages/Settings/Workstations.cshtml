@@ -1,0 +1,60 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.WorkstationsModel
+@{
+    ViewData["Title"] = "Workstations";
+    var editing = Model.Input.Id != 0;
+}
+<div class="page-head"><div><h1>Settings</h1></div></div>
+<partial name="_SettingsNav" />
+
+<section class="card">
+    <h2>Workstations (ATK POS)</h2>
+    <p class="small muted" style="margin: 0 0 12px">Every workstation that can generate a folio needs the HRS Fiscal Client and its own POS ID and ATK certificate. The OPERA Fiscal Terminal ID must match the terminal configured in OPERA.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>POS ID</th><th>OPERA terminal</th><th>Computer</th><th>Client address</th><th>Status</th><th>Certificate</th><th><span class="sr-only">Edit</span></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Terminals)
+            {
+                <tr>
+                    <td class="mono">@t.PosId</td>
+                    <td>@t.OperaTerminalId</td>
+                    <td>@t.Hostname<div class="small muted">@t.Description</div></td>
+                    <td class="mono">@t.ClientEndpoint</td>
+                    <td><span class="badge @(t.Status == "active" ? "accepted" : t.Status == "pending" ? "pending" : "neutral")">@t.Status</span></td>
+                    <td>@(t.CertificateExpires is { } e ? "valid to " + Model.Clock.ToLocal(e).ToString("dd.MM.yyyy") : "not enrolled")</td>
+                    <td><a class="btn small" href="/Settings/Workstations?Edit=@t.Id">Edit</a></td>
+                </tr>
+            }
+            @if (Model.Terminals.Count == 0) { <tr><td colspan="7" class="muted">No workstations yet.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<form method="post" class="card" style="display: flex; flex-direction: column; gap: 12px; max-width: 900px">
+    <h2 style="margin: 0">@(editing ? $"Edit workstation (POS {Model.Input.PosId})" : "Add workstation")</h2>
+    <div asp-validation-summary="All" class="validation"></div>
+    <input type="hidden" asp-for="Input.Id">
+    <div class="form-grid">
+        <label class="field">POS ID
+            <input type="number" asp-for="Input.PosId" readonly="@editing" min="1">
+        </label>
+        <label class="field">OPERA Fiscal Terminal ID <input type="text" asp-for="Input.OperaTerminalId" placeholder="FO1"></label>
+        <label class="field">Computer name <input type="text" asp-for="Input.Hostname" placeholder="FRONTDESK-01"></label>
+        <label class="field">Client address (LAN) <input type="text" asp-for="Input.ClientEndpoint" placeholder="https://192.168.1.21:5100"></label>
+        <label class="field wide">Description <input type="text" asp-for="Input.Description" placeholder="Front desk, left"></label>
+        <label class="field">Status
+            <select asp-for="Input.Status">
+                <option value="pending">pending (not enrolled)</option>
+                <option value="active">active</option>
+                <option value="disabled">disabled</option>
+            </select>
+        </label>
+    </div>
+    @if (editing) { <p class="small muted" style="margin: 0">The POS ID cannot be changed: it is part of the ATK certificate and of every receipt issued here. Disable the workstation and add a new one instead.</p> }
+    <div class="actions">
+        <button type="submit" class="btn primary">@(editing ? "Save changes" : "Add workstation")</button>
+        @if (editing) { <a class="btn" href="/Settings/Workstations">Cancel</a> }
+    </div>
+</form>

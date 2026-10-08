@@ -1,0 +1,57 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "Settings";
+}
+<div class="page-head"><div><h1>Settings</h1></div></div>
+<partial name="_SettingsNav" />
+
+<form method="post" style="display: flex; flex-direction: column; gap: 16px">
+    <div asp-validation-summary="All" class="validation"></div>
+    <div class="grid">
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0">Retention and backup</h2>
+            <label class="field">Keep receipts and logs for (years)
+                <input type="number" asp-for="Input.RetentionYears" min="1" max="50" style="max-width: 160px">
+            </label>
+            <p class="small muted" style="margin: 0">[Legal minimum per the Law on Tax Administration Procedures — to be confirmed.] Nothing is deleted before this period ends. After it, records can only be moved to a signed archive file by an administrator; that action is logged.</p>
+            <label class="field">Daily backup target (folder or network share)
+                <input type="text" asp-for="Input.BackupTarget" placeholder="\\NAS01\fiscal-backup">
+            </label>
+        </section>
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0">ATK connection</h2>
+            <label class="field">Environment
+                <select asp-for="Input.AtkEnvironment">
+                    <option value="Test">Test (fiskalizimi-test.atk-ks.org)</option>
+                    <option value="Production">Production (fiskalizimi.atk-ks.org)</option>
+                </select>
+            </label>
+            <label class="field">Application ID (issued by ATK on certification)
+                <input type="number" asp-for="Input.AtkApplicationId" min="0">
+            </label>
+            <div class="form-grid">
+                <label class="field">Timeout (seconds) <input type="number" asp-for="Input.AtkTimeoutSeconds" min="2" max="60"></label>
+                <label class="field">Retry offline queue every (minutes) <input type="number" asp-for="Input.AtkRetryMinutes" min="1" max="60"></label>
+            </div>
+        </section>
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0">Alerts</h2>
+            <label class="field">Email alerts to (comma-separated)
+                <input type="text" asp-for="Input.AlertEmails" placeholder="frontoffice@hotel.com, it@hotel.com">
+            </label>
+            <p class="small muted" style="margin: 0">Planned (not yet active): alerts for receipts waiting longer than 1 hour, the 48-hour deadline, rejected receipts, certificate expiry and failed backups or integrity checks.</p>
+        </section>
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0">VAT calculation</h2>
+            <label class="field">Rounding of VAT per rate
+                <select asp-for="Input.VatRounding">
+                    <option value="RoundTaxHalfUp">Round VAT half-up (default)</option>
+                    <option value="TruncateNet">Truncate net amount (matches ATK sample code)</option>
+                </select>
+            </label>
+            <p class="small muted" style="margin: 0">Pending ATK's official rule. Applies only to receipts issued after the change.</p>
+        </section>
+    </div>
+    <div><button type="submit" class="btn primary">Save settings</button></div>
+</form>
