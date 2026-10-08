@@ -107,6 +107,29 @@ The logo, favicon and fonts are served locally from `wwwroot/` (no internet need
   Confirm HRS's eligibility; otherwise buy a Professional licence or swap the PDF library.
 - QRCoder, Dapper, Npgsql, Google.Protobuf: MIT / Apache 2.0 / BSD.
 
+## Testing against ATK (hrs-fiscal-cli)
+
+`src/Hrs.Fiscal.Cli` talks to ATK's **TEST** environment (`fiskalizimi-test.atk-ks.org`). It refuses production unless
+explicitly forced, because ATK forbids testing in production (technical requirements Art 26).
+
+```bash
+# 1. Register a test workstation (generates a P-256 key, ATK verify + CSR signing, saves the certificate)
+dotnet run --project src/Hrs.Fiscal.Cli -- onboard --nui <NUI> --fiscal-no <EDI fiscalization no> \
+    --branch <unit no> --pos <test POS id> --app <ApplicationId> --dir ./atk-test-profile
+# 2. One hotel test receipt
+dotnet run --project src/Hrs.Fiscal.Cli -- send --dir ./atk-test-profile
+# 3. The full test set -> ./atk-test-profile/report.md (+ signed payloads and QR PNGs under runs/)
+dotnet run --project src/Hrs.Fiscal.Cli -- scenarios --dir ./atk-test-profile
+```
+
+Scenarios: hotel sale; all VAT letters with split payment; line discount; 4-decimal price and fractional quantity;
+return referencing a sale; identical payload resent; same CouponId with new content; tampered signature; return
+without reference; the alternative VAT rounding; citizen QR verification. The "observe" scenarios record what ATK
+actually does, which answers the open questions on idempotency and rounding.
+
+The test profile keeps the private key as a PEM file. That is for TEST only; production keys live non-exportable in
+the HRS Fiscal Client.
+
 ## Key implementation decisions
 
 - **Wire format** is ATK's `models.proto` from `github.com/fiskalizimi/pos-csharp`, the most current reference.
