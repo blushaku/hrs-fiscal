@@ -23,7 +23,7 @@ public sealed record ScenarioResult(string Name, string Expected, AtkOutcome Out
 /// Test receipts modelled on hotel folios. Every scenario stores its signed payload and QR (PNG + text)
 /// under runs/ so they can be attached to the certification file.
 /// </summary>
-public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient atk, string dir)
+public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient atk, string dir, long citizenId = 38344000000L)
 {
     private readonly CouponSigner _signer = new(key);
     private readonly string _runDir = Path.Combine(dir, "runs", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
@@ -143,7 +143,7 @@ public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient
     private async Task<ScenarioResult> VerifyQrAsync(string name, string qr, ulong couponId)
     {
         using var http = new HttpClient { BaseAddress = AtkEndpoints.BaseUri(profile.Environment), Timeout = TimeSpan.FromSeconds(20) };
-        using var response = await http.PostAsJsonAsync("citizen/coupon", new { citizen_id = 38344000000L, qr_code = qr }); // citizen_id must be a number: ATK rejects a string although Swagger says string
+        using var response = await http.PostAsJsonAsync("citizen/coupon", new { citizen_id = citizenId, qr_code = qr }); // citizen_id must be a number: ATK rejects a string although Swagger says string
         var body = await response.Content.ReadAsStringAsync();
         var ok = response.IsSuccessStatusCode;
         Console.WriteLine($"[{(ok ? "Accepted" : "Rejected"),-9}] {name} · HTTP {(int)response.StatusCode} · {Trim(body)}");

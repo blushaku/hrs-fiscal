@@ -50,7 +50,7 @@ int Help()
                     Uses the key and certificate exported from ATK's onboarder tool (Certificate tab › Export).
                     NUI, POS ID and branch are read from the certificate.
           send      [--dir <folder>]   Sends one signed hotel test receipt and prints the ATK transaction id.
-          scenarios [--dir <folder>]   Runs the ATK test set (sales, return, duplicates, bad signature, QR check)
+          scenarios [--dir <folder>] [--citizen-id <personal no.>]   Runs the ATK test set (sales, return, duplicates, bad signature, QR check)
                                        and writes <folder>/report.md.
         """);
     return 0;
@@ -150,7 +150,7 @@ async Task<int> ScenariosAsync()
 {
     var profile = await Profile.LoadAsync(dir);
     using var key = PemSigningKey.FromPem(await File.ReadAllTextAsync(Path.Combine(dir, "private-key.pem")));
-    var runner = new ScenarioRunner(profile, key, Atk(profile), dir);
+    var runner = new ScenarioRunner(profile, key, Atk(profile), dir, long.TryParse(opts.Get("citizen-id"), out var cid) ? cid : 38344000000L);
     var results = await runner.RunAllAsync();
 
     var md = new StringBuilder();
