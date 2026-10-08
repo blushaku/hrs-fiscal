@@ -4,9 +4,12 @@
     ViewData["Title"] = "Sign in";
 }
 <form method="post" class="login-card">
-    <div>
-        <h1 style="font-size: 24px">HRS Fiscal</h1>
-        <p class="muted small" style="margin: 4px 0 0">Kosovo fiscalization · admin</p>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+        <img class="login-logo" src="~/img/hrs-logo.svg" alt="HRS Hospitality &amp; Retail Systems">
+        <div>
+            <h1 style="font-size: 22px">HRS Fiscal</h1>
+            <p class="muted small" style="margin: 2px 0 0">Kosovo fiscalization (SEF) · administration</p>
+        </div>
     </div>
     @if (Model.Error is not null)
     {

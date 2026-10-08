@@ -15,6 +15,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@ViewData["Title"] · HRS Fiscal</title>
+    <link rel="icon" type="image/png" href="~/favicon.png">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
 </head>
 <body>
@@ -27,7 +28,8 @@ else
     <div class="shell">
         <nav class="sidebar" aria-label="Main">
             <div class="brand">
-                <div class="brand-name">HRS Fiscal</div>
+                <a href="/" aria-label="HRS Fiscal — dashboard"><img class="brand-logo" src="~/img/hrs-logo.svg" alt="HRS Hospitality &amp; Retail Systems"></a>
+                <div class="brand-product"><span class="tag">Fiscal</span><span class="brand-sub">Kosovo SEF</span></div>
                 <div class="brand-sub">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</div>
             </div>
             <div class="nav">

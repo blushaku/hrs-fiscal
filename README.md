@@ -97,6 +97,11 @@ install, issue its own HTTPS certificate and a client certificate for each works
 mutual TLS between server and clients. The CA certificate is installed on admin PCs once, e.g. through group policy.
 ATK signing certificates are separate: one per workstation, issued by ATK's CA.
 
+### Branding
+The admin UI follows the HRS website (hrsinternational.com): HRS logo, Poppins, HRS navy `#000254`, logo navy `#16254C` and slate `#6F8695`,
+orange call-to-action buttons `#D6470F`, 5px radius. Links use the site teal darkened to `#00738C` for contrast.
+The logo, favicon and fonts are served locally from `wwwroot/` (no internet needed). Poppins is under the SIL OFL (`wwwroot/fonts/OFL-Poppins.txt`).
+
 ### Licences
 - QuestPDF (PDF exports) is used under its **Community licence**: free for companies under USD 1M annual revenue.
   Confirm HRS's eligibility; otherwise buy a Professional licence or swap the PDF library.
