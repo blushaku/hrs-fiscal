@@ -173,7 +173,8 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         await audit.WriteAsync(actor, AuditLog.Actions.TerminalChanged, "terminal", t.Id.ToString(), new { old = before, @new = t }, t.Id, ct);
     }
 
-    // ---- OPERA mappings -------------------------------------------------------------------
+    // ---- OPERA overrides (optional) ---------------------------------------------------------
+    // All receipt fields come from OPERA via FLIP. These per-code entries, when present, override what OPERA sends.
 
     public async Task<IReadOnlyList<TrxMapping>> TrxMappingsAsync(CancellationToken ct = default)
     {

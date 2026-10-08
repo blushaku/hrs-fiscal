@@ -2,7 +2,7 @@
 @model Hrs.Fiscal.Server.Pages.Settings.MappingModel
 @using System.Globalization
 @{
-    ViewData["Title"] = "OPERA mapping & VAT";
+    ViewData["Title"] = "OPERA overrides & VAT";
     var editingTrx = Model.EditTrx is not null;
     var editingPay = Model.EditPayment is not null;
 }
@@ -11,8 +11,8 @@
 <div asp-validation-summary="All" class="validation"></div>
 
 <section class="card">
-    <h2>OPERA transaction codes → receipt items</h2>
-    <p class="small muted" style="margin: 0 0 12px">Every OPERA transaction code that can appear on a folio must be mapped. Folios with an unmapped code will be refused (not fiscalized) and raise an alert.</p>
+    <h2>OPERA transaction codes → receipt items <span class="badge neutral" style="vertical-align: middle">optional</span></h2>
+    <p class="small muted" style="margin: 0 0 12px">By default every field (item name, unit, VAT letter, ATK category) comes from OPERA via FLIP. Add a code here only to override what OPERA sends for that transaction code. Codes not listed are fiscalized exactly as OPERA sends them.</p>
     <div class="table-wrap">
         <table>
             <thead><tr><th>OPERA code</th><th>Item name on receipt</th><th>Unit</th><th>ATK category</th><th>VAT</th><th>Active</th><th><span class="sr-only">Edit</span></th></tr></thead>
@@ -57,7 +57,8 @@
 
 <div class="grid">
     <section class="card">
-        <h2>OPERA payment methods → ATK payment type</h2>
+        <h2>OPERA payment methods → ATK payment type <span class="badge neutral" style="vertical-align: middle">optional</span></h2>
+        <p class="small muted" style="margin: 0 0 12px">Used only if OPERA does not send the ATK payment type, or to override it.</p>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>OPERA code</th><th>Description</th><th>ATK type</th><th><span class="sr-only">Edit</span></th></tr></thead>

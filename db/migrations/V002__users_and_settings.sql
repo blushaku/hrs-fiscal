@@ -24,7 +24,7 @@ INSERT INTO vat_rate (letter, percent, description) VALUES
     ('D', 8, 'Reduced VAT rate'),
     ('E', 18, 'Standard VAT rate');
 
--- OPERA transaction code -> fiscal receipt item.
+-- Optional per-code overrides. By default every field comes from OPERA via FLIP; a row here overrides it.
 CREATE TABLE opera_trx_mapping (
     branch_id           bigint NOT NULL,
     trx_code            text   NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE opera_trx_mapping (
     PRIMARY KEY (branch_id, trx_code)
 );
 
--- OPERA payment method -> ATK PaymentType (1 Cash, 2 CreditCard, 3 Voucher, 4 Cheque, 5 CryptoCurrency, 6 Other).
+-- Optional override: OPERA payment method -> ATK PaymentType (1 Cash, 2 CreditCard, 3 Voucher, 4 Cheque, 5 CryptoCurrency, 6 Other).
 CREATE TABLE opera_payment_mapping (
     branch_id           bigint NOT NULL,
     payment_code        text   NOT NULL,

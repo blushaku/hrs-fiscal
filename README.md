@@ -54,10 +54,14 @@ createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initi
 | Download copy (PDF) | Receipt copy marked "KOPJE E KUPONIT", logged as REPRINT | Cashier, Supervisor, Admin |
 | Audit log | Search all events; **integrity check** of both hash chains (logged) | all |
 | Export | Receipts, unsent receipts or audit log as CSV (UTF-8) or PDF; every export logged with a SHA-256 | Supervisor, Admin, Auditor |
-| Settings | General (retention, backup, ATK environment and ApplicationId, timeouts, VAT rounding); business and unit; workstations (POS ID ↔ OPERA Fiscal Terminal); OPERA transaction code and payment mapping; VAT rates; users | Admin |
+| Settings | General (retention, backup, ATK environment and ApplicationId, timeouts, VAT rounding); business and unit; workstations (POS ID ↔ OPERA Fiscal Terminal); optional OPERA overrides per transaction code and payment method; VAT rates; users | Admin |
 
 Every settings change is written to the audit log with its old and new values. Failed logins are logged, and an
 account is blocked for 15 minutes after 5 failures. Users and workstations are deactivated, never deleted.
+
+All receipt fields (item name, unit, quantity, price, VAT letter, ATK category, payment type) come from OPERA via
+FLIP. The per-code mappings in Settings are **optional overrides** for exceptions. HRS validates every folio
+(known VAT letter, VAT consistent with the rates, totals = payments) before sending it to ATK.
 
 No fiscal printer is involved. OPERA prints the fiscal data (SEF ID, receipt no., NUIKF, ATK transaction, QR,
 "e-kupon") on the folio from the FLIP response. The OPERA folio template needs a fiscal block for this.
