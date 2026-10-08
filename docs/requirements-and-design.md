@@ -196,3 +196,17 @@ Prerequisites:
   - outbound allowlist entry for our host
 - Public HTTPS endpoint for the HRS Fiscal Server (DNS, TLS certificate, firewall allowing OCI), or a relay
 - Sample payloads: Folio Generation, Post Payment, Check Out
+
+## 9. Decision (08.10.2026): OFIS with on-premise FLIP (supersedes the OFIS Cloud assumptions in sections 5 and 8)
+- Path: OPERA Cloud → OFIS → **FLIP** (Oracle Fiscal Layer Integration Platform, installed at the hotel) → HRS Fiscal Server over the LAN (local IP:port).
+- OPERA configuration:
+  - Fiscal Folio parameter **FLIP Server Address**
+  - Fiscal Partner and payload types (Folio Generation / Post Payment / Check Out)
+  - **Fiscal Terminals** (Terminal ID + LAN Address/Port per workstation)
+- No public endpoint, domain or port forwarding is needed for the HRS components. The HRS Server still needs outbound HTTPS to ATK (fiskalizimi.atk-ks.org).
+- Still needed from Oracle (the FLIP fiscal-partner interface spec):
+  - message format and transport
+  - expected response fields printed on the folio
+  - sync/async behaviour and timeout
+  - whether FLIP calls one partner address or each Fiscal Terminal address
+  - how FLIP connects to OPERA Cloud

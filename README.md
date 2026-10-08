@@ -1,12 +1,12 @@
 # HRS Fiscal Solution
 
 Kosovo fiscalization software (**SEF – Softuer Elektronik Fiskal**) for hotels on **Oracle OPERA Cloud**.
-OPERA sends fiscal payloads via **OFIS Cloud** to the HRS Fiscal Server. The server routes each receipt to the
+OPERA Cloud sends fiscal payloads via **OFIS with FLIP** (Oracle's Fiscal Layer Integration Platform, installed on-premise). FLIP delivers them over the hotel LAN to the HRS Fiscal Server. The server routes each receipt to the
 HRS Fiscal Client on the workstation that issued it. The client signs the receipt and fiscalizes it with ATK.
 Everything is archived in an append-only PostgreSQL store.
 
 ```
-OPERA Cloud ──OFIS──▶ HRS Fiscal Server ──route by Fiscal Terminal ID──▶ HRS Fiscal Client (each workstation)
+OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ HRS Fiscal Server ──route by Fiscal Terminal ID──▶ HRS Fiscal Client (each workstation)
    ▲                  │ mapping, numbering                                  │ own PosId + non-exportable key
    │                  │ archive + audit log (PostgreSQL)                    │ signs PosCoupon + QR
    └── fiscal data ◀──┘ offline queue, admin UI, exports   ◀── result ─────┘──▶ ATK /pos/coupon
@@ -17,7 +17,7 @@ OPERA Cloud ──OFIS──▶ HRS Fiscal Server ──route by Fiscal Terminal
 | Path | What |
 |---|---|
 | `src/Hrs.Fiscal.Core` | Shared fiscal library: ATK protobuf model, coupon builder and validation, VAT, ECDSA signing (DER), QR, CSR, ATK API client |
-| `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): OFIS endpoint, routing, archive, queue, admin. **Skeleton** |
+| `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): FLIP endpoint on the LAN, routing, archive, queue, admin. **Skeleton** |
 | `src/Hrs.Fiscal.Client` | Workstation client (Windows service): key and certificate, onboarding, signing, transmission. **Skeleton** |
 | `tests/Hrs.Fiscal.Core.Tests` | Unit tests (xUnit) |
 | `db/migrations` | PostgreSQL schema |
@@ -74,4 +74,4 @@ createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initi
 6. How to flag offline receipts (there is no field in the proto).
 7. Advance payments (UA Art 6.2) versus the hotel practice of not taking deposits.
 8. The retention period (Law on Tax Administration Procedures).
-9. Oracle: OFIS payload schema and response contract for a Kosovo fiscal partner.
+9. Oracle: the FLIP-to-fiscal-partner interface spec (message format, response, timeout, terminal addressing) and how FLIP connects to OPERA Cloud.
