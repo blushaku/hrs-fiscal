@@ -9,6 +9,7 @@
 // TEST ONLY: here the key is kept as a PEM file. The HRS Fiscal Client keeps production keys non-exportable (CNG/TPM).
 
 using System.Globalization;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Hrs.Fiscal.Cli;
@@ -24,12 +25,13 @@ try
     return command switch
     {
         "onboard" => await OnboardAsync(),
+        "import" => await ImportAsync(),
         "send" => await SendAsync(),
         "scenarios" => await ScenariosAsync(),
         _ => Help(),
     };
 }
-catch (Exception ex) when (ex is AtkApiException or ArgumentException or FileNotFoundException or HttpRequestException)
+catch (Exception ex) when (ex is AtkApiException or ArgumentException or FileNotFoundException or HttpRequestException or FormatException or System.Security.Cryptography.CryptographicException)
 {
     Console.Error.WriteLine($"ERROR: {ex.Message}");
     return 1;
@@ -43,6 +45,10 @@ int Help()
           onboard   --nui <NUI> --fiscal-no <EDI no> --branch <unit no> --pos <POS id> --app <ApplicationId>
                     [--env test|prod] [--dir <folder>] [--location <city>]
                     Generates a P-256 key, verifies the business with ATK, sends the CSR, saves the certificate.
+          import    --key <private-key.pem> --cert <signed-certificate.pem> --app <ApplicationId> [--env test|prod]
+                    [--dir <folder>] [--location <city>]
+                    Uses the key and certificate exported from ATK's onboarder tool (Certificate tab › Export).
+                    NUI, POS ID and branch are read from the certificate.
           send      [--dir <folder>]   Sends one signed hotel test receipt and prints the ATK transaction id.
           scenarios [--dir <folder>]   Runs the ATK test set (sales, return, duplicates, bad signature, QR check)
                                        and writes <folder>/report.md.
@@ -87,6 +93,46 @@ async Task<int> OnboardAsync()
     await profile.SaveAsync(dir);
 
     Console.WriteLine($"Done. Certificate valid until {profile.CertificateExpiresUtc:yyyy-MM-dd}. Profile saved in {dir}");
+    return 0;
+}
+
+async Task<int> ImportAsync()
+{
+    var keyPem = await File.ReadAllTextAsync(opts.Require<string>("key"));
+    var certPem = await File.ReadAllTextAsync(opts.Require<string>("cert"));
+    using var key = PemSigningKey.FromPem(keyPem);
+    var cert = System.Security.Cryptography.X509Certificates.X509Certificate2.CreateFromPem(certPem);
+
+    // The certificate must belong to this key.
+    using var certKey = cert.GetECDsaPublicKey() ?? throw new ArgumentException("Certificate has no ECDSA public key.");
+    var probe = "hrs-fiscal-import"u8.ToArray();
+    if (!certKey.VerifyData(probe, key.SignData(probe), System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.DSASignatureFormat.Rfc3279DerSequence))
+        throw new ArgumentException("The private key does not match the certificate.");
+
+    // ATK subject layout: C=RKS, O=<NUI>, OU=<POS ID>, L=<branch>, CN=<business name>
+    string Part(string oid) => cert.SubjectName.EnumerateRelativeDistinguishedNames()
+        .FirstOrDefault(r => r.GetSingleElementType().Value == oid)?.GetSingleElementValue() ?? "";
+    var profile = new Profile
+    {
+        Environment = (opts.Get("env") ?? "test").ToLowerInvariant() == "prod" ? AtkEnvironment.Production : AtkEnvironment.Test,
+        Nui = ulong.Parse(Part("2.5.4.10"), CultureInfo.InvariantCulture),
+        PosId = ulong.Parse(Part("2.5.4.11"), CultureInfo.InvariantCulture),
+        BranchId = ulong.Parse(Part("2.5.4.7"), CultureInfo.InvariantCulture),
+        BusinessName = Part("2.5.4.3"),
+        ApplicationId = opts.Require<ulong>("app"),
+        FiscalizationNo = opts.Get("fiscal-no") ?? "",
+        Location = opts.Get("location") ?? "Prishtinë",
+        CertificateExpiresUtc = cert.NotAfter.ToUniversalTime(),
+    };
+
+    Directory.CreateDirectory(dir);
+    await File.WriteAllTextAsync(Path.Combine(dir, "private-key.pem"), keyPem);
+    await File.WriteAllTextAsync(Path.Combine(dir, "certificate.pem"), certPem);
+    await profile.SaveAsync(dir);
+    Console.WriteLine($"Imported: {profile.BusinessName} · NUI {profile.Nui} · branch {profile.BranchId} · POS {profile.PosId} · " +
+                      $"certificate valid until {profile.CertificateExpiresUtc:yyyy-MM-dd} · {profile.Environment}");
+    Console.WriteLine($"Profile saved in {dir}. Next: hrs-fiscal-cli scenarios --dir \"{dir}\"");
     return 0;
 }
 
