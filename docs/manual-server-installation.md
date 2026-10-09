@@ -75,7 +75,7 @@ The tables are created automatically when the HRS service starts the first time 
    ```powershell
    Set-ExecutionPolicy -Scope Process Bypass
    .\install-server.ps1 `
-       -ConnectionString "Host=localhost;Database=hrs_fiscal;Username=hrs_fiscal_owner;Password=choose-a-long-password" `
+       -ConnectionString "Host=127.0.0.1;Database=hrs_fiscal;Username=hrs_fiscal_owner;Password=choose-a-long-password" `
        -AdminPassword "a-temporary-first-password" `
        -FlipSourceIp 192.168.1.10
    ```
@@ -197,7 +197,7 @@ The database is the legal archive of the hotel's fiscal receipts and logs. Back 
 
 1. Create a folder on the NAS, e.g. `\\nas\hrs-fiscal-backup`, writable by a dedicated backup account.
 2. As that account, store the database password in `%APPDATA%\postgresql\pgpass.conf`:
-   `localhost:5432:hrs_fiscal:hrs_fiscal_owner:choose-a-long-password` (file readable only by that account).
+   `127.0.0.1:5432:hrs_fiscal:hrs_fiscal_owner:choose-a-long-password` (file readable only by that account).
 3. Task Scheduler › Create Task: run as the backup account, *whether user is logged on or not*, daily at 04:00:
    ```
    Program:   powershell.exe
@@ -229,6 +229,7 @@ retention period. Export or hand over a backup instead.
 |---|---|
 | Service stops right after start | Event Viewer › Windows Logs › Application, source *Hrs.Fiscal.Server* (or *.NET Runtime*). Faster: stop the service and run `& "C:\Program Files\HRS Fiscal\Server\Hrs.Fiscal.Server.exe" --contentRoot "C:\Program Files\HRS Fiscal\Server" --environment Production` in an elevated PowerShell to see the error on screen. Usual causes below |
 | *Role hrs_fiscal_app is missing* / *permission denied to create role* | As `postgres`: `CREATE ROLE hrs_fiscal_app NOLOGIN;` then `Start-Service HRSFiscalServer` (section 3) |
+| *No such host is known* | The `Host=` in the connection string cannot be resolved. For a database on the same server use `Host=127.0.0.1`; for another machine use its IP address |
 | *password authentication failed* / *database does not exist* | Connection string in `appsettings.Production.json`: user, password, database name |
 | *address already in use* | Port 5080 or 5100 is used by another program: re-run the installer with `-AdminPort`/`-FlipPort` |
 | Admin page not reachable from another PC | Firewall rule *HRS Fiscal admin (5080)*; network profile must be Domain or Private, not Public |

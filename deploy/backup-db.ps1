@@ -10,7 +10,7 @@ param(
   [Parameter(Mandatory)] [string] $Target,
   [string] $Database = "hrs_fiscal",
   [string] $User = "hrs_fiscal_owner",
-  [string] $DbHost = "localhost",
+  [string] $DbHost = "127.0.0.1",
   [int] $Port = 5432,
   [int] $KeepDays = 90,
   [string] $PgBin = ""

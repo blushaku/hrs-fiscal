@@ -21,7 +21,7 @@ the real message format. Stage 2 fiscalizes against ATK's TEST environment and p
 1. Install the .NET 8 ASP.NET Core Runtime (Windows Hosting Bundle) and PostgreSQL; create an empty database `hrs_fiscal`.
 2. Unzip `HRS-Fiscal-Server-win-x64.zip` and run, in an elevated PowerShell:
    ```powershell
-   .\install-server.ps1 -ConnectionString "Host=localhost;Database=hrs_fiscal;Username=postgres;Password=..." -AdminPassword "<first admin password>"
+   .\install-server.ps1 -ConnectionString "Host=127.0.0.1;Database=hrs_fiscal;Username=postgres;Password=..." -AdminPassword "<first admin password>"
    ```
    The admin page opens at `http://<server>:5080`; FLIP is accepted at `http://<server-LAN-IP>:5100/flip`.
    Add `-FlipTcpPort 5200` if FLIP turns out to use raw sockets instead of HTTP.

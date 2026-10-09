@@ -98,7 +98,16 @@ try
 catch (Exception ex)
 {
     // Written to the Windows event log (source Hrs.Fiscal.Server) before the service stops.
-    app.Logger.LogCritical(ex, "HRS Fiscal Server could not start: {Reason}", ex.Message);
+    if (ex is Npgsql.NpgsqlException or System.Net.Sockets.SocketException)
+    {
+        // Say which database it tried (never the password).
+        var cs = new Npgsql.NpgsqlConnectionStringBuilder(app.Configuration.GetConnectionString("Fiscal"));
+        var hint = $"Cannot connect to PostgreSQL at host '{cs.Host}', port {cs.Port}, database '{cs.Database}', user '{cs.Username}': {ex.Message}. " +
+                   "Check ConnectionStrings:Fiscal in appsettings.Production.json (use Host=127.0.0.1 for a local database).";
+        app.Logger.LogCritical(ex, "{Hint}", hint);
+        Console.Error.WriteLine(hint);
+    }
+    else app.Logger.LogCritical(ex, "HRS Fiscal Server could not start: {Reason}", ex.Message);
     throw;
 }
 

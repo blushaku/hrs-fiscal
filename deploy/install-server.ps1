@@ -1,7 +1,7 @@
 <#
   Installs HRS Fiscal Server as a Windows service.
   Run in an elevated PowerShell from the unzipped release folder:
-    .\install-server.ps1 -ConnectionString "Host=localhost;Database=hrs_fiscal;Username=hrs_fiscal_owner;Password=..." `
+    .\install-server.ps1 -ConnectionString "Host=127.0.0.1;Database=hrs_fiscal;Username=hrs_fiscal_owner;Password=..." `
                          -AdminPassword "first-admin-password" [-InstallDir "C:\Program Files\HRS Fiscal\Server"] `
                          [-AdminPort 5080] [-FlipPort 5100] [-FlipTcpPort 0] [-FlipSourceIp 192.168.1.10]
   Requires the .NET 8 ASP.NET Core Runtime (Windows Hosting Bundle) and PostgreSQL 14+ with an empty database.
