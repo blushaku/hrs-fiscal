@@ -28,7 +28,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@ViewData["Title"] · HRS Fiscal</title>
+    <title>@ViewData["Title"] · @AppVersion.ProductName</title>
     <link rel="icon" type="image/png" href="~/favicon.png">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
     <script src="~/js/site.js" asp-append-version="true" defer></script>
@@ -41,7 +41,7 @@
 else
 {
     <header class="suitebar">
-        <a class="suite-app" href="/" aria-label="HRS Fiscal — dashboard"><span class="suite-mark" aria-hidden="true">HRS</span>Fiscal <span class="suite-sub">Kosovo SEF</span></a>
+        <a class="suite-app" href="/" aria-label="@AppVersion.ProductName — dashboard"><span class="suite-mark" aria-hidden="true">HRS</span>Fiscal Solution <span class="suite-sub">Kosovo</span></a>
         <span class="suite-property">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</span>
         <div class="suite-right">
             <span class="suite-user" title="@User.Role()"><span class="suite-avatar" aria-hidden="true">@Initials(User.Display())</span><span class="who">@User.Display()</span></span>
@@ -69,7 +69,7 @@ else
             </div>
             <div class="sidebar-foot">
                 <img class="brand-logo" src="~/img/hrs-logo.svg" alt="HRS Hospitality &amp; Retail Systems">
-                <div class="version" title="Build @AppVersion.Commit">HRS Fiscal @AppVersion.Version · @User.Role()</div>
+                <div class="version" title="Build @AppVersion.Commit">@AppVersion.ProductName @AppVersion.Version · @User.Role()</div>
             </div>
         </nav>
         <main class="content">

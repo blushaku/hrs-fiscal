@@ -53,6 +53,7 @@ public class PermissionTests(ServerFixture app) : IClassFixture<ServerFixture>
         var health = JsonDocument.Parse(await app.Anonymous().GetStringAsync("/health")).RootElement;
         Assert.Matches(@"^\d+\.\d+\.\d+$", health.GetProperty("version").GetString());
         Assert.True(await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'SERVICE_STARTED'") >= 1);
-        Assert.Contains("HRS Fiscal " + health.GetProperty("version").GetString(), await (await app.SignedInAsync("admin", ServerFixture.AdminPassword)).GetStringAsync("/"));
+        Assert.Equal("HRS Fiscal Solution Kosovo", health.GetProperty("product").GetString());
+        Assert.Contains("HRS Fiscal Solution Kosovo " + health.GetProperty("version").GetString(), await (await app.SignedInAsync("admin", ServerFixture.AdminPassword)).GetStringAsync("/"));
     }
 }

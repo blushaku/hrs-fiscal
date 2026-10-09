@@ -1,9 +1,9 @@
-# HRS Fiscal — Guide to ATK certification of the SEF
+# HRS Fiscal Solution Kosovo — Guide to ATK certification of the SEF
 
 **Source:** ATK, *Kushtet dhe procedurat për aplikimin, certifikimin dhe mirëmbajtjen e Softuerëve Elektronikë Fiskalë
 (SEF)* (Conditions and procedures for application, certification and maintenance of Electronic Fiscal Software), signed by
 the ATK Director General on 03.07.2026, in force from signing. 7 pages, Articles 1–9.
-**Prepared:** 09.10.2026 for HRS Fiscal Solution 0.9 (OPERA Cloud via OFIS/FLIP).
+**Prepared:** 09.10.2026 for HRS Fiscal Solution Kosovo (OPERA Cloud via OFIS/FLIP).
 
 ---
 

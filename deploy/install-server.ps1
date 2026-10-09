@@ -48,7 +48,7 @@ $settings | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 $settingsFile
 # The settings file holds the database password: readable by Administrators and the service (SYSTEM) only.
 icacls $settingsFile /inheritance:r /grant:r "*S-1-5-32-544:F" "*S-1-5-18:F" | Out-Null
 
-New-Service -Name $svc -DisplayName "HRS Fiscal Server" -StartupType Automatic `
+New-Service -Name $svc -DisplayName "HRS Fiscal Solution Kosovo - Server" -StartupType Automatic `
   -BinaryPathName "`"$(Join-Path $InstallDir 'Hrs.Fiscal.Server.exe')`" --contentRoot `"$InstallDir`" --environment Production" | Out-Null
 # Restart automatically after a crash (after 10 s, 30 s, then every 60 s).
 sc.exe failure $svc reset= 86400 actions= restart/10000/restart/30000/restart/60000 | Out-Null
@@ -58,7 +58,7 @@ New-NetFirewallRule -DisplayName "HRS Fiscal FLIP ($FlipPort)" -Direction Inboun
 if ($FlipTcpPort -gt 0) { New-NetFirewallRule -DisplayName "HRS Fiscal FLIP TCP ($FlipTcpPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipTcpPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null }
 Start-Service $svc
 Start-Sleep 3
-try { $h = Invoke-RestMethod "http://127.0.0.1:$AdminPort/health"; Write-Host "Health check OK. HRS Fiscal Server $($h.version) ($($h.commit))." -ForegroundColor Green }
+try { $h = Invoke-RestMethod "http://127.0.0.1:$AdminPort/health"; Write-Host "Health check OK. HRS Fiscal Solution Kosovo $($h.version) ($($h.commit))." -ForegroundColor Green }
 catch { Write-Host "Service started but /health did not answer. See Event Viewer > Windows Logs > Application (source Hrs.Fiscal.Server)." -ForegroundColor Red }
 
 Write-Host "HRS Fiscal Server installed and started."

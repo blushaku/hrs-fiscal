@@ -1,4 +1,4 @@
-# HRS Fiscal Server — Installation and Configuration Manual
+# HRS Fiscal Solution Kosovo — Installation and Configuration Manual
 
 For HRS implementation engineers. One HRS Fiscal Server is installed per hotel (property), on the hotel LAN, close to
 Oracle FLIP. Time needed: about 1 hour, plus ATK registration of the workstations.

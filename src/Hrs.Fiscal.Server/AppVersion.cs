@@ -5,6 +5,9 @@ namespace Hrs.Fiscal.Server;
 /// <summary>The running release: Version from Directory.Build.props, plus the git commit it was built from.</summary>
 public static class AppVersion
 {
+    /// <summary>Product name as registered with ATK (SEF certification).</summary>
+    public const string ProductName = "HRS Fiscal Solution Kosovo";
+
     private static readonly string Informational =
         typeof(AppVersion).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 

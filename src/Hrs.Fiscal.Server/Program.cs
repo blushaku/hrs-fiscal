@@ -133,7 +133,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", component = "hrs-fiscal-server", version = AppVersion.Version, commit = AppVersion.Commit })).AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "ok", product = AppVersion.ProductName, component = "hrs-fiscal-server", version = AppVersion.Version, commit = AppVersion.Commit })).AllowAnonymous();
 
 // Endpoint called by Oracle FLIP over the hotel LAN (OPERA: Fiscal Folio parameter "FLIP Server Address",
 // Fiscal Terminals "Address and Port"). Any method and any path under /flip is accepted and stored as received.

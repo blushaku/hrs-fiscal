@@ -218,7 +218,7 @@ public sealed class Exporter(ReceiptQueries receipts, AuditLog audit, SettingsSt
             });
             page.Footer().Row(r =>
             {
-                r.RelativeItem().Text($"HRS Fiscal Solution {AppVersion.Display}").FontSize(8).FontColor(Colors.Grey.Darken1);
+                r.RelativeItem().Text($"{AppVersion.ProductName} {AppVersion.Display}").FontSize(8).FontColor(Colors.Grey.Darken1);
                 r.RelativeItem().AlignRight().Text(x => { x.Span("Page "); x.CurrentPageNumber(); x.Span(" / "); x.TotalPages(); });
             });
         })).GeneratePdf();

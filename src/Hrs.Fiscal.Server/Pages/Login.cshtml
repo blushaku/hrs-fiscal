@@ -7,7 +7,7 @@
     <div style="display: flex; flex-direction: column; gap: 12px">
         <img class="login-logo" src="~/img/hrs-logo.svg" alt="HRS Hospitality &amp; Retail Systems">
         <div>
-            <h1 style="font-size: 22px">HRS Fiscal</h1>
+            <h1 style="font-size: 22px">@AppVersion.ProductName</h1>
             <p class="muted small" style="margin: 2px 0 0">Kosovo fiscalization (SEF) · administration</p>
         </div>
     </div>
@@ -23,5 +23,5 @@
     </label>
     <input type="hidden" asp-for="ReturnUrl">
     <button type="submit" class="btn primary">Sign in</button>
-    <p class="small muted" style="margin: 0; text-align: center">HRS Fiscal Solution @AppVersion.Version</p>
+    <p class="small muted" style="margin: 0; text-align: center">@AppVersion.ProductName @AppVersion.Version</p>
 </form>

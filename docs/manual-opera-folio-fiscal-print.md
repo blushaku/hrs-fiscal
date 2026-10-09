@@ -1,4 +1,4 @@
-# HRS Fiscal — Printing fiscal data and the QR code on the OPERA Cloud folio
+# HRS Fiscal Solution Kosovo — Printing fiscal data and the QR code on the OPERA Cloud folio
 
 **Audience:** OPERA Cloud administrator / implementation consultant. **Applies to:** OPERA Cloud with OFIS
 (on-premise FLIP) and HRS Fiscal Server 0.9 in live mode.
