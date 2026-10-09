@@ -199,7 +199,8 @@ letter, or use a property configured with Kosovo VAT and EUR.
 The fiscal data must be printed on the folio: **QR code** (min. 12 × 12 mm, no logo inside), **NUIKF** (verification
 number), **receipt number**, **SEF ID** (unit-business-POS), **ATK transaction** and the text **e-kupon**. Add a fiscal
 block to the property's folio report that prints the fiscal data OPERA receives back from FLIP **[Oracle]** (field
-names follow the partner response). No fiscal printer is used.
+names follow the partner response). No fiscal printer is used. Step-by-step: see
+[manual-opera-folio-fiscal-print.md](manual-opera-folio-fiscal-print.md).
 
 ## 10. Test before go-live
 
