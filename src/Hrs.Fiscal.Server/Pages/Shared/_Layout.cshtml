@@ -8,6 +8,7 @@
     // Settings opens on the first section this user may manage.
     var settingsHref = Can(Permissions.SettingsManage) ? "/Settings" : Can(Permissions.WorkstationsManage) ? "/Settings/Workstations" : Can(Permissions.UsersManage) ? "/Settings/Users" : null;
     var business = signedIn ? await Settings.BusinessAsync() : null;
+    static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
     string Active(string prefix) => (prefix == "/" ? path == "/" : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ? "nav-link active" : "nav-link";
 }
 <!doctype html>
@@ -27,12 +28,21 @@
 }
 else
 {
+    <header class="suitebar">
+        <a class="suite-app" href="/" aria-label="HRS Fiscal — dashboard"><span class="suite-mark" aria-hidden="true">HRS</span>Fiscal <span class="suite-sub">Kosovo SEF</span></a>
+        <span class="suite-property">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</span>
+        <div class="suite-right">
+            <span class="suite-user" title="@User.Role()"><span class="suite-avatar" aria-hidden="true">@Initials(User.Display())</span><span class="who">@User.Display()</span></span>
+            <form method="post" action="/logout">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="link-button">Sign out</button>
+            </form>
+        </div>
+    </header>
     <div class="shell">
         <nav class="sidebar" aria-label="Main">
             <div class="brand">
                 <a href="/" aria-label="HRS Fiscal — dashboard"><img class="brand-logo" src="~/img/hrs-logo.svg" alt="HRS Hospitality &amp; Retail Systems"></a>
-                <div class="brand-product"><span class="tag">Fiscal</span><span class="brand-sub">Kosovo SEF</span></div>
-                <div class="brand-sub">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</div>
             </div>
             <div class="nav">
                 <a class="@Active("/")" href="/">Dashboard</a>
@@ -43,11 +53,7 @@ else
                 @if (settingsHref is not null) { <a class="@Active("/Settings")" href="@settingsHref">Settings</a> }
             </div>
             <div class="sidebar-foot">
-                <div>@User.Display() · @User.Role()</div>
-                <form method="post" action="/logout">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="link-button">Sign out</button>
-                </form>
+                <div>@User.Role()</div>
                 <div class="version" title="Build @AppVersion.Commit">HRS Fiscal @AppVersion.Version</div>
             </div>
         </nav>
