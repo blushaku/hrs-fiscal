@@ -8,6 +8,9 @@ public static class AppVersion
     /// <summary>Product name as registered with ATK (SEF certification).</summary>
     public const string ProductName = "Opera Cloud Fiscal Solution - Kosovo";
 
+    /// <summary>Developer and maintainer registered with ATK.</summary>
+    public const string Developer = "Behar Lushaku";
+
     private static readonly string Informational =
         typeof(AppVersion).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 

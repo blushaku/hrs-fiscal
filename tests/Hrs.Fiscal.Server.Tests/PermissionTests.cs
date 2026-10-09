@@ -54,6 +54,7 @@ public class PermissionTests(ServerFixture app) : IClassFixture<ServerFixture>
         Assert.Matches(@"^\d+\.\d+\.\d+$", health.GetProperty("version").GetString());
         Assert.True(await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'SERVICE_STARTED'") >= 1);
         Assert.Equal("Opera Cloud Fiscal Solution - Kosovo", health.GetProperty("product").GetString());
+        Assert.Equal("Behar Lushaku", health.GetProperty("developer").GetString());
         Assert.Contains("Opera Cloud Fiscal Solution - Kosovo " + health.GetProperty("version").GetString(), await (await app.SignedInAsync("admin", ServerFixture.AdminPassword)).GetStringAsync("/"));
     }
 }

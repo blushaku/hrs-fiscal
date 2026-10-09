@@ -180,7 +180,7 @@ Practical consequences for HRS:
 
 Sources: ATK document of 03.07.2026 (Arts. 1–9); *sef-requirements-and-api.md*; ATK TEST run of 08.10.2026.
 
-## 10. Submission package (drafted 09.10.2026)
+## 10. Submission package (drafted 09.10.2026; developer and applicant: Behar Lushaku)
 
 | Doc | Status |
 |---|---|
