@@ -96,6 +96,27 @@ public sealed class ReceiptQueries(NpgsqlDataSource db, PropertyClock clock)
             """)).ToList();
     }
 
+    /// <summary>Totals per workstation for a period (sales minus returns), with ATK status counts.</summary>
+    public async Task<IReadOnlyList<WorkstationSummary>> SummaryAsync(ReceiptFilter f, CancellationToken ct = default)
+    {
+        var (where, args) = BuildWhere(f with { Status = null });
+        await using var conn = await db.OpenConnectionAsync(ct);
+        return (await conn.QueryAsync<WorkstationSummary>($"""
+            SELECT r.pos_id, coalesce(t.opera_terminal_id, t.hostname) AS terminal_label, t.hostname,
+                   count(*) FILTER (WHERE r.coupon_type = 1) AS sales,
+                   count(*) FILTER (WHERE r.coupon_type = 3) AS returns,
+                   coalesce(sum(r.total_cents) FILTER (WHERE r.coupon_type = 1), 0) AS sales_cents,
+                   coalesce(sum(r.total_cents) FILTER (WHERE r.coupon_type = 3), 0) AS returns_cents,
+                   coalesce(sum(CASE WHEN r.coupon_type = 3 THEN -r.total_tax_cents ELSE r.total_tax_cents END), 0) AS net_tax_cents,
+                   count(*) FILTER (WHERE s.status = 'accepted') AS accepted,
+                   count(*) FILTER (WHERE s.status = 'pending') AS pending,
+                   count(*) FILTER (WHERE s.status = 'rejected') AS rejected,
+                   min(r.issued_at) AS first_at, max(r.issued_at) AS last_at
+            {FromClause} {where}
+            GROUP BY r.pos_id, t.opera_terminal_id, t.hostname ORDER BY r.pos_id
+            """, args)).ToList();
+    }
+
     private (string Where, DynamicParameters Args) BuildWhere(ReceiptFilter f)
     {
         var sb = new StringBuilder("WHERE true");

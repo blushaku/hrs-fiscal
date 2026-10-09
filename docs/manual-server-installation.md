@@ -182,6 +182,14 @@ available with the client release).
 Follow [manual-opera-cloud-ofis-flip.md](manual-opera-cloud-ofis-flip.md). Afterwards, check the **FLIP messages** page (left menu):
 every folio OPERA sends must appear there.
 
+### 5.6 Reports and logs per workstation
+
+Receipts, Audit log and Export all filter by **workstation**. *Receipts* and *Audit log* have **Export CSV / PDF**
+buttons that export exactly the filtered view (period, workstation, status or event). *Export* also offers a
+**Summary by workstation**: sales, returns, net total, net VAT and ATK status counts per POS for the period, with a
+total line. The audit log for one workstation contains the events linked to it: its receipts, ATK transmissions,
+reprints, registration and settings changes. Every export is itself logged with the workstation and a SHA-256 of the file.
+
 ## 6. Check the installation
 
 - [ ] `http://<server>:5080/health` answers `{"status":"ok"}`.

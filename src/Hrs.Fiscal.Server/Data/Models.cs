@@ -111,6 +111,8 @@ public sealed record AuditFilter
 {
     public string? Query { get; init; }
     public string? Action { get; init; }
+    /// <summary>Entries linked to this workstation, including events about its receipts.</summary>
+    public long? TerminalId { get; init; }
     public DateOnly? From { get; init; }
     public DateOnly? To { get; init; }
     public int Page { get; init; } = 1;
@@ -155,4 +157,22 @@ public sealed class AppUser
 public sealed record Paged<T>(IReadOnlyList<T> Items, long Total, int Page, int PageSize)
 {
     public int PageCount => (int)Math.Max(1, (Total + PageSize - 1) / PageSize);
+}
+
+public sealed class WorkstationSummary
+{
+    public long PosId { get; init; }
+    public string TerminalLabel { get; init; } = "";
+    public string Hostname { get; init; } = "";
+    public long Sales { get; init; }
+    public long Returns { get; init; }
+    public long SalesCents { get; init; }
+    public long ReturnsCents { get; init; }
+    public long NetTaxCents { get; init; }
+    public long Accepted { get; init; }
+    public long Pending { get; init; }
+    public long Rejected { get; init; }
+    public DateTime? FirstAt { get; init; }
+    public DateTime? LastAt { get; init; }
+    public long NetCents => SalesCents - ReturnsCents;
 }

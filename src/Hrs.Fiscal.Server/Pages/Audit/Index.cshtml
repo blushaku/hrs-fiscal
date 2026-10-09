@@ -1,7 +1,10 @@
 @page
 @model Hrs.Fiscal.Server.Pages.Audit.IndexModel
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authz
 @{
     ViewData["Title"] = "Audit log";
+    var canExport = (await Authz.AuthorizeAsync(User, Policies.Export)).Succeeded;
 }
 <div class="page-head">
     <div>
@@ -38,10 +41,24 @@
             @foreach (var a in Model.ActionsInUse) { <option value="@a">@a</option> }
         </select>
     </label>
+    <label class="field">Workstation
+        <select asp-for="Terminal">
+            <option value="">All</option>
+            @foreach (var t in Model.Terminals) { <option value="@t.Id">@t.Label (POS @t.PosId)</option> }
+        </select>
+    </label>
     <label class="field">From <input type="date" asp-for="From"></label>
     <label class="field">To <input type="date" asp-for="To"></label>
     <button type="submit" class="btn primary">Search</button>
 </form>
+@if (canExport)
+{
+    <div class="actions" style="justify-content: flex-end">
+        <span class="small muted" style="align-self: center">Export this view@(Model.Terminal is null ? "" : " (this workstation only)"):</span>
+        <a class="btn small" href="@Model.ExportLink("csv")">CSV</a>
+        <a class="btn small" href="@Model.ExportLink("pdf")">PDF</a>
+    </div>
+}
 
 <div class="table-wrap">
     <table>

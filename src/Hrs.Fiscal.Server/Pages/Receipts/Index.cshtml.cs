@@ -43,4 +43,10 @@ public sealed class IndexModel(ReceiptQueries receipts, PropertyClock clock) : P
         };
         return "/Receipts" + Microsoft.AspNetCore.Http.QueryString.Create(q.Where(kv => !string.IsNullOrEmpty(kv.Value)));
     }
+
+    /// <summary>Export of the receipts the filters show (period, workstation, status).</summary>
+    public string ExportLink(string format) => "/export/receipts" + Microsoft.AspNetCore.Http.QueryString.Create(new Dictionary<string, string?>
+    {
+        ["format"] = format, ["from"] = From?.ToString("yyyy-MM-dd"), ["to"] = To?.ToString("yyyy-MM-dd"), ["terminal"] = Terminal?.ToString(), ["status"] = Status,
+    }.Where(kv => !string.IsNullOrEmpty(kv.Value)));
 }

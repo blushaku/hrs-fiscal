@@ -87,7 +87,7 @@
                 var days = t.CertificateExpires is { } exp ? (int)(exp - Model.UtcNow).TotalDays : (int?)null;
                 <div class="notice" style="display: flex; flex-direction: column; gap: 4px">
                     <div style="display: flex; justify-content: space-between; gap: 8px; align-items: center">
-                        <strong>@(t.OperaTerminalId ?? t.Hostname)</strong>
+                        <a href="/Receipts?Terminal=@t.Id" style="font-weight: 600; color: var(--hrs-navy)">@(t.OperaTerminalId ?? t.Hostname)</a>
                         @if (t.Status != "active") { <span class="badge neutral">@t.Status</span> }
                         else if (t.PendingCount > 0) { <span class="badge pending">@t.PendingCount waiting</span> }
                         else { <span class="badge accepted">OK</span> }

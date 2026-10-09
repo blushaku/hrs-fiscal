@@ -148,9 +148,10 @@ app.MapGet("/receipts/{id:long}/copy.pdf", async (long id, Exporter exporter, Ht
 });
 
 app.MapGet("/export/{dataset}", async (string dataset, string format, DateOnly? from, DateOnly? to, string? requestedBy,
-        Exporter exporter, HttpContext http) =>
+        long? terminal, string? status, string? action, Exporter exporter, HttpContext http) =>
     {
-        var result = await exporter.ExportAsync(dataset, format, from, to, requestedBy, http.User.Identity!.Name!, http.RequestAborted);
+        var result = await exporter.ExportAsync(dataset, format, from, to, requestedBy, http.User.Identity!.Name!, http.RequestAborted,
+            terminal, string.IsNullOrEmpty(status) ? null : status, string.IsNullOrEmpty(action) ? null : action);
         return result is null ? Results.BadRequest() : Results.File(result.Content, result.ContentType, result.FileName);
     })
     .RequireAuthorization(Policies.Export);

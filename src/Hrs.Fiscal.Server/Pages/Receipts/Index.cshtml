@@ -1,6 +1,9 @@
 @page
 @model Hrs.Fiscal.Server.Pages.Receipts.IndexModel
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authz
 @{
+    var canExport = (await Authz.AuthorizeAsync(User, Policies.Export)).Succeeded;
     ViewData["Title"] = "Receipts";
     var statuses = new (string? Key, string Label)[] { (null, "All"), ("accepted", "Accepted"), ("pending", "Waiting to send"), ("rejected", "Rejected") };
 }
@@ -9,7 +12,13 @@
         <h1>Receipts</h1>
         <p>All fiscal receipts are kept permanently and cannot be edited or deleted.</p>
     </div>
-    <a class="btn" href="/Export">Export…</a>
+    @if (canExport)
+    {
+        <div class="actions">
+            <a class="btn" href="@Model.ExportLink("csv")">Export CSV</a>
+            <a class="btn" href="@Model.ExportLink("pdf")">Export PDF</a>
+        </div>
+    }
 </div>
 
 <form method="get" class="card filters" role="search">

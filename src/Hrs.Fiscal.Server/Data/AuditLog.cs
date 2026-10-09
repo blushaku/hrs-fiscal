@@ -92,6 +92,11 @@ public sealed class AuditLog(NpgsqlDataSource db, PropertyClock clock)
         var sb = new StringBuilder("WHERE true");
         var args = new DynamicParameters();
         if (!string.IsNullOrWhiteSpace(f.Action)) { sb.Append(" AND a.action = @action"); args.Add("action", f.Action); }
+        if (f.TerminalId is not null)
+        {
+            sb.Append(" AND (a.terminal_id = @terminal OR (a.entity = 'receipt' AND a.entity_id IN (SELECT id::text FROM fiscal.receipt WHERE terminal_id = @terminal)))");
+            args.Add("terminal", f.TerminalId);
+        }
         if (!string.IsNullOrWhiteSpace(f.Query))
         {
             sb.Append(" AND (a.actor ILIKE @like OR a.entity_id = @q OR a.details::text ILIKE @like)");

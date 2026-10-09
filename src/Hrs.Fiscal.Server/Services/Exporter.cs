@@ -24,17 +24,21 @@ public sealed class Exporter(ReceiptQueries receipts, AuditLog audit, SettingsSt
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public static readonly string[] Datasets = ["receipts", "pending", "audit"];
+    public static readonly string[] Datasets = ["receipts", "pending", "audit", "summary"];
 
     public async Task<ExportFile?> ExportAsync(string dataset, string format, DateOnly? from, DateOnly? to,
-        string? requestedBy, string actor, CancellationToken ct)
+        string? requestedBy, string actor, CancellationToken ct, long? terminalId = null, string? status = null, string? action = null)
     {
         if (!Datasets.Contains(dataset) || format is not ("csv" or "pdf")) return null;
+        TerminalRow? terminal = null;
+        if (terminalId is not null)
+            terminal = (await receipts.TerminalsAsync(ct)).SingleOrDefault(t => t.Id == terminalId) ?? throw new ArgumentException("Unknown workstation.");
 
         var title = dataset switch
         {
             "receipts" => "Fiscal receipts",
             "pending" => "Receipts not yet sent to ATK",
+            "summary" => "Summary by workstation",
             _ => "Audit log",
         };
         string[] header;
@@ -43,14 +47,29 @@ public sealed class Exporter(ReceiptQueries receipts, AuditLog audit, SettingsSt
         if (dataset == "audit")
         {
             header = ["Id", "Time", "Actor", "Workstation", "Action", "Entity", "Entity id", "Details"];
-            await foreach (var a in audit.StreamAsync(new AuditFilter { From = from, To = to }, ct))
+            await foreach (var a in audit.StreamAsync(new AuditFilter { From = from, To = to, TerminalId = terminalId, Action = action }, ct))
                 rows.Add([a.Id.ToString(), clock.Format(a.At), a.Actor, a.TerminalLabel ?? "", a.Action, a.Entity ?? "", a.EntityId ?? "", a.Details]);
+        }
+        else if (dataset == "summary")
+        {
+            header = ["POS ID", "Workstation", "Computer", "Sales", "Sales EUR", "Returns", "Returns EUR", "Net EUR", "Net VAT EUR",
+                      "Accepted", "Waiting", "Rejected", "First receipt", "Last receipt"];
+            string E(long c) => (c / 100m).ToString("0.00", CultureInfo.InvariantCulture);
+            var list = await receipts.SummaryAsync(new ReceiptFilter { From = from, To = to, TerminalId = terminalId }, ct);
+            foreach (var w in list)
+                rows.Add([w.PosId.ToString(), w.TerminalLabel, w.Hostname, w.Sales.ToString(), E(w.SalesCents), w.Returns.ToString(), E(w.ReturnsCents),
+                          E(w.NetCents), E(w.NetTaxCents), w.Accepted.ToString(), w.Pending.ToString(), w.Rejected.ToString(),
+                          w.FirstAt is { } f ? clock.Format(f) : "", w.LastAt is { } l ? clock.Format(l) : ""]);
+            if (list.Count > 1)
+                rows.Add(["", "Total", "", list.Sum(w => w.Sales).ToString(), E(list.Sum(w => w.SalesCents)), list.Sum(w => w.Returns).ToString(),
+                          E(list.Sum(w => w.ReturnsCents)), E(list.Sum(w => w.NetCents)), E(list.Sum(w => w.NetTaxCents)),
+                          list.Sum(w => w.Accepted).ToString(), list.Sum(w => w.Pending).ToString(), list.Sum(w => w.Rejected).ToString(), "", ""]);
         }
         else
         {
             header = ["Issued", "Receipt no.", "NUIKF", "Type", "Refers to", "Source document", "Workstation", "POS ID", "Cashier",
                       "Total EUR", "Status", "Issued offline", "ATK transaction"];
-            var filter = new ReceiptFilter { From = from, To = to, Status = dataset == "pending" ? "pending" : null };
+            var filter = new ReceiptFilter { From = from, To = to, TerminalId = terminalId, Status = dataset == "pending" ? "pending" : status };
             await foreach (var r in receipts.StreamAsync(filter, ct))
                 rows.Add([clock.Format(r.IssuedAt), r.CouponId.ToString(), r.VerificationNo, CouponTypes.Label(r.CouponType),
                           r.ReferenceCouponId?.ToString() ?? "", r.SourceDocument ?? "", r.TerminalLabel, r.PosId.ToString(), r.OperatorId,
@@ -59,17 +78,19 @@ public sealed class Exporter(ReceiptQueries receipts, AuditLog audit, SettingsSt
         }
 
         var business = await settings.BusinessAsync(ct);
-        var period = $"{from?.ToString("dd.MM.yyyy") ?? "start"} – {to?.ToString("dd.MM.yyyy") ?? clock.Today.ToString("dd.MM.yyyy")}";
+        var period = $"{from?.ToString("dd.MM.yyyy") ?? "start"} – {to?.ToString("dd.MM.yyyy") ?? clock.Today.ToString("dd.MM.yyyy")}"
+                     + (terminal is null ? "" : $" · workstation {terminal.OperaTerminalId ?? terminal.Hostname} (POS {terminal.PosId})");
+        if (terminal is not null) title += $" — POS {terminal.PosId}";
         var content = format == "csv"
             ? Csv(header, rows)
             : TablePdf(title, business, period, requestedBy, actor, header, rows);
 
         var stamp = $"{from?.ToString("yyyy-MM-dd") ?? "all"}_{to?.ToString("yyyy-MM-dd") ?? clock.Today.ToString("yyyy-MM-dd")}";
-        var fileName = $"{dataset}_{stamp}.{format}";
+        var fileName = terminal is null ? $"{dataset}_{stamp}.{format}" : $"{dataset}_pos{terminal.PosId}_{stamp}.{format}";
         var sha = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
 
         await audit.WriteAsync(actor, format == "csv" ? AuditLog.Actions.ExportCsv : AuditLog.Actions.ExportPdf, "export", fileName,
-            new { dataset, from, to, rows = rows.Count, requestedBy, sha256 = sha }, ct: ct);
+            new { dataset, from, to, workstation = terminal?.PosId, status, action, rows = rows.Count, requestedBy, sha256 = sha }, terminalId, ct);
 
         return new ExportFile(content, format == "csv" ? "text/csv; charset=utf-8" : "application/pdf", fileName, rows.Count);
     }
