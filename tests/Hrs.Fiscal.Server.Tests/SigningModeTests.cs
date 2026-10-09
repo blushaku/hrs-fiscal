@@ -41,8 +41,19 @@ public sealed class FakeAtk : HttpMessageHandler, IAtkClientFactory
             using var cert = csr.Create(_ca, DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddYears(2), serial);
             return Json(new { signed_certificate = cert.ExportCertificatePem() });
         }
+        if (path == "pos/coupon")
+        {
+            Interlocked.Increment(ref CouponCount);
+            if (Offline) return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            if (RejectNext) { RejectNext = false; return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("{\"error\":{\"message\":\"test rejection\"}}") }; }
+            return Json(new { message = "Coupon received successfully", transaction_id = 9_000_000_000_000_000_000UL + (ulong)CouponCount });
+        }
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     }
+
+    public int CouponCount;
+    public volatile bool Offline;
+    public volatile bool RejectNext;
 
     private static HttpResponseMessage Json(object o) =>
         new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(o), Encoding.UTF8, "application/json") };

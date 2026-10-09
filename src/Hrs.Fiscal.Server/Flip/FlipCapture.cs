@@ -23,6 +23,7 @@ public sealed class FlipMessageRow
     public string Mode { get; init; } = "";
     public int? ResponseStatus { get; init; }
     public string? ResponseBody { get; init; }
+    public long? ReceiptId { get; init; }
     public int Size => Body.Length;
 
     /// <summary>Body as text, pretty-printed when it is XML or JSON.</summary>
@@ -57,6 +58,10 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
 {
     public const int MaxBodyBytes = 5 * 1024 * 1024;
 
+    private static readonly JsonSerializerOptions ResponseJson = new() { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+
+    public ILogger Log => log;
+
     public async Task<FlipStub> StubAsync(CancellationToken ct = default) => new(
         await settings.GetAsync("flip_stub_status", 200, ct),
         await settings.GetAsync("flip_stub_content_type", "text/plain", ct) ?? "text/plain",
@@ -65,14 +70,14 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
     public Task<string> ModeAsync(CancellationToken ct = default) => settings.GetAsync("flip_mode", "capture", ct)!;
 
     public async Task<long> StoreAsync(string transport, string? remote, string? method, string? path, IDictionary<string, string> headers,
-        string? contentType, byte[] body, string mode, int? responseStatus, string? responseBody, CancellationToken ct = default)
+        string? contentType, byte[] body, string mode, int? responseStatus, string? responseBody, CancellationToken ct = default, long? receiptId = null)
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         var id = await conn.ExecuteScalarAsync<long>("""
-            INSERT INTO fiscal.flip_message (transport, remote_address, method, path, headers, content_type, body, mode, response_status, response_body)
-            VALUES (@transport, @remote, @method, @path, @headers::jsonb, @contentType, @body, @mode, @responseStatus, @responseBody)
+            INSERT INTO fiscal.flip_message (transport, remote_address, method, path, headers, content_type, body, mode, response_status, response_body, receipt_id)
+            VALUES (@transport, @remote, @method, @path, @headers::jsonb, @contentType, @body, @mode, @responseStatus, @responseBody, @receiptId)
             RETURNING id
-            """, new { transport, remote, method, path, headers = JsonSerializer.Serialize(headers), contentType, body, mode, responseStatus, responseBody });
+            """, new { transport, remote, method, path, headers = JsonSerializer.Serialize(headers), contentType, body, mode, responseStatus, responseBody, receiptId });
         log.LogInformation("FLIP {Transport} message {Id} captured from {Remote}: {Bytes} bytes", transport, id, remote, body.Length);
         await audit.WriteAsync("flip", "FLIP_MESSAGE", "flip_message", id.ToString(), new { transport, remote, method, path, bytes = body.Length, mode }, ct: ct);
         return id;
@@ -82,7 +87,7 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         return (await conn.QueryAsync<FlipMessageRow>(
-            "SELECT id, received_at, transport, remote_address, method, path, headers::text AS headers, content_type, body, mode, response_status, response_body FROM fiscal.flip_message ORDER BY id DESC LIMIT @limit",
+            "SELECT id, received_at, transport, remote_address, method, path, headers::text AS headers, content_type, body, mode, response_status, response_body, receipt_id FROM fiscal.flip_message ORDER BY id DESC LIMIT @limit",
             new { limit })).ToList();
     }
 
@@ -90,7 +95,7 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         return await conn.QuerySingleOrDefaultAsync<FlipMessageRow>(
-            "SELECT id, received_at, transport, remote_address, method, path, headers::text AS headers, content_type, body, mode, response_status, response_body FROM fiscal.flip_message WHERE id = @id",
+            "SELECT id, received_at, transport, remote_address, method, path, headers::text AS headers, content_type, body, mode, response_status, response_body, receipt_id FROM fiscal.flip_message WHERE id = @id",
             new { id });
     }
 
@@ -139,11 +144,28 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
         }
 
         var mode = await capture.ModeAsync(ct);
-        FlipStub answer = mode == "capture"
-            ? await capture.StubAsync(ct)
-            : new FlipStub(StatusCodes.Status501NotImplemented, "text/plain", "HRS Fiscal live FLIP processing is not available yet.");
+        var bytes = ms.ToArray();
+        FlipStub answer;
+        long? receiptId = null;
+        if (mode == "live" && OperaPayload.LooksLikeOperaFolio(bytes))
+        {
+            var fiscalizer = http.RequestServices.GetRequiredService<FlipFiscalizer>();
+            FlipResult result;
+            try { result = await fiscalizer.ProcessAsync(bytes, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                capture.Log.LogError(ex, "Fiscalization failed");
+                result = FlipResult.Error("HRS Fiscal internal error: " + ex.Message, http: 500);
+            }
+            receiptId = result.ReceiptId;
+            answer = new FlipStub(result.HttpStatus, "application/json", JsonSerializer.Serialize(result, ResponseJson));
+        }
+        else if (mode == "live")
+            answer = new FlipStub(StatusCodes.Status200OK, "application/json", "{\"Status\":\"OK\",\"Message\":\"HRS Fiscal Server reachable.\"}"); // connection tests
+        else
+            answer = await capture.StubAsync(ct);
 
-        await capture.StoreAsync("http", remote, http.Request.Method, path, headers, http.Request.ContentType, ms.ToArray(), mode, answer.Status, answer.Body, ct);
+        await capture.StoreAsync("http", remote, http.Request.Method, path, headers, http.Request.ContentType, bytes, mode, answer.Status, answer.Body, ct, receiptId);
         return Results.Text(answer.Body, answer.ContentType, Encoding.UTF8, answer.Status);
     }
 

@@ -1,0 +1,569 @@
+{
+  "DocumentInfo": {
+    "HotelCode": "DEMO1",
+    "BillNo": "",
+    "FolioType": "",
+    "TerminalId": "OPERA9TERMINAL",
+    "ProgramName": "",
+    "FiscalFolioId": "67838",
+    "FolioTaxSeqNo": "",
+    "OperaFiscalBillNo": "",
+    "Application": "OPERA_CLOUD",
+    "PropertyTaxNumber": "X00000000X",
+    "BankName": "",
+    "BankCode": "",
+    "BankIdType": "",
+    "BankIdCode": "",
+    "BusinessDate": "2026-05-15",
+    "BusinessDateTime": "2026-05-15T15:11:28",
+    "CountryCode": "AL",
+    "CountryName": "Albania",
+    "Command": "CHECKOUT",
+    "FiscalTimeoutPeriod": ""
+  },
+  "AdditionalInfo": {
+    "BeforeSettlement": {},
+    "ProfileOptions": {},
+    "MappedValues": {
+      "MappingType": [
+        {
+          "Type": "ESTATISTIK_COUNTRY"
+        },
+        {
+          "Type": "FISCAL_CNTRY_CITIES"
+        },
+        {
+          "Type": "FISCAL_COUNTRY_CODES"
+        },
+        {
+          "Type": "FISCAL_DISTRICT_CODE"
+        },
+        {
+          "Type": "FISCAL_GENDER"
+        },
+        {
+          "Type": "FISCAL_MARKET_CODES"
+        },
+        {
+          "Type": "FISCAL_NATIONALITY"
+        },
+        {
+          "Type": "FISCAL_PAYMENT_TYPES"
+        },
+        {
+          "Type": "FISCAL_PROPERTY_CODE"
+        },
+        {
+          "Type": "FISCAL_PURPOSE_VISIT"
+        },
+        {
+          "Type": "FISCAL_ROOM_TYPES"
+        },
+        {
+          "Type": "FISCAL_STATE_CODES"
+        },
+        {
+          "Type": "FISCAL_TRANSPORT"
+        },
+        {
+          "Type": "FISCAL_TRX_CODES"
+        }
+      ]
+    },
+    "ReservationOptions": {}
+  },
+  "UserDefinedFields": {
+    "CharacterUDFs": [
+      {
+        "UDF": [
+          {
+            "Name": "FLIP_ACCOUNTING_SUPPLIER_ID"
+          },
+          {
+            "Name": "FLIP_ACCOUNTING_SUPPLIER_SCHEMEID"
+          },
+          {
+            "Name": "FLIP_ACCOUNTING_TAX_ID"
+          },
+          {
+            "Name": "FLIP_ASSOCIATED_FISCAL_BILL_DATE"
+          },
+          {
+            "Name": "FLIP_ASSOCIATED_FISCAL_BILL_NO"
+          },
+          {
+            "Name": "FLIP_ASSOCIATED_FISCAL_BILL_TIME"
+          },
+          {
+            "Name": "FLIP_ASSOCIATED_FISCAL_TERMINAL_ID"
+          },
+          {
+            "Name": "FLIP_CERTIFICATE_NUMBER"
+          },
+          {
+            "Name": "FLIP_CONFIGMODE",
+            "Value": "DEFAULT"
+          },
+          {
+            "Name": "FLIP_DEPOSIT_TRANSFER"
+          },
+          {
+            "Name": "FLIP_EXTENDED_RESPONSE",
+            "Value": "YES"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_CODE1"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_CODE2"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_CODE3"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_CODE4"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_CODE5"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_ID1"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_ID2"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_ID3"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_ID4"
+          },
+          {
+            "Name": "FLIP_EXTERNAL_ID5"
+          },
+          {
+            "Name": "FLIP_FINANCIAL_ACCOUNTING_BANK_CODE"
+          },
+          {
+            "Name": "FLIP_FINANCIAL_ACCOUNTING_ID"
+          },
+          {
+            "Name": "FLIP_FISCAL_DEVICE_PASSWORD"
+          },
+          {
+            "Name": "FLIP_NO_PAYMENT_DESCRIPTION"
+          },
+          {
+            "Name": "FLIP_NO_PAYMENT_SUBTYPE"
+          },
+          {
+            "Name": "FLIP_NO_PAYMENT_TYPE"
+          },
+          {
+            "Name": "FLIP_PARTNER_ARRANGEMENT"
+          },
+          {
+            "Name": "FLIP_PARTNER_BRANCH_CODE"
+          },
+          {
+            "Name": "FLIP_PARTNER_CHARGE_ID"
+          },
+          {
+            "Name": "FLIP_PARTNER_CONTRIBUTOR"
+          },
+          {
+            "Name": "FLIP_PARTNER_EXCLUDE_FB"
+          },
+          {
+            "Name": "FLIP_PARTNER_FISCAL_BILL_NO"
+          },
+          {
+            "Name": "FLIP_PARTNER_FISCAL_INCENTIVE"
+          },
+          {
+            "Name": "FLIP_PARTNER_FOLIO_TEXT"
+          },
+          {
+            "Name": "FLIP_PARTNER_FOLIO_TEXT_1_10"
+          },
+          {
+            "Name": "FLIP_PARTNER_GOODS_FOLIO"
+          },
+          {
+            "Name": "FLIP_PARTNER_IFC_CASHIER"
+          },
+          {
+            "Name": "FLIP_PARTNER_MODE"
+          },
+          {
+            "Name": "FLIP_PARTNER_MULTIPLE_TAXES"
+          },
+          {
+            "Name": "FLIP_PARTNER_NETGROSS"
+          },
+          {
+            "Name": "FLIP_PARTNER_PATTERN"
+          },
+          {
+            "Name": "FLIP_PARTNER_RULE"
+          },
+          {
+            "Name": "FLIP_PARTNER_SERIAL"
+          },
+          {
+            "Name": "FLIP_PARTNER_SERVICES_FOLIO"
+          },
+          {
+            "Name": "FLIP_PARTNER_SPECIAL_TAX"
+          },
+          {
+            "Name": "FLIP_PARTNER_SPECIAL_TAX2"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX1"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX2"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX3"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX4"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX5"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX_LEVEL"
+          },
+          {
+            "Name": "FLIP_PARTNER_TAX_QUALIFICATION"
+          },
+          {
+            "Name": "FLIP_PARTNER_TRANSLATION_LANGUAGE"
+          },
+          {
+            "Name": "FLIP_PARTNER_VAT_RATE"
+          },
+          {
+            "Name": "FLIP_PARTNER_VAT_RATE2"
+          },
+          {
+            "Name": "FLIP_PERSON_IN_CHARGE"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ADDRESS1"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ADDRESS2"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ADDRESS3"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ADDRESS4"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ADDRESS5"
+          },
+          {
+            "Name": "FLIP_PROPERTY_CATALOGUE_ID"
+          },
+          {
+            "Name": "FLIP_PROPERTY_CODE"
+          },
+          {
+            "Name": "FLIP_PROPERTY_COUNTRY"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ECONOMIC_ID"
+          },
+          {
+            "Name": "FLIP_PROPERTY_ID"
+          },
+          {
+            "Name": "FLIP_RECEIVER_AUTHORITY"
+          },
+          {
+            "Name": "FLIP_SENDER_AUTHORITY"
+          },
+          {
+            "Name": "FLIP_SERVER_ADDRESS"
+          },
+          {
+            "Name": "FLIP_SOFTWARE_NAME"
+          },
+          {
+            "Name": "FLIP_SUPPLIER_CONTACT_EMAIL"
+          },
+          {
+            "Name": "FLIP_SUPPLIER_ENDPOINT_ID"
+          },
+          {
+            "Name": "FLIP_TAX_FREE_PROPERTY"
+          },
+          {
+            "Name": "FLIP_UNIT_CODE"
+          }
+        ]
+      }
+    ]
+  },
+  "FolioInfo": {
+    "PayeeInfo": {
+      "NameId": 74973820,
+      "FirstName": "Test",
+      "LastName": "Guest",
+      "DateOfBirth": "",
+      "Passport": "",
+      "Tax1No": "",
+      "Tax2No": "",
+      "UserDefinedFields": {},
+      "IdentificationInfos": {},
+      "KeywordInfos": {},
+      "Email": "guest@example.com",
+      "Address": {
+        "AddresseeCountryDesc": "Albania",
+        "City": "Prishtina",
+        "Country": "AL",
+        "IsoCode": "AL",
+        "Primary": true,
+        "Type": "HOME"
+      },
+      "Phone": {
+        "Number": "000000000",
+        "Type": "MOBILE"
+      },
+      "Language": "E",
+      "NameType": "INDIVIDUAL",
+      "FiscalClientId": "000000000000"
+    },
+    "Postings": [
+      {
+        "TrxNo": 765743492,
+        "TrxCode": "100000",
+        "TrxDate": "2026-05-15",
+        "TrxType": "C",
+        "UnitPrice": 19000.0,
+        "Quantity": 1.0,
+        "Currency": "EUR",
+        "TaxInclusive": true,
+        "ExchangeRate": 0.010526316,
+        "TrxDateTime": "2026-05-15T15:11:14",
+        "NetAmount": 17924.528301886792,
+        "GrossAmount": 19000.0,
+        "Reference": "[NA Room] ",
+        "GuestAccountDebit": 19000.0,
+        "TranActionId": 201015798,
+        "FinDmlSeqNo": 262802236,
+        "CashierId": "2",
+        "Display": true,
+        "Generates": {
+          "Generate": [
+            {
+              "Currency": "ALL",
+              "ExchangeRate": 1.0,
+              "Quantity": 1.0,
+              "TaxInclusive": true,
+              "TaxRate": 6.0,
+              "TrxCode": "802006",
+              "TrxDate": "2026-05-15",
+              "TrxDateTime": "2026-05-15T15:11:14",
+              "TrxNo": 765743493,
+              "TrxType": "C",
+              "UnitPrice": 1075.47,
+              "FinDmlSeqNo": 262802236,
+              "NetAmount": 1075.471698113208,
+              "Reference": "[Add: 6%.(B)]",
+              "TranActionId": 201015798,
+              "TrxNoAddedBy": 765743492,
+              "CashierId": "2",
+              "Display": true
+            }
+          ]
+        }
+      },
+      {
+        "TrxNo": 765743493,
+        "TrxCode": "802006",
+        "TrxDate": "2026-05-15",
+        "TrxType": "C",
+        "UnitPrice": 1075.47,
+        "Quantity": 1.0,
+        "Currency": "ALL",
+        "TaxInclusive": true,
+        "ExchangeRate": 1.0,
+        "TrxDateTime": "2026-05-15T15:11:14",
+        "NetAmount": 1075.471698113208,
+        "TrxNoAddedBy": 765743492,
+        "Reference": "[Add: 6%.(B)]",
+        "TranActionId": 201015798,
+        "FinDmlSeqNo": 262802236,
+        "CashierId": "2",
+        "Display": true
+      },
+      {
+        "TrxNo": 765743494,
+        "TrxCode": "900000",
+        "TrxDate": "2026-05-15",
+        "TrxType": "FC",
+        "UnitPrice": 19000.0,
+        "Quantity": 1.0,
+        "Currency": "ALL",
+        "TaxInclusive": false,
+        "ExchangeRate": 1.0,
+        "TrxDateTime": "2026-05-15T15:11:18",
+        "Reference": "",
+        "GuestAccountCredit": 19000.0,
+        "TranActionId": 201015802,
+        "FinDmlSeqNo": 262802237,
+        "ReceiptNumber": "72",
+        "ReceiptType": "PAR",
+        "CashierId": "2",
+        "Display": true
+      }
+    ],
+    "TotalInfo": {
+      "NetAmount": 17924.52830188679,
+      "GrossAmount": 19000.0,
+      "NonTaxableAmount": 0.0,
+      "PaidOut": 0.0,
+      "Taxes": {
+        "Tax": [
+          {
+            "Name": "1",
+            "Value": 1075.471698113208,
+            "NetAmount": 17924.528301886792,
+            "Percent": "6.00",
+            "Amount": ""
+          }
+        ]
+      }
+    },
+    "TrxInfo": [
+      {
+        "HotelCode": "DEMO1",
+        "Group": "10",
+        "SubGroup": "100",
+        "Code": "100000",
+        "TrxType": "C",
+        "Description": "Accommodation",
+        "Articles": {},
+        "TranslatedDescriptions": {},
+        "TrxCodeType": "L"
+      },
+      {
+        "HotelCode": "DEMO1",
+        "Group": "80",
+        "SubGroup": "802",
+        "Code": "802006",
+        "TrxType": "C",
+        "TaxCodeNo": 1,
+        "Description": "VAT - 6%",
+        "Articles": {},
+        "TranslatedDescriptions": {},
+        "TrxCodeType": "X"
+      },
+      {
+        "HotelCode": "DEMO1",
+        "Group": "70",
+        "SubGroup": "700",
+        "Code": "900000",
+        "TrxType": "FC",
+        "Description": "Cash",
+        "Articles": {},
+        "TranslatedDescriptions": {}
+      }
+    ]
+  },
+  "HotelInfo": {
+    "HotelCode": "DEMO1",
+    "HotelName": "Demo Hotel",
+    "LegalOwner": "DEMO",
+    "Address": {
+      "Address": "Main Street 1",
+      "City": "Prishtina",
+      "Country": "AL",
+      "PostalCode": "10000"
+    },
+    "LocalCurrency": "ALL",
+    "Decimals": "2",
+    "TimeZoneRegion": "Europe/Skopje",
+    "PhoneNo": "+000",
+    "Email": "info@example.com",
+    "WebPage": "example.com",
+    "ExchangeRates": {},
+    "PropertyDateTime": "2026-10-09T17:11:28"
+  },
+  "ReservationInfo": {
+    "ConfirmationNo": "1000",
+    "ResvNameID": "1000",
+    "ArrivalDate": "2026-05-15",
+    "ArrivalTime": "16:49:27",
+    "NumberOfNights": "0",
+    "DepartureDate": "2026-05-15",
+    "NumAdults": "2",
+    "NumChilds": "0",
+    "GuestInfo": {
+      "NameId": 74973820,
+      "FirstName": "Test",
+      "LastName": "Guest",
+      "DateOfBirth": "",
+      "Passport": "",
+      "Tax1No": "",
+      "Tax2No": "",
+      "UserDefinedFields": {},
+      "IdentificationInfos": {},
+      "KeywordInfos": {},
+      "Email": "guest@example.com",
+      "Address": {
+        "AddresseeCountryDesc": "Albania",
+        "City": "Prishtina",
+        "Country": "AL",
+        "IsoCode": "AL",
+        "Primary": true,
+        "Type": "HOME"
+      },
+      "Phone": {
+        "Number": "000000000",
+        "Type": "MOBILE"
+      },
+      "FiscalClientId": "000000000000"
+    },
+    "ChildAgeBucket1": "0",
+    "ChildAgeBucket2": "0",
+    "ChildAgeBucket3": "0",
+    "RoomRate": 200.0,
+    "StayTotal": 200.0,
+    "RatePlanCode": "TRAIN",
+    "RoomNumber": "121",
+    "RoomClass": "HTL",
+    "RoomType": "SUPSV",
+    "NumberOfRooms": "1",
+    "Guarantee": "CHECKED IN",
+    "MarketCode": "DIS",
+    "ResStatus": "CHECKED OUT",
+    "UserDefinedFields": {},
+    "SourceCode": "WLK",
+    "SourceGroup": "HTL"
+  },
+  "FiscalFolioUserInfo": {
+    "AppUser": "TEST.USER@PROPERTY",
+    "AppUserId": "1000",
+    "EmployeeNumber": "",
+    "CashierId": "",
+    "CashierName": ""
+  },
+  "VersionInfo": {
+    "PayloadVersion": "00138",
+    "ApplicationPath": "",
+    "OPERACloud": {
+      "OPERACloudVersion": "26.4.0.0",
+      "Major": 26,
+      "Minor": 4,
+      "Patch": 0,
+      "Patchset": 0
+    }
+  }
+}

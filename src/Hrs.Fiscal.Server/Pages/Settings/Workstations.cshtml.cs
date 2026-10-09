@@ -93,4 +93,23 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
         }
         return RedirectToPage(new { Edit = id });
     }
+
+    /// <summary>Central mode: take over a key and certificate exported from ATK's onboarder tool.</summary>
+    public async Task<IActionResult> OnPostImportAsync(long id, IFormFile? key, IFormFile? cert)
+    {
+        try
+        {
+            if (key is null || cert is null) throw new InvalidOperationException("Choose both files: private key and certificate (PEM).");
+            if (key.Length > 64_000 || cert.Length > 64_000) throw new InvalidOperationException("These files are too large to be a PEM key and certificate.");
+            using var kr = new StreamReader(key.OpenReadStream());
+            using var cr = new StreamReader(cert.OpenReadStream());
+            var r = await enrollment.ImportAsync(id, await kr.ReadToEndAsync(), await cr.ReadToEndAsync(), User.Identity!.Name!);
+            TempData["Message"] = $"Certificate imported for {r.BusinessName}, valid until {clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}. Delete the exported key file from your computer.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Security.Cryptography.CryptographicException or ArgumentException)
+        {
+            TempData["Error"] = "Import failed: " + ex.Message;
+        }
+        return RedirectToPage(new { Edit = id });
+    }
 }

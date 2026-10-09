@@ -7,7 +7,8 @@
 //   Services/    exports, QR rendering, demo data
 //   Signing/     signing mode (client / server), server key store (CNG/TPM), ATK registration from the server
 // Planned:
-//   Flip/        LAN endpoint for Oracle FLIP (OFIS on-premise): capture mode stores every message; live mode pending Oracle's spec.
+//   Flip/        LAN endpoint for Oracle FLIP (OFIS on-premise): capture mode stores every message; live mode fiscalizes
+//                OPERA folios (OperaPayload → FlipFiscalizer → ATK), offline queue (AtkResendService).
 //   Routing/     OPERA Fiscal Terminal ID -> signer: HRS Fiscal Client (client mode) or Signing/ on the server (server mode)
 //   Queue/       offline queue re-send, 48h / 10th-of-month alerts
 //
@@ -34,6 +35,8 @@ builder.Services.AddScoped<Exporter>();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<FlipCapture>();
 builder.Services.AddScoped<FlipAuth>();
+builder.Services.AddScoped<FlipFiscalizer>();
+builder.Services.AddHostedService<AtkResendService>();
 builder.Services.AddHostedService<FlipTcpListener>();
 builder.Services.AddServerKeyStore(builder.Configuration);
 builder.Services.AddSingleton<IAtkClientFactory, AtkClientFactory>();

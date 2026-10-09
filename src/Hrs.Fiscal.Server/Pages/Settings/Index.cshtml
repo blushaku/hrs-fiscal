@@ -67,6 +67,10 @@
             <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink); flex: none">
                 <input type="checkbox" asp-for="Input.OperaOverridesEnabled" style="width: 20px; height: 20px"> Use overrides for transaction codes and payment methods
             </label>
+            <div class="form-grid">
+                <label class="field">Default ATK category <input type="text" asp-for="Input.DefaultItemCategory" maxlength="5" placeholder="TT"></label>
+                <label class="field">Default unit <input type="text" asp-for="Input.DefaultItemUnit" maxlength="10" placeholder="cope"></label>
+            </div>
             <p class="small muted" style="margin: 0">Off (default): receipts are fiscalized exactly as OPERA sends them via FLIP. On: the entries under <a href="/Settings/Mapping">OPERA overrides &amp; VAT</a> replace OPERA's values for those codes. Applies to receipts issued after the change.</p>
         </section>
         <section class="card" style="display: flex; flex-direction: column; gap: 12px">
@@ -74,7 +78,7 @@
             <label class="field">Mode
                 <select asp-for="Input.FlipMode">
                     <option value="capture">Capture: record what FLIP sends, answer with a test reply (demo / setup)</option>
-                    <option value="live">Live: fiscalize folios (available once Oracle's FLIP specification is implemented)</option>
+                    <option value="live">Live: fiscalize OPERA folios (sign, archive, send to ATK, answer FLIP)</option>
                 </select>
             </label>
             <div class="form-grid">

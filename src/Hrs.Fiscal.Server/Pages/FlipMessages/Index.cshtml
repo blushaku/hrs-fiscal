@@ -15,6 +15,10 @@
 {
     <div class="notice warn"><strong>Capture mode.</strong> Messages are recorded but not fiscalized. HRS Fiscal answers every message with the test answer set under <a href="/Settings">Settings › General</a> (now HTTP @Model.Stub.Status@(string.IsNullOrEmpty(Model.Stub.Body) ? ", empty body" : "")).</div>
 }
+else
+{
+    <div class="notice"><strong>Live mode.</strong> OPERA folios are fiscalized: signed for the workstation of the OPERA terminal, archived, sent to ATK, and HRS answers FLIP with the fiscal data (receipt no., NUIKF, QR). Other requests (connection tests) get a plain OK.</div>
+}
 
 <section class="card">
     <h2>Where FLIP should send to</h2>
@@ -65,6 +69,7 @@
                 <div>Request</div><div class="mono">@(s.Transport == "tcp" ? "raw TCP" : $"{s.Method} {s.Path}")</div>
                 <div>Content type</div><div class="mono">@(s.ContentType ?? "—")</div>
                 <div>Our answer</div><div class="mono">@(s.ResponseStatus?.ToString() ?? "—") @(string.IsNullOrEmpty(s.ResponseBody) ? "" : "· " + s.ResponseBody)</div>
+                @if (s.ReceiptId is { } rid) { <div>Receipt</div><div><a href="/Receipts/Detail/@rid">Open the fiscal receipt</a></div> }
             </div>
             <details>
                 <summary style="cursor: pointer; font-weight: 600">Headers</summary>

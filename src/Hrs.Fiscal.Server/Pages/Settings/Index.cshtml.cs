@@ -26,6 +26,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         public string? FlipStubContentType { get; set; } = "text/plain";
         public string? FlipStubBody { get; set; }
         public bool FlipAuthRequired { get; set; }
+        [Required, RegularExpression("^[A-Z]{1,5}$", ErrorMessage = "Category: ATK code, 1–5 capital letters (e.g. TT, HT, UR).")] public string DefaultItemCategory { get; set; } = "TT";
+        [Required, StringLength(10)] public string DefaultItemUnit { get; set; } = "cope";
         [RegularExpression("^[A-Za-z0-9-]{1,64}$", ErrorMessage = "Header name: letters, digits and '-' only.")] public string? FlipAuthHeader { get; set; } = FlipAuth.DefaultHeader;
     }
 
@@ -62,6 +64,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             FlipStubContentType = Str("flip_stub_content_type", "text/plain"),
             FlipStubBody = Str("flip_stub_body", ""),
             FlipAuthRequired = Bool("flip_auth_required"),
+            DefaultItemCategory = Str("default_item_category", "TT"),
+            DefaultItemUnit = Str("default_item_unit", "cope"),
             FlipAuthHeader = Str("flip_auth_header", FlipAuth.DefaultHeader),
         };
     }
@@ -89,6 +93,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             ["flip_stub_content_type"] = string.IsNullOrWhiteSpace(Input.FlipStubContentType) ? "text/plain" : Input.FlipStubContentType.Trim(),
             ["flip_stub_body"] = Input.FlipStubBody ?? "",
             ["flip_auth_required"] = Input.FlipAuthRequired,
+            ["default_item_category"] = Input.DefaultItemCategory.Trim().ToUpperInvariant(),
+            ["default_item_unit"] = Input.DefaultItemUnit.Trim(),
             ["flip_auth_header"] = FlipAuth.NormalizeHeader(Input.FlipAuthHeader),
         }, User.Identity!.Name!);
         var mustRegister = (await settings.TerminalsAsync())

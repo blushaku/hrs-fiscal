@@ -17,7 +17,7 @@ public sealed class AuditLog(NpgsqlDataSource db, PropertyClock clock)
         public const string IntegrityCheck = "INTEGRITY_CHECK", SettingChanged = "SETTING_CHANGED";
         public const string UserCreated = "USER_CREATED", UserChanged = "USER_CHANGED";
         public const string TerminalChanged = "TERMINAL_CHANGED", TerminalEnrolled = "TERMINAL_ENROLLED",
-            FlipTokenCreated = "FLIP_TOKEN_CREATED", FlipAuthFailed = "FLIP_AUTH_FAILED", MappingChanged = "MAPPING_CHANGED";
+            FlipTokenCreated = "FLIP_TOKEN_CREATED", FlipAuthFailed = "FLIP_AUTH_FAILED", FolioRefused = "FOLIO_REFUSED", MappingChanged = "MAPPING_CHANGED";
     }
 
     public async Task WriteAsync(string actor, string action, string? entity = null, string? entityId = null,

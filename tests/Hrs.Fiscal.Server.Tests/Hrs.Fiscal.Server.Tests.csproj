@@ -28,4 +28,8 @@
     <ProjectReference Include="..\..\src\Hrs.Fiscal.Server\Hrs.Fiscal.Server.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -140,12 +140,48 @@ known.
 
 ## 8. HRS side
 
-1. HRS › Settings › Workstations: each OPERA Terminal ID from §6 is entered for the matching workstation; each
-   workstation is registered with ATK (central signing) or has the client installed (workstation-client mode).
+1. HRS › Settings › Workstations: the OPERA payload names the terminal in `DocumentInfo.TerminalId` (e.g.
+   `OPERA9TERMINAL`). Enter exactly that value as the workstation's *OPERA Fiscal Terminal ID*. Register the
+   workstation with ATK, or import a key and certificate made with ATK's onboarder tool (central signing). Live mode
+   currently signs in central mode only; workstation-client signing follows with the client release.
 2. HRS › Settings › General › **OPERA / FLIP connection**:
    - **Capture** while setting up: every message is stored and FLIP gets the configured test reply.
-   - **Live** once go-live is approved (available after Oracle's specification is implemented).
+   - **Live**: every OPERA folio is fiscalized (below).
 3. ATK environment **Test** for all tests; switch to **Production** only for go-live.
+
+### What live mode does with an OPERA folio
+
+| OPERA payload | HRS receipt |
+|---|---|
+| `DocumentInfo.FiscalFolioId` (+ hotel code) | Idempotency key: a folio sent again (reprint, retry) returns the first receipt; nothing new goes to ATK |
+| `DocumentInfo.TerminalId` | Workstation → ATK POS ID and signing key |
+| `FolioInfo.Postings`, charges | Receipt lines: description from `TrxInfo`, quantity, VAT-inclusive amount (`GrossAmount`, or net + generated taxes) |
+| Generated tax postings (`TrxCodeType` X) | Not lines; their `TaxRate` gives the line's VAT % → letter by Settings › VAT (0 % → C, 8 % → D, 18 % → E) |
+| Negative charges (corrections) | Discount on lines with the same VAT letter |
+| Postings `TrxType` FC | Payments; type from the override table, else from the name (cash / card / voucher / cheque), else *Other* |
+| Folio total below zero | Return receipt referencing `FLIP_ASSOCIATED_FISCAL_BILL_NO` |
+| `FiscalFolioUserInfo.AppUser` | Operator on the receipt |
+| `HotelInfo.LocalCurrency` | Must be EUR in Production |
+| ATK category, unit | Settings › General defaults (TT, *cope*), or per transaction code with OPERA overrides |
+
+The receipt is archived (with the original payload) before it is sent to ATK. If ATK does not answer, the receipt is
+still valid, FLIP gets the fiscal data with `AtkStatus: pending`, and HRS resends it automatically (every
+*retry* minutes, ATK limit 48 h). Folios HRS cannot fiscalize (unknown terminal, VAT rate not configured, workstation
+not registered…) are answered with HTTP 422 and the reason, and logged as `FOLIO_REFUSED`.
+
+**Answer to FLIP (provisional)** — JSON, until Oracle confirms the field names FLIP maps onto the folio
+**[Oracle]**:
+```json
+{ "Status": "OK", "Message": "Fiscalized.", "FiscalFolioId": "67838",
+  "FiscalBillNo": "10000000001", "VerificationNo": "4NASS5E3UZPE3P9N", "SefId": "1-811159898-901",
+  "AtkStatus": "accepted", "AtkTransactionId": "14174883308481107345", "QrCode": "<base64>|<signature>",
+  "IssuedAt": "2026-10-09T17:24:02", "TotalCents": 19000, "Duplicate": false, "TestEnvironment": true }
+```
+Errors: `{ "Status": "ERROR", "Message": "…", "FiscalFolioId": "…" }` with HTTP 422 (500 for internal errors).
+
+**Demo properties outside Kosovo** (e.g. an Albanian training hotel with 6 % VAT and ALL): such folios are refused
+because 6 % is not a Kosovo rate. For tests only, turn on OPERA overrides and give the transaction codes a Kosovo VAT
+letter, or use a property configured with Kosovo VAT and EUR.
 
 ## 9. Folio layout
 

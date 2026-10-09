@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using Hrs.Fiscal.Core.Signing;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -17,6 +18,45 @@ public interface IServerKeyStore
     (ISigningKey Key, string Reference) Create(long branchId, long posId);
 
     ISigningKey Open(string reference);
+
+    /// <summary>
+    /// Takes over a key and certificate created elsewhere (ATK's onboarder tool). Windows: the key goes into the machine
+    /// certificate store as non-exportable; the PEM is not kept.
+    /// </summary>
+    (ISigningKey Key, string Reference) Import(long branchId, long posId, string keyPem, string certificatePem);
+}
+
+/// <summary>Signs with the private key of a certificate in the Windows machine store (imported, non-exportable).</summary>
+public sealed class CertificateSigningKey(X509Certificate2 certificate) : ISigningKey, IDisposable
+{
+    private readonly ECDsa _key = certificate.GetECDsaPrivateKey() ?? throw new CryptographicException("The certificate has no ECDSA private key.");
+    public ECDsa PublicKey => _key;
+    public byte[] SignData(byte[] data) => _key.SignData(data, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence);
+    public void Dispose() { _key.Dispose(); certificate.Dispose(); }
+
+    public static (ISigningKey, string) ImportToMachineStore(string keyPem, string certificatePem)
+    {
+        using var ephemeral = X509Certificate2.CreateFromPem(certificatePem, keyPem);
+        var pfx = ephemeral.Export(X509ContentType.Pkcs12);
+        // No Exportable flag: the private key cannot be exported from the store afterwards.
+        var persisted = new X509Certificate2(pfx, (string?)null, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet);
+        using (var store = new X509Store(StoreName.My, StoreLocation.LocalMachine))
+        {
+            store.Open(OpenFlags.ReadWrite);
+            store.Add(persisted);
+        }
+        return (new CertificateSigningKey(persisted), "certstore:" + persisted.Thumbprint);
+    }
+
+    public static ISigningKey OpenFromMachineStore(string reference)
+    {
+        var thumbprint = reference["certstore:".Length..];
+        using var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+        store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+        var found = store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, false);
+        if (found.Count == 0) throw new CryptographicException($"Certificate {thumbprint} was not found in the machine store. Register the workstation again.");
+        return new CertificateSigningKey(found[0]);
+    }
 }
 
 public sealed class SigningOptions
@@ -49,8 +89,12 @@ public sealed class CngServerKeyStore(bool preferTpm) : IServerKeyStore
         return (CngSigningKey.OpenOrCreate(name, preferTpm), "cng:" + name);
     }
 
+    public (ISigningKey Key, string Reference) Import(long branchId, long posId, string keyPem, string certificatePem) =>
+        CertificateSigningKey.ImportToMachineStore(keyPem, certificatePem);
+
     public ISigningKey Open(string reference)
     {
+        if (reference.StartsWith("certstore:", StringComparison.Ordinal)) return CertificateSigningKey.OpenFromMachineStore(reference);
         if (!reference.StartsWith("cng:", StringComparison.Ordinal)) throw new CryptographicException($"Not a CNG key reference: {reference}");
         var name = reference[4..];
         if (!CngSigningKey.Exists(name) && !CngSigningKey.Exists(name, CngSigningKey.TpmProvider))
@@ -74,6 +118,15 @@ public sealed class FileServerKeyStore(string folder, IDataProtectionProvider pr
         Directory.CreateDirectory(folder);
         var name = KeyNames.For(branchId, posId);
         var key = PemSigningKey.Generate();
+        File.WriteAllText(PathFor(name), _protector.Protect(key.ExportPrivateKeyPem()));
+        return (key, "file:" + name);
+    }
+
+    public (ISigningKey Key, string Reference) Import(long branchId, long posId, string keyPem, string certificatePem)
+    {
+        Directory.CreateDirectory(folder);
+        var name = KeyNames.For(branchId, posId);
+        var key = PemSigningKey.FromPem(keyPem);
         File.WriteAllText(PathFor(name), _protector.Protect(key.ExportPrivateKeyPem()));
         return (key, "file:" + name);
     }

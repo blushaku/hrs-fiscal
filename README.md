@@ -25,7 +25,7 @@ OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ HRS Fiscal Server �
 | Path | What |
 |---|---|
 | `src/Hrs.Fiscal.Core` | Shared fiscal library: ATK protobuf model, coupon builder and validation, VAT, ECDSA signing (DER), QR, CSR, ATK API client |
-| `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): **admin web UI** (receipts, audit log, exports, settings), archive, migrations. The FLIP endpoint, routing and offline queue are still to come |
+| `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): admin web UI (receipts, audit log, exports, settings), archive, migrations, FLIP endpoint (capture / live), central signing, offline queue |
 | `src/Hrs.Fiscal.Client` | Workstation client for *workstation client* signing mode (Windows service): key and certificate, onboarding, signing. **Skeleton** |
 | `tests/Hrs.Fiscal.Core.Tests` | Unit tests (xUnit) |
 | `tests/Hrs.Fiscal.Server.Tests` | Integration tests against PostgreSQL (set `HRS_TEST_PG`) |
@@ -115,6 +115,16 @@ The logo, favicon and fonts are served locally from `wwwroot/` (no internet need
 - QuestPDF (PDF exports) is used under its **Community licence**: free for companies under USD 1M annual revenue.
   Confirm HRS's eligibility; otherwise buy a Professional licence or swap the PDF library.
 - QRCoder, Dapper, Npgsql, Google.Protobuf: MIT / Apache 2.0 / BSD.
+
+## Live fiscalization (OPERA → FLIP → ATK)
+
+With Settings › General › OPERA / FLIP connection = **Live**, each OPERA Cloud fiscal payload (JSON, as sent by
+on-premise FLIP) is parsed (`Flip/OperaPayload.cs`), turned into an ATK receipt for the workstation named by
+`DocumentInfo.TerminalId`, signed on the server (central mode), archived together with the original payload, sent to
+ATK, and answered with the fiscal data (`Flip/FlipFiscalizer.cs`). Idempotent per FiscalFolioId; ATK outages go to the
+offline queue (`Flip/AtkResendService.cs`). Verified on 09.10.2026 against ATK TEST with a payload captured from OPERA
+Cloud 26.4: accepted, transaction 14174883308481107345. The response format to FLIP is provisional until Oracle's
+specification. Mapping rules: [manual-opera-cloud-ofis-flip.md §8](docs/manual-opera-cloud-ofis-flip.md).
 
 ## Testing on an OPERA Cloud demo
 
