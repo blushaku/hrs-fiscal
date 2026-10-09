@@ -67,6 +67,12 @@ public sealed class FlipFiscalizer(
                 return FlipResult.Error($"Folio currency is {folio.LocalCurrency}; Kosovo fiscal receipts must be in EUR.", folio.FiscalFolioId);
 
             var business = await settings.BusinessAsync(ct) ?? throw new FiscalValidationException("Business is not set up (Settings › Business).");
+            // 1. Is this folio for this property, and do OPERA's own numbers add up?
+            var validation = new ValidationOptions(
+                await settings.GetAsync("validation_check_tax_number", true, ct),
+                Math.Clamp(await settings.GetAsync("validation_tolerance", 0.01m, ct), 0m, 1m));
+            var findings = FolioValidator.Check(folio, business, validation);
+            if (findings.Count > 0) throw new FiscalValidationException(findings);
             var terminal = (await settings.TerminalsAsync(ct)).FirstOrDefault(t => string.Equals(t.OperaTerminalId, folio.TerminalId, StringComparison.OrdinalIgnoreCase))
                            ?? throw new FiscalValidationException($"OPERA terminal '{folio.TerminalId}' is not set up as a workstation in HRS (Settings › Workstations › OPERA Fiscal Terminal ID).");
             var defaultMode = await settings.SigningModeDefaultAsync(ct);
@@ -82,6 +88,11 @@ public sealed class FlipFiscalizer(
             var rates = (await settings.VatRatesAsync(ct)).ToDictionary(v => v.Letter, v => v.Percent);
             var rounding = Enum.TryParse<VatRounding>(await settings.GetAsync("vat_rounding", "RoundTaxHalfUp", ct), out var r) ? r : VatRounding.RoundTaxHalfUp;
             var coupon = new CouponBuilder(new TaxRateTable(rates), rounding).Build(request);
+            // 2. The receipt itself must add up, and its VAT must match what OPERA calculated (unless overrides change VAT).
+            var receiptFindings = CouponVerifier.Verify(coupon, new TaxRateTable(rates)).ToList();
+            if (!await settings.OperaOverridesEnabledAsync(ct))
+                receiptFindings.AddRange(FolioValidator.CompareWithReceipt(folio, coupon, await settings.VatRatesAsync(ct), validation.Tolerance));
+            if (receiptFindings.Count > 0) throw new FiscalValidationException(receiptFindings);
 
             var key = await enrollment.OpenKeyAsync(terminal.Id, ct);
             using var keyLifetime = key as IDisposable;

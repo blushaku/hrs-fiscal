@@ -4,7 +4,19 @@ using System.Text.Json.Nodes;
 namespace Hrs.Fiscal.Server.Flip;
 
 /// <summary>A charge line of an OPERA folio, VAT-inclusive, in the folio's local currency.</summary>
-public sealed record OperaLine(string TrxCode, string Description, decimal Quantity, decimal Gross, decimal VatPercent, string? Group);
+public sealed record OperaLine(string TrxCode, string Description, decimal Quantity, decimal Gross, decimal VatPercent, string? Group)
+{
+    /// <summary>OPERA's own unit price, as sent (for the price × quantity check).</summary>
+    public decimal? UnitPrice { get; init; }
+    /// <summary>OPERA's net amount of the line.</summary>
+    public decimal? Net { get; init; }
+    /// <summary>Sum of the tax postings OPERA generated for this line.</summary>
+    public decimal? Tax { get; init; }
+    public bool TaxInclusive { get; init; } = true;
+}
+
+/// <summary>OPERA's tax total for one rate (FolioInfo.TotalInfo.Taxes).</summary>
+public sealed record OperaTaxTotal(decimal Percent, decimal Tax, decimal Net);
 
 /// <summary>A payment on the folio (positive = paid by the guest; negative = paid out / refund).</summary>
 public sealed record OperaPayment(string TrxCode, string Description, decimal Amount);
@@ -21,6 +33,12 @@ public sealed record OperaFolio
     public string? Operator { get; init; }
     public string? FolioReference { get; init; }            // reservation / room, for the archive
     public string? AssociatedFiscalBillNo { get; init; }    // original receipt for credit folios
+    public string HotelInfoCode { get; init; } = "";       // HotelInfo.HotelCode
+    public string PropertyTaxNumber { get; init; } = "";   // DocumentInfo.PropertyTaxNumber
+    /// <summary>OPERA's folio totals (FolioInfo.TotalInfo); null when OPERA did not send them.</summary>
+    public decimal? TotalGross { get; init; }
+    public decimal? TotalNet { get; init; }
+    public IReadOnlyList<OperaTaxTotal> TaxTotals { get; init; } = [];
     public required IReadOnlyList<OperaLine> Lines { get; init; }
     public required IReadOnlyList<OperaPayment> Payments { get; init; }
     public decimal Gross => Lines.Sum(l => l.Gross);
@@ -80,13 +98,25 @@ public static class OperaPayload
             else
                 gross = Dec(p, "NetAmount") + taxes.Sum(g => Has(g, "GrossAmount") ? Dec(g, "GrossAmount") : Dec(g, "NetAmount"));
             if (gross == 0) continue;
-            lines.Add(new OperaLine(code, description, Qty(p), decimal.Round(gross, 2, MidpointRounding.AwayFromZero), vat, info.Group));
+            var inclusive = Bool(p, "TaxInclusive") || taxes.Count == 0;
+            lines.Add(new OperaLine(code, description, Qty(p), decimal.Round(gross, 2, MidpointRounding.AwayFromZero), vat, info.Group)
+            {
+                UnitPrice = Has(p, "UnitPrice") ? Dec(p, "UnitPrice") : null,
+                Net = Has(p, "NetAmount") ? Dec(p, "NetAmount") : null,
+                Tax = taxes.Count == 0 ? null : taxes.Sum(g => Has(g, "NetAmount") ? Dec(g, "NetAmount") : Dec(g, "UnitPrice") * Qty(g)),
+                TaxInclusive = inclusive,
+            });
         }
 
         var udfs = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var block in Array(root["UserDefinedFields"]?["CharacterUDFs"]))
             foreach (var u in Array(block?["UDF"]))
                 if (Str(u, "Name") is { } n && Str(u, "Value") is { Length: > 0 } v) udfs[n] = v;
+
+        var totals = folio["TotalInfo"] as JsonObject;
+        var taxTotals = Array(totals?["Taxes"]?["Tax"])
+            .Select(t => new OperaTaxTotal(Dec(t, "Percent"), Dec(t, "Value"), Dec(t, "NetAmount")))
+            .ToList();
 
         var resv = root["ReservationInfo"] as JsonObject;
         var user = root["FiscalFolioUserInfo"] as JsonObject;
@@ -102,6 +132,11 @@ public static class OperaPayload
             Operator = appUser is { Length: > 0 } ? appUser.Split('@')[0] : Str(Array(folio["Postings"]).FirstOrDefault(), "CashierId"),
             FolioReference = resv is null ? null : $"Folio {Str(doc, "FiscalFolioId")} · conf. {Str(resv, "ConfirmationNo")} · room {Str(resv, "RoomNumber")}",
             AssociatedFiscalBillNo = udfs.GetValueOrDefault("FLIP_ASSOCIATED_FISCAL_BILL_NO"),
+            HotelInfoCode = Str(root["HotelInfo"], "HotelCode") ?? "",
+            PropertyTaxNumber = Str(doc, "PropertyTaxNumber") ?? "",
+            TotalGross = Has(totals, "GrossAmount") ? Dec(totals, "GrossAmount") : null,
+            TotalNet = Has(totals, "NetAmount") ? Dec(totals, "NetAmount") : null,
+            TaxTotals = taxTotals,
             Lines = lines,
             Payments = payments,
         };

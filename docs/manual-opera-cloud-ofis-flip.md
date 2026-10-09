@@ -164,6 +164,17 @@ known.
 | `HotelInfo.LocalCurrency` | Must be EUR in Production |
 | ATK category, unit | Settings › General defaults (TT, *cope*), or per transaction code with OPERA overrides |
 
+**Validation before fiscalization.** A folio is refused (HTTP 422 with every finding, audit `FOLIO_REFUSED`, no
+receipt issued) unless:
+- its OPERA property (`DocumentInfo.HotelCode`, `HotelInfo.HotelCode`) equals *Business & unit › OPERA property code*;
+- its tax number (`DocumentInfo.PropertyTaxNumber`), when sent, is this business's NUI, VAT no. or fiscalization no.
+  (can be switched off under *Settings › Folio validation*);
+- every line adds up: price × quantity = amount, VAT = rate × amount, net + VAT = amount;
+- the lines equal OPERA's folio total, the VAT per rate equals OPERA's VAT totals, and payments equal charges;
+- the finished receipt, recalculated independently before signing, adds up and its VAT per rate matches OPERA's
+  (skipped when OPERA overrides deliberately change the VAT).
+Rounding differences up to the tolerance (default €0.01 per line) are accepted.
+
 The receipt is archived (with the original payload) before it is sent to ATK. If ATK does not answer, the receipt is
 still valid, FLIP gets the fiscal data with `AtkStatus: pending`, and HRS resends it automatically (every
 *retry* minutes, ATK limit 48 h). Folios HRS cannot fiscalize (unknown terminal, VAT rate not configured, workstation

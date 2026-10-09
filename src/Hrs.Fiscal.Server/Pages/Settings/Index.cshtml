@@ -37,6 +37,16 @@
         <div class="tile-foot">@EditButton("flip") <a class="btn small" href="/Settings?Edit=token" data-dialog-open="dlg-token">Token</a></div>
     </section>
 
+    <section class="card" id="validation">
+        <h2>Folio validation</h2>
+        <dl class="kv">
+            <dt>Property</dt><dd>always checked</dd>
+            <dt>Tax number</dt><dd>@(c.ValidationCheckTaxNumber ? "checked" : "not checked")</dd>
+            <dt>Tolerance</dt><dd>@c.ValidationTolerance.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) EUR per line</dd>
+        </dl>
+        <div class="tile-foot">@EditButton("validation")</div>
+    </section>
+
     <section class="card" id="signing">
         <h2>Signing</h2>
         <dl class="kv"><dt>Mode</dt><dd>@(c.SigningModeDefault == "server" ? "Central (server)" : "Workstation client")</dd></dl>
@@ -141,6 +151,25 @@
         <p class="small muted">Only a hash is stored. The new token is shown once after it is generated.</p>
         <partial name="_ConfirmBox" model="@("Yes, generate")" />
         <div class="actions" data-hide-on-confirm><button type="submit" class="btn">@(Model.Token.HasToken ? "Generate new token" : "Generate token")</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal" id="dlg-validation" aria-labelledby="dlg-validation-title" data-autoopen="@(Model.Edit == "validation" ? "1" : null)" open="@(Model.Edit == "validation")">
+    @ModalHead("validation", Title("validation"))
+    <form method="post" class="modal-body" data-confirm="Save the folio validation settings?">
+        <input type="hidden" name="section" value="validation">
+        <div asp-validation-summary="All" class="validation"></div>
+        <p>Before a folio is fiscalized, HRS checks that it belongs to this property and that OPERA's numbers add up. Any finding refuses the folio with the reason (FLIP gets HTTP 422; the audit log records FOLIO_REFUSED).</p>
+        <ul class="small" style="margin: 0; padding-left: 18px; color: var(--muted)">
+            <li>OPERA property code = Business &amp; unit › OPERA property code (always)</li>
+            <li>Price × quantity = line amount; VAT per line = rate × amount; net + VAT = amount</li>
+            <li>Lines = OPERA folio total; VAT per rate = OPERA's VAT totals; payments = charges</li>
+            <li>The finished receipt is recalculated before signing, and its VAT per rate must match OPERA</li>
+        </ul>
+        <label class="check"><input type="checkbox" asp-for="Input.ValidationCheckTaxNumber"> Folio tax number must be this business (NUI, VAT no. or fiscalization no.)</label>
+        <label class="field">Rounding tolerance per line (EUR) <input type="number" asp-for="Input.ValidationTolerance" step="0.01" min="0" max="1"></label>
+        <partial name="_ConfirmBox" model="@("Yes, save")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings">Cancel</button></div>
     </form>
 </dialog>
 

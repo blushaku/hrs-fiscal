@@ -61,6 +61,11 @@ public class LiveFlipTests(ServerFixture app) : IClassFixture<ServerFixture>
         if ((await settings.TerminalsAsync()).Any(t => t.OperaTerminalId == "OPERA9TERMINAL"))
             return (await settings.TerminalsAsync()).Single(t => t.OperaTerminalId == "OPERA9TERMINAL").Id;
         await settings.SetManyAsync(new Dictionary<string, object?> { ["atk_application_id"] = 123456789L, ["flip_mode"] = "live" }, "test");
+        // The sample folio is for OPERA property DEMO1 with tax number X00000000X: make this business that property.
+        var b = (await settings.BusinessAsync())!;
+        b.OperaHotelCode = "DEMO1";
+        b.VatNo = "X00000000X";
+        await settings.SaveBusinessAsync(b, "test");
         // The demo property is in Albania (6 % VAT): map 6 % to letter D for this test.
         await settings.SaveVatRateAsync(new VatRateRow { Letter = "D", Percent = 6, Description = "test" }, "test");
         await settings.SaveTerminalAsync(new TerminalEdit { PosId = 21, OperaTerminalId = "OPERA9TERMINAL", Hostname = "OPERA9", Status = "pending", SigningMode = "server" }, "test");
@@ -133,6 +138,39 @@ public class LiveFlipTests(ServerFixture app) : IClassFixture<ServerFixture>
         Assert.True(await AtkResendService.ResendPendingAsync(scope.ServiceProvider, CancellationToken.None) >= 1);
         Assert.Equal("accepted", await app.ScalarAsync<string>(
             "SELECT s.status FROM fiscal.receipt_status s JOIN fiscal.receipt r ON r.id = s.id JOIN fiscal.source_payload p ON p.id = r.source_payload_id WHERE p.source_event_id = 'DEMO1:70003'"));
+    }
+
+    [PgFact]
+    public async Task Folio_for_another_property_is_refused()
+    {
+        await SetUpAsync();
+        var json = WithFolio(Sample(), "70010").Replace("\"DEMO1\"", "\"OTHER9\"");
+        var (status, body) = await PostAsync(json);
+        Assert.Equal((HttpStatusCode)422, status);
+        Assert.Contains("OPERA property OTHER9", body.GetProperty("Message").GetString());
+        Assert.Equal(0L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.source_payload WHERE source_event_id LIKE '%70010'"));
+
+        var (status2, body2) = await PostAsync(WithFolio(Sample(), "70011").Replace("X00000000X", "Y11111111Y"));
+        Assert.Equal((HttpStatusCode)422, status2);
+        Assert.Contains("tax number Y11111111Y", body2.GetProperty("Message").GetString());
+    }
+
+    [PgFact]
+    public async Task Folio_with_inconsistent_amounts_is_refused_with_every_finding()
+    {
+        await SetUpAsync();
+        // Room line changed to 18000 (price, gross, debit), VAT left at 1075.47, folio total left at 19000.
+        var doc = System.Text.Json.Nodes.JsonNode.Parse(WithFolio(Sample(), "70012"))!;
+        var room = doc["FolioInfo"]!["Postings"]![0]!;
+        room["GrossAmount"] = 18000.0; room["GuestAccountDebit"] = 18000.0;
+        var (status, body) = await PostAsync(doc.ToJsonString());
+        Assert.Equal((HttpStatusCode)422, status);
+        var message = body.GetProperty("Message").GetString()!;
+        Assert.Contains("price 19000.00 × quantity 1 = 19000.00, but the line amount is 18000.00", message);
+        Assert.Contains("VAT 1075.47 at 6% should be 1018.87", message);
+        Assert.Contains("OPERA's folio total is 19000.00", message);
+        Assert.Contains("not balanced", message);
+        Assert.Equal(1L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'FOLIO_REFUSED' AND entity_id = '70012'"));
     }
 
     [PgFact]

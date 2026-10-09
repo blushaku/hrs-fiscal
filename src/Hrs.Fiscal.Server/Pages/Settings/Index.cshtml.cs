@@ -29,6 +29,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         [Required, RegularExpression("^[A-Z]{1,5}$", ErrorMessage = "Category: ATK code, 1–5 capital letters (e.g. TT, HT, UR).")] public string DefaultItemCategory { get; set; } = "TT";
         [Required, StringLength(10)] public string DefaultItemUnit { get; set; } = "cope";
         [RegularExpression("^[A-Za-z0-9-]{1,64}$", ErrorMessage = "Header name: letters, digits and '-' only.")] public string? FlipAuthHeader { get; set; } = FlipAuth.DefaultHeader;
+        public bool ValidationCheckTaxNumber { get; set; } = true;
+        [Range(0, 1, ErrorMessage = "Tolerance must be between 0.00 and 1.00 EUR.")] public decimal ValidationTolerance { get; set; } = 0.01m;
     }
 
     public PropertyClock Clock => clock;
@@ -49,6 +51,7 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         ["overrides"] = ("OPERA overrides and receipt defaults", ["OperaOverridesEnabled", "DefaultItemCategory", "DefaultItemUnit"]),
         ["flip"] = ("OPERA / FLIP connection", ["FlipMode", "FlipStubStatus", "FlipStubContentType", "FlipStubBody"]),
         ["token"] = ("FLIP access token", ["FlipAuthRequired", "FlipAuthHeader"]),
+        ["validation"] = ("Folio validation", ["ValidationCheckTaxNumber", "ValidationTolerance"]),
     };
 
     /// <summary>Field → setting key.</summary>
@@ -60,6 +63,7 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         ["OperaOverridesEnabled"] = "opera_overrides_enabled", ["DefaultItemCategory"] = "default_item_category", ["DefaultItemUnit"] = "default_item_unit",
         ["FlipMode"] = "flip_mode", ["FlipStubStatus"] = "flip_stub_status", ["FlipStubContentType"] = "flip_stub_content_type",
         ["FlipStubBody"] = "flip_stub_body", ["FlipAuthRequired"] = "flip_auth_required", ["FlipAuthHeader"] = "flip_auth_header",
+        ["ValidationCheckTaxNumber"] = "validation_check_tax_number", ["ValidationTolerance"] = "validation_tolerance",
     };
 
     /// <summary>The tile being edited (null = all read-only).</summary>
@@ -84,6 +88,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         long Long(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
         bool Bool(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.True;
         string Str(string k, string d) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : d;
+        decimal Dec(string k, decimal d) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDecimal() : d;
+        bool BoolOr(string k, bool d) => all.TryGetValue(k, out var v) ? v.ValueKind == JsonValueKind.True : d;
         Current = new GeneralSettings
         {
             RetentionYears = Int("retention_years", 10),
@@ -104,6 +110,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             DefaultItemCategory = Str("default_item_category", "TT"),
             DefaultItemUnit = Str("default_item_unit", "cope"),
             FlipAuthHeader = Str("flip_auth_header", FlipAuth.DefaultHeader),
+            ValidationCheckTaxNumber = BoolOr("validation_check_tax_number", true),
+            ValidationTolerance = Dec("validation_tolerance", 0.01m),
         };
     }
 
@@ -146,6 +154,8 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             ["DefaultItemCategory"] = (Input.DefaultItemCategory ?? "TT").Trim().ToUpperInvariant(),
             ["DefaultItemUnit"] = (Input.DefaultItemUnit ?? "cope").Trim(),
             ["FlipAuthHeader"] = FlipAuth.NormalizeHeader(Input.FlipAuthHeader),
+            ["ValidationCheckTaxNumber"] = Input.ValidationCheckTaxNumber,
+            ["ValidationTolerance"] = decimal.Round(Input.ValidationTolerance, 2),
         };
         var changed = await settings.SetManyAsync(def.Fields.ToDictionary(f => Keys[f], f => values[f]), User.Identity!.Name!);
         var message = changed == 0 ? $"{def.Title}: no changes." : $"{def.Title} saved and logged.";

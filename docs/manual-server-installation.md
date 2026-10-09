@@ -135,12 +135,14 @@ All settings below are stored in the database and every change is written to the
 | OPERA / FLIP connection | **Capture** during setup (records what FLIP sends). **Live** once fiscalization is enabled |
 | FLIP access token | **Generate token**, copy it into FLIP's partner configuration (shown only once), keep *Require the token* on. Header: `Authorization` unless FLIP uses another one. *Generate new token* replaces the old one at once, so update FLIP at the same time |
 | VAT calculation | Round VAT half-up (default) — pending ATK's official rule |
+| Folio validation | Property always checked; tax number check on; tolerance €0.01 per line. See the OPERA manual §8 |
 | Retention | Placeholder 10 years until the legal period is confirmed. Nothing is ever deleted automatically |
 
 ### 5.2 Settings › Business
 
 NUI, business name, fiscalization number, VAT number, unit (branch) number, unit name, city (printed as location),
-address and the OPERA property code. **NUI and unit number cannot be changed** after saving, because every receipt
+address and the OPERA property code. **The OPERA property code is required for live mode**: folios from any other
+property are refused. **NUI and unit number cannot be changed** after saving, because every receipt
 refers to them — check them against the ATK registration before saving.
 
 ### 5.3 Settings › Workstations
