@@ -168,9 +168,20 @@ ATK requirement (stated by the user): every workstation that can generate an inv
 5. The Server archives everything and replies to OPERA. The fiscal data prints on the folio.
 - OPERA Fiscal Terminals (Terminal ID, one per workstation) map 1:1 to the PosIds of the HRS clients.
 
+**Signing mode is selectable (09.10.2026).** Settings › General sets the property default; each workstation can
+override it. In both modes every workstation is its own ATK POS with its own key and certificate:
+- *Workstation client* (default): the flow above.
+- *Central*: the server holds one non-exportable key per workstation (Windows key store / TPM) and signs on its
+  behalf in step 4. Workstations are registered with ATK from Settings › Workstations. Nothing is installed on the PCs,
+  and a switched-off PC no longer blocks its folios.
+A certificate is bound to where it was registered; after a mode change the workstation must be registered again.
+
 **Clarify with ATK:**
-- Is a signing client per workstation enough, with central orchestration and archive?
+- For a cloud PMS whose workstations are browsers: is central signing with one key and certificate per workstation
+  acceptable, or must software run on each workstation?
 - Must the client also transmit, or may the server transmit coupons the client has signed?
+- OPERA prompts the user to pick the Fiscal Terminal unless one is marked Primary: is the POS identified by the
+  terminal the user selects acceptable?
 
 ## 7. OPERA integration options (if OFIS isn't available for Kosovo)
 OFIS needs Oracle to enable a fiscal partner (and in practice a country localization). The payload spec is only available to partners. Fallback options:

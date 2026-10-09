@@ -44,6 +44,7 @@ public sealed class DemoSeeder(NpgsqlDataSource db, SettingsStore settings, User
         {
             await conn.ExecuteAsync("UPDATE fiscal.terminal SET certificate_expires = now() + interval '200 days' WHERE pos_id IN (11, 13)");
             await conn.ExecuteAsync("UPDATE fiscal.terminal SET certificate_expires = now() + interval '23 days' WHERE pos_id = 12");
+            await conn.ExecuteAsync("UPDATE fiscal.terminal SET enrolled_mode = 'client' WHERE pos_id IN (11, 12, 13)");
         }
         var terminalRows = await settings.TerminalsAsync(ct);
 

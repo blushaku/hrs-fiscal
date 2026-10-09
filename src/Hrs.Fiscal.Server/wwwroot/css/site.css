@@ -99,6 +99,8 @@ td.wrap { white-space: normal; min-width: 240px; }
 .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); flex: 1 1 160px; }
 label.field.wide { flex: 2 1 260px; }
+/* Fields stacked directly in a card (column layout) keep their natural height. */
+.card > label.field { flex: none; }
 input[type=text], input[type=search], input[type=date], input[type=number], input[type=password], select, textarea {
   min-height: 44px; padding: 0 12px; border: 1px solid var(--field); border-radius: var(--radius); font: inherit; font-size: 14px; color: var(--ink); background: #FFFFFF; }
 input[readonly] { background: #F3F4F6; color: var(--muted); }

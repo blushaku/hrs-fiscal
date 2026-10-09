@@ -1,5 +1,8 @@
 # Testing HRS Fiscal on an OPERA Cloud demo (OFIS with FLIP)
 
+Full configuration steps: [manual-server-installation.md](manual-server-installation.md) and
+[manual-opera-cloud-ofis-flip.md](manual-opera-cloud-ofis-flip.md).
+
 Goal: send real folios from an OPERA Cloud demo property through Oracle FLIP to the HRS Fiscal Server. Stage 1 captures
 the real message format. Stage 2 fiscalizes against ATK's TEST environment and prints the fiscal data on the folio.
 
@@ -24,10 +27,11 @@ the real message format. Stage 2 fiscalizes against ATK's TEST environment and p
    Add `-FlipTcpPort 5200` if FLIP turns out to use raw sockets instead of HTTP.
 3. Sign in as `admin`. Settings › General › **OPERA / FLIP connection** = **Capture** (the default).
 4. In OPERA Cloud (Administration › Financial › Fiscal Management):
-   - **Fiscal Partners**: create the HRS partner. Enable the payloads *Folio Generation*, *Post Payment* and *Check Out*;
-     also tick *Send Folio after Fiscal Payload*.
+   - **Fiscal Partners**: create the HRS partner. For the demo enable the payloads *Folio Generation*, *Post Payment* and
+     *Check Out* to see what each sends (production: *Folio Generation* only); tick *Send Folio after Fiscal Payload*.
    - **Fiscal Folio Parameters**: set **FLIP Server Address** to the FLIP host as Oracle instructs.
    - **Fiscal Terminals**: one per workstation, for example Terminal ID `FO1`, Address/Port = `<HRS server LAN IP>:5100`.
+     Do not mark a terminal *Primary* (OPERA would then use it for every folio without asking).
    - In FLIP's own partner configuration, point the partner endpoint to `http://<HRS server LAN IP>:5100/flip`.
 5. In OPERA, check in a test reservation, post a room charge, F&B, a payment, then **settle and generate the folio**.
    Also run a check-out, a payment without a folio, a split folio and a folio with a negative correction.
@@ -42,7 +46,8 @@ Result: the real payload and the behaviour OPERA expects, for building the mappi
 
 Built after stage 1, using the captured samples (and Oracle's specification as soon as it arrives):
 1. FLIP payload → `ReceiptRequest` (all fields from OPERA; optional overrides when switched on).
-2. Route by Fiscal Terminal ID → HRS Fiscal Client on that workstation (POS ID), which signs it and sends it to ATK TEST.
+2. Route by Fiscal Terminal ID → the workstation's ATK POS; signed by the HRS Fiscal Client on that workstation or, in
+   central mode, by the server with that workstation's key; sent to ATK TEST.
 3. Archive the receipt and answer FLIP with the fiscal data: NUIKF, receipt no., SEF ID, ATK transaction, QR string.
 4. OPERA folio template (PMS team): a fiscal block with QR, NUIKF, SEF ID, receipt no., ATK transaction and "e-kupon".
 5. Switch Settings › OPERA / FLIP connection to **Live**, then rerun the stage 1 scenarios. Each folio now shows its QR,

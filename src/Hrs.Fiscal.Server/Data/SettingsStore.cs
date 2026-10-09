@@ -27,7 +27,23 @@ public sealed class TerminalEdit
     public string? Description { get; set; }
     public string Status { get; set; } = "pending";
     public DateTime? CertificateExpires { get; set; }
+    /// <summary>Per-workstation override: "server", "client" or null (= property default).</summary>
+    public string? SigningMode { get; set; }
+    /// <summary>Where the current key and certificate live ("server" / "client"); null = not registered.</summary>
+    public string? EnrolledMode { get; set; }
+    public string? KeyReference { get; set; }
+
+    public string EffectiveMode(string propertyDefault) => SigningMode ?? propertyDefault;
+
+    public TerminalSigningState SigningState(string propertyDefault, DateTime? nowUtc = null) =>
+        Status == "disabled" ? TerminalSigningState.Disabled
+        : EnrolledMode is null || CertificateExpires is null ? TerminalSigningState.NotRegistered
+        : EnrolledMode != EffectiveMode(propertyDefault) ? TerminalSigningState.RegisterAgain
+        : CertificateExpires <= (nowUtc ?? DateTime.UtcNow) ? TerminalSigningState.Expired
+        : TerminalSigningState.Ready;
 }
+
+public enum TerminalSigningState { Ready, NotRegistered, RegisterAgain, Expired, Disabled }
 
 public sealed class TrxMapping
 {
@@ -96,6 +112,10 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     public async Task<bool> OperaOverridesEnabledAsync(CancellationToken ct = default) =>
         await GetAsync("opera_overrides_enabled", false, ct);
 
+    /// <summary>Property-wide signing mode (setting signing_mode_default): "client" (default) or "server".</summary>
+    public async Task<string> SigningModeDefaultAsync(CancellationToken ct = default) =>
+        await GetAsync("signing_mode_default", "client", ct) is "server" ? "server" : "client";
+
     // ---- business / branch --------------------------------------------------------------
 
     public async Task<BusinessInfo?> BusinessAsync(CancellationToken ct = default)
@@ -146,7 +166,8 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         return (await conn.QueryAsync<TerminalEdit>("""
-            SELECT id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, certificate_expires
+            SELECT id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, certificate_expires,
+                   signing_mode, enrolled_mode, key_reference
             FROM fiscal.terminal ORDER BY pos_id
             """)).ToList();
     }
@@ -159,18 +180,21 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         if (t.Id == 0)
         {
             t.Id = await conn.ExecuteScalarAsync<long>("""
-                INSERT INTO fiscal.terminal (business_nui, branch_id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status)
-                VALUES (@nui, @branch, @PosId, @OperaTerminalId, @Hostname, @ClientEndpoint, @Description, @Status)
+                INSERT INTO fiscal.terminal (business_nui, branch_id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, signing_mode)
+                VALUES (@nui, @branch, @PosId, @OperaTerminalId, @Hostname, @ClientEndpoint, @Description, @Status, @SigningMode)
                 RETURNING id
-                """, new { nui = business.Nui, branch = business.BranchId, t.PosId, t.OperaTerminalId, t.Hostname, t.ClientEndpoint, t.Description, t.Status });
+                """, new { nui = business.Nui, branch = business.BranchId, t.PosId, t.OperaTerminalId, t.Hostname, t.ClientEndpoint, t.Description, t.Status, t.SigningMode });
         }
         else
         {
             before = (await TerminalsAsync(ct)).SingleOrDefault(x => x.Id == t.Id) ?? throw new InvalidOperationException("Unknown terminal.");
+            // Only ATK registration (TerminalEnrollment / the client) may activate a workstation.
+            if (t.Status == "active" && before.Status != "active" && before.EnrolledMode is null)
+                throw new InvalidOperationException("Register the workstation with ATK before activating it.");
             // PosId is part of the ATK identity (certificate OU) and of issued receipts: not editable.
             await conn.ExecuteAsync("""
                 UPDATE fiscal.terminal SET opera_terminal_id = @OperaTerminalId, hostname = @Hostname, client_endpoint = @ClientEndpoint,
-                       description = @Description, status = @Status
+                       description = @Description, status = @Status, signing_mode = @SigningMode
                 WHERE id = @Id
                 """, t);
         }

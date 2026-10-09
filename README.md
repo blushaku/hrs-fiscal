@@ -1,8 +1,10 @@
 # HRS Fiscal Solution
 
 Kosovo fiscalization software (**SEF – Softuer Elektronik Fiskal**) for hotels on **Oracle OPERA Cloud**.
-OPERA Cloud sends fiscal payloads via **OFIS with FLIP** (Oracle's Fiscal Layer Integration Platform, installed on-premise). FLIP delivers them over the hotel LAN to the HRS Fiscal Server. The server routes each receipt to the
-HRS Fiscal Client on the workstation that issued it. The client signs the receipt and fiscalizes it with ATK.
+OPERA Cloud sends fiscal payloads via **OFIS with FLIP** (installed on-premise). FLIP delivers them over the hotel LAN
+to the HRS Fiscal Server. Every workstation that issues folios is its own ATK POS with its own key and certificate.
+**Signing is selectable** (Settings › General, overridable per workstation): the HRS Fiscal Client on the workstation
+signs, or the server signs centrally with a separate non-exportable key per workstation.
 Everything is archived in an append-only PostgreSQL store.
 
 ```
@@ -12,18 +14,25 @@ OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ HRS Fiscal Server �
    └── fiscal data ◀──┘ offline queue, admin UI, exports   ◀── result ─────┘──▶ ATK /pos/coupon
 ```
 
+## Manuals
+
+- [Server installation and configuration](docs/manual-server-installation.md)
+- [OPERA Cloud OFIS/FLIP configuration](docs/manual-opera-cloud-ofis-flip.md)
+- [Testing on an OPERA Cloud demo](docs/opera-demo-test-plan.md)
+
 ## Repository layout
 
 | Path | What |
 |---|---|
 | `src/Hrs.Fiscal.Core` | Shared fiscal library: ATK protobuf model, coupon builder and validation, VAT, ECDSA signing (DER), QR, CSR, ATK API client |
 | `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): **admin web UI** (receipts, audit log, exports, settings), archive, migrations. The FLIP endpoint, routing and offline queue are still to come |
-| `src/Hrs.Fiscal.Client` | Workstation client (Windows service): key and certificate, onboarding, signing, transmission. **Skeleton** |
+| `src/Hrs.Fiscal.Client` | Workstation client for *workstation client* signing mode (Windows service): key and certificate, onboarding, signing. **Skeleton** |
 | `tests/Hrs.Fiscal.Core.Tests` | Unit tests (xUnit) |
 | `tests/Hrs.Fiscal.Server.Tests` | Integration tests against PostgreSQL (set `HRS_TEST_PG`) |
 | `db/migrations` | PostgreSQL schema |
 | `db/tests` | Schema self-test (immutability, hash chain, tamper detection) |
-| `docs/` | Requirements and design notes |
+| `deploy/` | Windows installer (`install-server.ps1`) and daily backup script (`backup-db.ps1`) |
+| `docs/` | Requirements and design notes, manuals |
 
 ## Build and test
 
@@ -54,7 +63,7 @@ createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initi
 | Download copy (PDF) | Receipt copy marked "KOPJE E KUPONIT", logged as REPRINT | Cashier, Supervisor, Admin |
 | Audit log | Search all events; **integrity check** of both hash chains (logged) | all |
 | Export | Receipts, unsent receipts or audit log as CSV (UTF-8) or PDF; every export logged with a SHA-256 | Supervisor, Admin, Auditor |
-| Settings | General (retention, backup, ATK environment and ApplicationId, timeouts, VAT rounding); business and unit; workstations (POS ID ↔ OPERA Fiscal Terminal); optional OPERA overrides per transaction code and payment method; VAT rates; users | Admin |
+| Settings | General (retention, backup, ATK environment and ApplicationId, timeouts, VAT rounding); business and unit; signing mode (workstation client / central); workstations (POS ID ↔ OPERA Fiscal Terminal, ATK registration in central mode); optional OPERA overrides per transaction code and payment method; VAT rates; users | Admin |
 
 Every settings change is written to the audit log with its old and new values. Failed logins are logged, and an
 account is blocked for 15 minutes after 5 failures. Users and workstations are deactivated, never deleted.
@@ -157,15 +166,17 @@ the HRS Fiscal Client.
 - **Corrections** are made only with Return coupons that reference the original. Cancel coupons are not used
   in Kosovo.
 - **Keys:** one key per workstation, non-exportable (CNG, TPM when available). Only the CSR and public key
-  leave the machine.
+  leave the machine. In central mode the keys live on the server (`Signing/ServerKeyStore.cs`; `Signing:KeyStore`
+  = `auto`/`cng`, or `file` for test machines only) and workstations are registered from Settings › Workstations.
+  A certificate is bound to where it was registered: after a mode change the workstation must be registered again.
 - **Archive:** the receipt, transmission, audit and source-payload tables are append-only, enforced by
   triggers and grants. Receipts and the audit log are hash-chained, and `fiscal.verify_chain()` detects
   tampering.
 
 ## Open questions (ATK / Oracle)
 
-1. Is a signing client on each workstation enough, with central numbering and archive, and may the server
-   transmit coupons that a client has signed?
+1. For a cloud PMS whose workstations are browsers: is central signing on the property server, with one key and
+   certificate per workstation, acceptable, or must software run on each workstation? (Both are implemented and selectable.)
 2. The official VAT rounding rule.
 3. The behaviour of `/pos/coupon` when a CouponId is resent (idempotency).
 4. `verification_code` vs `verification_no` in `/ca/signcsr`. Both are sent for now.

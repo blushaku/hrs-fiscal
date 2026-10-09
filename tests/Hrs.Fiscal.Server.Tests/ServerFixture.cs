@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 using Hrs.Fiscal.Server.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Hrs.Fiscal.Server.Signing;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -49,11 +51,21 @@ public sealed class ServerFixture : WebApplicationFactory<Program>, IAsyncLifeti
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Fiscal", ConnectionString);
         builder.UseSetting("Bootstrap:AdminPassword", AdminPassword);
+        builder.UseSetting("Signing:KeyStore", "file");
+        builder.UseSetting("Signing:KeyFolder", KeyFolder);
+        builder.ConfigureTestServices(s => s.AddSingleton<IAtkClientFactory>(FakeAtk));
     }
+
+    /// <summary>Key folder for central signing; deleted after the run.</summary>
+    public string KeyFolder { get; } = Path.Combine(Path.GetTempPath(), "hrs-fiscal-test-keys-" + Guid.NewGuid().ToString("N")[..8]);
+
+    /// <summary>Stand-in for ATK's CA (verify + CSR signing); no network.</summary>
+    public FakeAtk FakeAtk { get; } = new();
 
     public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
+        try { Directory.Delete(KeyFolder, true); } catch (DirectoryNotFoundException) { }
         if (string.IsNullOrEmpty(_adminCs)) return;
         NpgsqlConnection.ClearAllPools();
         await using var conn = new NpgsqlConnection(_adminCs);

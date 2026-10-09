@@ -53,6 +53,16 @@
             <p class="small muted" style="margin: 0">Pending ATK's official rule. Applies only to receipts issued after the change.</p>
         </section>
         <section class="card" style="display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0">Signing</h2>
+            <label class="field">Where receipts are signed
+                <select asp-for="Input.SigningModeDefault">
+                    <option value="client">Workstation client (HRS Fiscal Client on each PC)</option>
+                    <option value="server">Central (server, one key per workstation)</option>
+                </select>
+            </label>
+            <p class="small muted" style="margin: 0">Either way every workstation is its own ATK POS with its own certificate. Central mode needs nothing installed on the workstations, but is pending ATK's confirmation. A single workstation can use the other mode (Workstations). Changing the mode means the affected workstations must be registered with ATK again.</p>
+        </section>
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
             <h2 style="margin: 0">OPERA overrides</h2>
             <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink); flex: none">
                 <input type="checkbox" asp-for="Input.OperaOverridesEnabled" style="width: 20px; height: 20px"> Use overrides for transaction codes and payment methods

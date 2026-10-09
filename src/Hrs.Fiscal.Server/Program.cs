@@ -5,9 +5,10 @@
 //                exports (CSV/PDF), settings (business, workstations, OPERA mapping, VAT, users, retention, ATK)
 //   Data/        PostgreSQL access; db/migrations are applied on startup
 //   Services/    exports, QR rendering, demo data
+//   Signing/     signing mode (client / server), server key store (CNG/TPM), ATK registration from the server
 // Planned:
 //   Flip/        LAN endpoint for Oracle FLIP (OFIS on-premise): capture mode stores every message; live mode pending Oracle's spec.
-//   Routing/     OPERA Fiscal Terminal ID -> HRS Fiscal Client (PosId)
+//   Routing/     OPERA Fiscal Terminal ID -> signer: HRS Fiscal Client (client mode) or Signing/ on the server (server mode)
 //   Queue/       offline queue re-send, 48h / 10th-of-month alerts
 //
 // Command line:
@@ -20,6 +21,7 @@ using Hrs.Fiscal.Server;
 using Hrs.Fiscal.Server.Data;
 using Hrs.Fiscal.Server.Flip;
 using Hrs.Fiscal.Server.Services;
+using Hrs.Fiscal.Server.Signing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -32,6 +34,9 @@ builder.Services.AddScoped<Exporter>();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<FlipCapture>();
 builder.Services.AddHostedService<FlipTcpListener>();
+builder.Services.AddServerKeyStore(builder.Configuration);
+builder.Services.AddSingleton<IAtkClientFactory, AtkClientFactory>();
+builder.Services.AddScoped<TerminalEnrollment>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
