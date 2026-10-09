@@ -6,6 +6,18 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Company>HRS</Company>
     <Product>HRS Fiscal Solution</Product>
-    <Version>0.1.0</Version>
+    <!-- Release version shown in the UI, /health, exports and the audit log. 0.x = before ATK certification. -->
+    <Version>0.9.0</Version>
   </PropertyGroup>
+
+  <!-- Adds the git commit to the informational version (0.9.0+abc1234), so an installed build can be traced to its source. -->
+  <Target Name="HrsSourceRevision" BeforeTargets="InitializeSourceControlInformation;GetAssemblyVersion;GenerateAssemblyInfo" Condition="'$(SourceRevisionId)' == ''">
+    <Exec Command="git rev-parse --short=8 HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="HrsGitCommit" />
+      <Output TaskParameter="ExitCode" PropertyName="HrsGitExit" />
+    </Exec>
+    <PropertyGroup Condition="'$(HrsGitExit)' == '0'">
+      <SourceRevisionId>$(HrsGitCommit)</SourceRevisionId>
+    </PropertyGroup>
+  </Target>
 </Project>

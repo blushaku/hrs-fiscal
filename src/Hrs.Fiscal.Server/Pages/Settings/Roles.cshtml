@@ -1,0 +1,50 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.RolesModel
+@{
+    ViewData["Title"] = "Roles & permissions";
+}
+<div class="page-head">
+    <div>
+        <h1>Settings</h1>
+        <p>What each role may see and do. The menu, dashboard and buttons follow these permissions.</p>
+    </div>
+</div>
+<partial name="_SettingsNav" />
+
+<form method="post" class="card" style="display: flex; flex-direction: column; gap: 14px">
+    <h2 style="margin: 0">Roles &amp; permissions</h2>
+    <div class="table-wrap">
+        <table class="matrix">
+            <thead>
+                <tr>
+                    <th>Permission</th>
+                    @foreach (var role in Roles.All) { <th style="text-align: center">@role</th> }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Permissions.All)
+            {
+                <tr>
+                    <td class="wrap"><div>@p.Label</div><div class="small muted">@p.Description</div></td>
+                    @foreach (var role in Roles.All)
+                    {
+                        var on = Model.Matrix.TryGetValue(role, out var set) && set.Contains(p.Key);
+                        <td style="text-align: center">
+                            @if (role == Roles.Admin)
+                            {
+                                <input type="checkbox" checked disabled aria-label="@role: @p.Label (always)">
+                            }
+                            else
+                            {
+                                <input type="checkbox" name="grant" value="@role|@p.Key" checked="@on" aria-label="@role: @p.Label">
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted" style="margin: 0">Administrators always have every permission, so the system can never be locked. Changes are recorded in the audit log and apply on the next page a user opens; nobody needs to sign in again.</p>
+    <div class="actions"><button type="submit" class="btn primary">Save permissions</button></div>
+</form>

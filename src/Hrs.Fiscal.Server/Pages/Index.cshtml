@@ -1,6 +1,10 @@
 @page
 @model IndexModel
+@inject RolePermissions RolePerms
 @{
+    var perms = await RolePerms.ForUserAsync(User);
+    var system = perms.Contains(Permissions.DashboardSystem);
+    var canReceipts = perms.Contains(Permissions.ReceiptsView);
     ViewData["Title"] = "Dashboard";
     var s = Model.Stats;
     var live = Model.FlipMode == "live";
@@ -12,14 +16,16 @@
         <h1>Today</h1>
         <p>@Model.Clock.LocalNow.ToString("dddd, dd.MM.yyyy") — @(Model.Business?.BranchName ?? "property not set up")</p>
     </div>
-    <a class="btn primary" href="/Receipts">Search receipts</a>
+    @if (canReceipts) { <a class="btn primary" href="/Receipts">Search receipts</a> }
 </div>
 
-@if (Model.Business is null)
+@if (Model.Business is null && system)
 {
     <div class="notice warn">The property is not set up yet. An administrator must enter the business and unit details under <a href="/Settings/Business">Settings › Business</a>.</div>
 }
 
+@if (system)
+{
 <section class="tile-ink" aria-labelledby="flow-title">
     <h2 id="flow-title" style="margin: 0">How folios reach ATK</h2>
     <p class="small" style="margin: 4px 0 0">@(live ? "Live: every OPERA folio is fiscalized." : "Capture: FLIP messages are recorded but not fiscalized.") ATK @Model.AtkEnvironment.ToLowerInvariant() environment.</p>
@@ -42,6 +48,18 @@
         </div>
     </div>
 </section>
+}
+else if (canReceipts)
+{
+    <form method="get" action="/Receipts" class="tile-ink" role="search" style="display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0">Find a receipt</h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1">
+            <label class="sr-only" for="find-q">Receipt no., NUIKF, folio or cashier</label>
+            <input id="find-q" type="search" name="Q" placeholder="Receipt no., NUIKF, folio or cashier" style="flex: 1 1 260px">
+            <button type="submit" class="btn primary">Search</button>
+        </div>
+    </form>
+}
 
 <div class="tiles">
     <div class="tile">
@@ -54,7 +72,7 @@
         <div class="value">@s.AcceptedToday</div>
         <div class="sub">today</div>
     </div>
-    <a class="tile @(s.Pending > 0 ? "warn" : "")" href="/Receipts?Status=pending" style="text-decoration: none">
+    <a class="tile @(s.Pending > 0 ? "warn" : "")" href="@(canReceipts ? "/Receipts?Status=pending" : "#")" style="text-decoration: none">
         <div class="label">Waiting to send</div>
         <div class="value">@s.Pending</div>
         <div class="sub">
@@ -76,10 +94,10 @@
 </div>
 
 <div class="grid">
-    <section class="card span-2">
+    <section class="card @(system ? "span-2" : "span-all")">
         <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
             <h2>Workstations</h2>
-            <a class="small" href="/Settings/Workstations">Manage</a>
+            @if (perms.Contains(Permissions.WorkstationsManage)) { <a class="small" href="/Settings/Workstations">Manage</a> }
         </div>
         <div class="ws-grid" style="grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 12px">
             @foreach (var t in Model.Terminals)
@@ -87,7 +105,7 @@
                 var days = t.CertificateExpires is { } exp ? (int)(exp - Model.UtcNow).TotalDays : (int?)null;
                 <div class="notice" style="display: flex; flex-direction: column; gap: 4px">
                     <div style="display: flex; justify-content: space-between; gap: 8px; align-items: center">
-                        <a href="/Receipts?Terminal=@t.Id" style="font-weight: 600; color: var(--hrs-navy)">@(t.OperaTerminalId ?? t.Hostname)</a>
+                        @if (canReceipts) { <a href="/Receipts?Terminal=@t.Id" style="font-weight: 500; color: var(--hrs-navy)">@(t.OperaTerminalId ?? t.Hostname)</a> } else { <span style="font-weight: 500; color: var(--hrs-navy)">@(t.OperaTerminalId ?? t.Hostname)</span> }
                         @if (t.Status != "active") { <span class="badge neutral">@t.Status</span> }
                         else if (t.PendingCount > 0) { <span class="badge pending">@t.PendingCount waiting</span> }
                         else { <span class="badge accepted">OK</span> }
@@ -103,10 +121,12 @@
             }
             @if (Model.Terminals.Count == 0)
             {
-                <a class="ws add card" href="/Settings/Workstations?Add=1" style="min-height: 120px"><span class="plus" aria-hidden="true">+</span>Add the first workstation</a>
+                <a class="ws add card" href="/Settings/Workstations?Add=true" style="min-height: 120px"><span class="plus" aria-hidden="true">+</span>Add the first workstation</a>
             }
         </div>
     </section>
+    @if (system)
+    {
     <section class="card" style="display: flex; flex-direction: column; gap: 12px">
         <h2 style="margin: 0">Alerts</h2>
         @if (s.Overdue48h > 0)
@@ -126,4 +146,5 @@
             <div class="notice ok">No alerts. All receipts are fiscalized.</div>
         }
     </section>
+    }
 </div>

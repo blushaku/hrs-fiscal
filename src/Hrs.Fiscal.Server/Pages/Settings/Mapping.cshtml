@@ -107,7 +107,7 @@ else
         {
             <form method="post" asp-page-handler="Vat" class="filters" style="padding: 8px 0; border-bottom: 1px solid var(--line-soft)">
                 <input type="hidden" name="VatInput.Letter" value="@v.Letter">
-                <div style="font-weight: 600; font-size: 18px; width: 28px; align-self: center">@v.Letter</div>
+                <div style="font-weight: 500; font-size: 18px; width: 28px; align-self: center">@v.Letter</div>
                 <label class="field">Percent <input type="number" name="VatInput.Percent" value="@v.Percent.ToString("0.##", CultureInfo.InvariantCulture)" step="0.01" min="0" max="99.99"></label>
                 <label class="field wide">Description <input type="text" name="VatInput.Description" value="@v.Description"></label>
                 <button type="submit" class="btn small">Save</button>

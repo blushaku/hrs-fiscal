@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Hrs.Fiscal.Server.Pages.Audit;
 
-public sealed class IndexModel(AuditLog audit, PropertyClock clock, ReceiptQueries receipts) : PageModel
+public sealed class IndexModel(AuditLog audit, PropertyClock clock, ReceiptQueries receipts, Hrs.Fiscal.Server.Security.RolePermissions perms) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty(SupportsGet = true)] public string? Action { get; set; }
@@ -21,8 +21,9 @@ public sealed class IndexModel(AuditLog audit, PropertyClock clock, ReceiptQueri
 
     public async Task OnGetAsync() => await LoadAsync();
 
-    public async Task OnPostCheckAsync()
+    public async Task<IActionResult> OnPostCheckAsync()
     {
+        if (!(await perms.ForUserAsync(User)).Contains(Hrs.Fiscal.Server.Security.Permissions.AuditIntegrity)) return Forbid();
         Integrity = await audit.VerifyAsync();
         await audit.WriteAsync(User.Identity!.Name!, AuditLog.Actions.IntegrityCheck, details: new
         {
@@ -33,6 +34,7 @@ public sealed class IndexModel(AuditLog audit, PropertyClock clock, ReceiptQueri
             auditBreak = Integrity.Audit?.BrokenId,
         });
         await LoadAsync();
+        return Page();
     }
 
     private async Task LoadAsync()

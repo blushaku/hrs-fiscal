@@ -161,6 +161,19 @@ actually does, which answers the open questions on idempotency and rounding.
 The test profile keeps the private key as a PEM file. That is for TEST only; production keys live non-exportable in
 the HRS Fiscal Client.
 
+## Version
+
+The release version is set once in `Directory.Build.props` (now **0.9.0**, before ATK certification); the build adds
+the git commit (`0.9.0+<commit>`). It is shown in the menu and on the sign-in page, returned by `/health`, printed in
+the footer of every PDF export, and each service start is logged (`SERVICE_STARTED` with version and commit).
+
+## Roles and permissions
+
+Four roles (Cashier, Supervisor, Auditor, Admin) and ten permissions (`Security/Permissions.cs`). The role → permission
+matrix is stored in `fiscal.role_permission` and edited under Settings › Roles & permissions (audited); Admin always
+has all permissions. Every page and endpoint is protected by a permission policy, and the menu, dashboard and buttons
+are built from the same permissions.
+
 ## Key implementation decisions
 
 - **Wire format** is ATK's `models.proto` from `github.com/fiskalizimi/pos-csharp`, the most current reference.

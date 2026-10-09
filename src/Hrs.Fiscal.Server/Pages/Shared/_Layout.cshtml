@@ -1,11 +1,12 @@
-@using Microsoft.AspNetCore.Authorization
-@inject IAuthorizationService Authz
 @inject SettingsStore Settings
+@inject RolePermissions RolePerms
 @{
     var path = Context.Request.Path.Value ?? "/";
     var signedIn = User.Identity?.IsAuthenticated == true;
-    var canExport = signedIn && (await Authz.AuthorizeAsync(User, Policies.Export)).Succeeded;
-    var isAdmin = signedIn && (await Authz.AuthorizeAsync(User, Policies.Admin)).Succeeded;
+    var perms = await RolePerms.ForUserAsync(User);
+    bool Can(string p) => perms.Contains(p);
+    // Settings opens on the first section this user may manage.
+    var settingsHref = Can(Permissions.SettingsManage) ? "/Settings" : Can(Permissions.WorkstationsManage) ? "/Settings/Workstations" : Can(Permissions.UsersManage) ? "/Settings/Users" : null;
     var business = signedIn ? await Settings.BusinessAsync() : null;
     string Active(string prefix) => (prefix == "/" ? path == "/" : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ? "nav-link active" : "nav-link";
 }
@@ -34,11 +35,11 @@ else
             </div>
             <div class="nav">
                 <a class="@Active("/")" href="/">Dashboard</a>
-                <a class="@Active("/Receipts")" href="/Receipts">Receipts</a>
-                <a class="@Active("/Audit")" href="/Audit">Audit log</a>
-                @if (canExport) { <a class="@Active("/Export")" href="/Export">Export</a> }
-                @if (canExport) { <a class="@Active("/FlipMessages")" href="/FlipMessages">FLIP messages</a> }
-                @if (isAdmin) { <a class="@Active("/Settings")" href="/Settings">Settings</a> }
+                @if (Can(Permissions.ReceiptsView)) { <a class="@Active("/Receipts")" href="/Receipts">Receipts</a> }
+                @if (Can(Permissions.AuditView)) { <a class="@Active("/Audit")" href="/Audit">Audit log</a> }
+                @if (Can(Permissions.Export)) { <a class="@Active("/Export")" href="/Export">Export</a> }
+                @if (Can(Permissions.FlipView)) { <a class="@Active("/FlipMessages")" href="/FlipMessages">FLIP messages</a> }
+                @if (settingsHref is not null) { <a class="@Active("/Settings")" href="@settingsHref">Settings</a> }
             </div>
             <div class="sidebar-foot">
                 <div>@User.Display() · @User.Role()</div>
@@ -46,6 +47,7 @@ else
                     @Html.AntiForgeryToken()
                     <button type="submit" class="link-button">Sign out</button>
                 </form>
+                <div class="version" title="Build @AppVersion.Commit">HRS Fiscal @AppVersion.Version</div>
             </div>
         </nav>
         <main class="content">

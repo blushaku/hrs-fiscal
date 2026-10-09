@@ -23,6 +23,7 @@ using Hrs.Fiscal.Server.Data;
 using Hrs.Fiscal.Server.Flip;
 using Hrs.Fiscal.Server.Services;
 using Hrs.Fiscal.Server.Signing;
+using Hrs.Fiscal.Server.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -56,18 +57,25 @@ builder.Services
         o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
+// Permissions per role are editable (Settings › Roles & permissions); Admin always has all of them.
+builder.Services.AddSingleton<RolePermissions>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(Policies.Admin, p => p.RequireRole(Roles.Admin))
-    .AddPolicy(Policies.Export, p => p.RequireRole(Roles.Supervisor, Roles.Admin, Roles.Auditor))
-    .AddPolicy(Policies.Reprint, p => p.RequireRole(Roles.Cashier, Roles.Supervisor, Roles.Admin))
+    .AddPermissionPolicies()
     .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
 builder.Services.AddRazorPages(o =>
 {
     o.Conventions.AllowAnonymousToPage("/Login");
-    o.Conventions.AuthorizeFolder("/Settings", Policies.Admin);
-    o.Conventions.AuthorizePage("/Export/Index", Policies.Export);
-    o.Conventions.AuthorizeFolder("/FlipMessages", Policies.Export);
+    o.Conventions.AuthorizeFolder("/Receipts", Permissions.Policy(Permissions.ReceiptsView));
+    o.Conventions.AuthorizeFolder("/Audit", Permissions.Policy(Permissions.AuditView));
+    o.Conventions.AuthorizeFolder("/Export", Permissions.Policy(Permissions.Export));
+    o.Conventions.AuthorizeFolder("/FlipMessages", Permissions.Policy(Permissions.FlipView));
+    foreach (var page in new[] { "/Settings/Index", "/Settings/Business", "/Settings/Mapping" })
+        o.Conventions.AuthorizePage(page, Permissions.Policy(Permissions.SettingsManage));
+    o.Conventions.AuthorizePage("/Settings/Workstations", Permissions.Policy(Permissions.WorkstationsManage));
+    o.Conventions.AuthorizePage("/Settings/Users", Permissions.Policy(Permissions.UsersManage));
+    o.Conventions.AuthorizePage("/Settings/Roles", Permissions.Policy(Permissions.UsersManage));
 });
 
 var app = builder.Build();
@@ -98,6 +106,10 @@ try
 {
     await MigrateAsync(app);
     await BootstrapAdminAsync(app);
+    // Which release ran when: part of the audit trail (certification: installed version = certified version).
+    using (var scope = app.Services.CreateScope())
+        await scope.ServiceProvider.GetRequiredService<AuditLog>().WriteAsync("system", AuditLog.Actions.ServiceStarted, "version", AppVersion.Version,
+            new { version = AppVersion.Version, commit = AppVersion.Commit, machine = Environment.MachineName });
 }
 catch (Exception ex)
 {
@@ -121,7 +133,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", component = "hrs-fiscal-server" })).AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "ok", component = "hrs-fiscal-server", version = AppVersion.Version, commit = AppVersion.Commit })).AllowAnonymous();
 
 // Endpoint called by Oracle FLIP over the hotel LAN (OPERA: Fiscal Folio parameter "FLIP Server Address",
 // Fiscal Terminals "Address and Port"). Any method and any path under /flip is accepted and stored as received.
@@ -133,19 +145,19 @@ app.MapGet("/flip-messages/{id:long}/raw", async (long id, FlipCapture capture) 
 {
     var m = await capture.GetAsync(id);
     return m is null ? Results.NotFound() : Results.File(m.Body, m.ContentType ?? "application/octet-stream", $"flip-message-{id}.bin");
-}).RequireAuthorization(Policies.Export);
+}).RequireAuthorization(Permissions.Policy(Permissions.FlipView));
 
 app.MapGet("/receipts/{id:long}/qr.svg", async (long id, ReceiptQueries q) =>
 {
     var r = await q.GetAsync(id);
     return r is null ? Results.NotFound() : Results.Text(QrRenderer.Svg(r.QrString), "image/svg+xml");
-});
+}).RequireAuthorization(Permissions.Policy(Permissions.ReceiptsView));
 
 app.MapGet("/receipts/{id:long}/copy.pdf", async (long id, Exporter exporter, HttpContext http) =>
 {
     var result = await exporter.ReceiptCopyPdfAsync(id, http.User.Identity!.Name!, http.RequestAborted);
     return result is null ? Results.NotFound() : Results.File(result.Content, result.ContentType, result.FileName);
-});
+}).RequireAuthorization(Permissions.Policy(Permissions.ReceiptsCopy));
 
 app.MapGet("/export/{dataset}", async (string dataset, string format, DateOnly? from, DateOnly? to, string? requestedBy,
         long? terminal, string? status, string? action, Exporter exporter, HttpContext http) =>
@@ -154,7 +166,7 @@ app.MapGet("/export/{dataset}", async (string dataset, string format, DateOnly? 
             terminal, string.IsNullOrEmpty(status) ? null : status, string.IsNullOrEmpty(action) ? null : action);
         return result is null ? Results.BadRequest() : Results.File(result.Content, result.ContentType, result.FileName);
     })
-    .RequireAuthorization(Policies.Export);
+    .RequireAuthorization(Permissions.Policy(Permissions.Export));
 
 app.MapPost("/logout", async (HttpContext http, AuditLog audit) =>
 {
@@ -190,10 +202,6 @@ static async Task BootstrapAdminAsync(WebApplication app)
     app.Logger.LogWarning("Created initial 'admin' user. Remove Bootstrap:AdminPassword from configuration now.");
 }
 
-public static class Policies
-{
-    public const string Admin = "Admin", Export = "Export", Reprint = "Reprint";
-}
 
 public static class UserExtensions
 {

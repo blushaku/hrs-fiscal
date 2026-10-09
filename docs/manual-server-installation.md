@@ -99,15 +99,24 @@ The tables are created automatically when the HRS service starts the first time 
 5. **Immediately**: Settings › Users › change the admin password, create personal accounts (see roles below), then remove
    the `AdminPassword` value from `C:\Program Files\HRS Fiscal\Server\appsettings.Production.json` and restart the service.
 
-**Roles**
+**Roles and permissions**
 
-| Role | Can |
-|---|---|
-| Cashier | View receipts, download receipt copies (marked *KOPJE E KUPONIT*, logged) |
-| Supervisor | + exports (CSV/PDF), FLIP messages page |
-| Auditor | Read everything, exports; no changes. For the hotel's accountant or a tax inspector |
-| Admin | + all settings, users and workstations |
+Each user has one role: Cashier, Supervisor, Auditor or Admin. What a role may see and do is set under
+*Settings › Roles & permissions* (a checkbox matrix, every change logged). The menu, the dashboard and the buttons
+follow these permissions. For example, a cashier sees *Find a receipt* instead of the system status.
+Defaults:
 
+| Permission | Cashier | Supervisor | Auditor | Admin |
+|---|---|---|---|---|
+| System status on the dashboard (OPERA → FLIP → ATK, alerts) | | ✓ | | ✓ |
+| View receipts | ✓ | ✓ | ✓ | ✓ |
+| Download receipt copies (*KOPJE E KUPONIT*, logged) | ✓ | ✓ | | ✓ |
+| Export reports (receipts, workstation summary, audit log) | | ✓ | ✓ | ✓ |
+| View audit log / run integrity check | | ✓ | ✓ | ✓ |
+| View FLIP messages (contain guest data) | | ✓ | | ✓ |
+| Manage settings / workstations / users and permissions | | | | ✓ |
+
+Admin always has every permission, so nobody can lock the system. Changes apply on the next page a user opens.
 Accounts are never deleted, only deactivated, so the audit log always shows who did what.
 
 ## 5. Configure
@@ -192,7 +201,7 @@ reprints, registration and settings changes. Every export is itself logged with 
 
 ## 6. Check the installation
 
-- [ ] `http://<server>:5080/health` answers `{"status":"ok"}`.
+- [ ] `http://<server>:5080/health` answers `{"status":"ok", "version": …}`; the version is also shown at the bottom of the menu.
 - [ ] Sign-in works; the default admin password is changed and removed from the settings file.
 - [ ] Dashboard shows the business, all workstations and certificate dates.
 - [ ] Audit log › **Integrity check** reports the chain as intact.

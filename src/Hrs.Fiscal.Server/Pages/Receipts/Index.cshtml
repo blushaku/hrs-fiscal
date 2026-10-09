@@ -1,9 +1,9 @@
 @page
 @model Hrs.Fiscal.Server.Pages.Receipts.IndexModel
-@using Microsoft.AspNetCore.Authorization
-@inject IAuthorizationService Authz
+@inject RolePermissions RolePerms
 @{
-    var canExport = (await Authz.AuthorizeAsync(User, Policies.Export)).Succeeded;
+    var perms = await RolePerms.ForUserAsync(User);
+    var canExport = perms.Contains(Permissions.Export);
     ViewData["Title"] = "Receipts";
     var statuses = new (string? Key, string Label)[] { (null, "All"), ("accepted", "Accepted"), ("pending", "Waiting to send"), ("rejected", "Rejected") };
 }

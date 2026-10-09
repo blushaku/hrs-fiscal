@@ -1,12 +1,15 @@
+@inject RolePermissions RolePerms
 @{
     var path = Context.Request.Path.Value ?? "";
     string Cls(string p) => string.Equals(path, p, StringComparison.OrdinalIgnoreCase) || (p == "/Settings" && path.Equals("/Settings/Index", StringComparison.OrdinalIgnoreCase)) ? "pill on" : "pill";
+    var perms = await RolePerms.ForUserAsync(User);
 }
 <nav class="subnav" aria-label="Settings sections">
-    <a class="@Cls("/Settings")" href="/Settings">General</a>
-    <a class="@Cls("/Settings/Business")" href="/Settings/Business">Business &amp; unit</a>
-    <a class="@Cls("/Settings/Workstations")" href="/Settings/Workstations">Workstations</a>
-    <a class="@Cls("/Settings/Mapping")" href="/Settings/Mapping">OPERA overrides &amp; VAT</a>
-    <a class="@Cls("/Settings/Users")" href="/Settings/Users">Users</a>
+    @if (perms.Contains(Permissions.SettingsManage)) { <a class="@Cls("/Settings")" href="/Settings">General</a> }
+    @if (perms.Contains(Permissions.SettingsManage)) { <a class="@Cls("/Settings/Business")" href="/Settings/Business">Business &amp; unit</a> }
+    @if (perms.Contains(Permissions.WorkstationsManage)) { <a class="@Cls("/Settings/Workstations")" href="/Settings/Workstations">Workstations</a> }
+    @if (perms.Contains(Permissions.SettingsManage)) { <a class="@Cls("/Settings/Mapping")" href="/Settings/Mapping">OPERA overrides &amp; VAT</a> }
+    @if (perms.Contains(Permissions.UsersManage)) { <a class="@Cls("/Settings/Users")" href="/Settings/Users">Users</a> }
+    @if (perms.Contains(Permissions.UsersManage)) { <a class="@Cls("/Settings/Roles")" href="/Settings/Roles">Roles &amp; permissions</a> }
 </nav>
-<p class="small muted" style="margin: 0">Only administrators can change settings. Every change is recorded in the audit log with its old and new value.</p>
+<p class="small muted" style="margin: 0">Every change is recorded in the audit log with its old and new value.</p>

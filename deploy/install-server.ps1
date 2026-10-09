@@ -58,7 +58,7 @@ New-NetFirewallRule -DisplayName "HRS Fiscal FLIP ($FlipPort)" -Direction Inboun
 if ($FlipTcpPort -gt 0) { New-NetFirewallRule -DisplayName "HRS Fiscal FLIP TCP ($FlipTcpPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipTcpPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null }
 Start-Service $svc
 Start-Sleep 3
-try { Invoke-RestMethod "http://127.0.0.1:$AdminPort/health" | Out-Null; Write-Host "Health check OK." -ForegroundColor Green }
+try { $h = Invoke-RestMethod "http://127.0.0.1:$AdminPort/health"; Write-Host "Health check OK. HRS Fiscal Server $($h.version) ($($h.commit))." -ForegroundColor Green }
 catch { Write-Host "Service started but /health did not answer. See Event Viewer > Windows Logs > Application (source Hrs.Fiscal.Server)." -ForegroundColor Red }
 
 Write-Host "HRS Fiscal Server installed and started."

@@ -1,4 +1,5 @@
 @page "{id:long}"
+@inject RolePermissions RolePerms
 @model Hrs.Fiscal.Server.Pages.Receipts.DetailModel
 @using System.Globalization
 @{
@@ -15,7 +16,7 @@
         <p>@CouponTypes.Label(r.CouponType) · @Model.Clock.Format(r.IssuedAt) · @(r.SourceDocument ?? "no source document")</p>
     </div>
     <div class="actions">
-        <a class="btn primary" href="/receipts/@r.Id/copy.pdf">Download copy (PDF)</a>
+        @if ((await RolePerms.ForUserAsync(User)).Contains(Permissions.ReceiptsCopy)) { <a class="btn primary" href="/receipts/@r.Id/copy.pdf">Download copy (PDF)</a> }
     </div>
 </div>
 
@@ -83,7 +84,7 @@
             }
             <div>Excl. VAT</div><div class="mono">@Fmt.Eur(c.TotalNoTax)</div>
             @if (c.TotalDiscount > 0) { <div>Discount</div><div class="mono">@Fmt.Eur(c.TotalDiscount)</div> }
-            <div style="font-weight: 600; color: var(--ink)">Total</div><div class="mono" style="font-weight: 600">@Fmt.Eur(c.Total)</div>
+            <div style="font-weight: 500; color: var(--ink)">Total</div><div class="mono" style="font-weight: 500">@Fmt.Eur(c.Total)</div>
             @foreach (var p in c.Payments)
             {
                 <div>@Hrs.Fiscal.Server.Pages.Receipts.DetailModel.PaymentLabel(p.Type)</div><div class="mono">@Fmt.Eur(p.Amount)</div>
@@ -116,7 +117,7 @@
 }
 
 <details class="card">
-    <summary style="cursor: pointer; font-weight: 600">Original message from OPERA (FLIP)</summary>
+    <summary style="cursor: pointer; font-weight: 500">Original message from OPERA (FLIP)</summary>
     @if (Model.Payload is null)
     {
         <p class="muted">No source message stored.</p>
@@ -129,7 +130,7 @@
 </details>
 
 <details class="card">
-    <summary style="cursor: pointer; font-weight: 600">Signed data sent to ATK</summary>
+    <summary style="cursor: pointer; font-weight: 500">Signed data sent to ATK</summary>
     <p class="small muted">Base64 protobuf PosCoupon and its ECDSA signature, exactly as transmitted.</p>
     <pre class="payload">details: @Convert.ToBase64String(r.PosCoupon)
 

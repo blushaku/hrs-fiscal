@@ -1,19 +1,22 @@
 @page
 @model Hrs.Fiscal.Server.Pages.Audit.IndexModel
-@using Microsoft.AspNetCore.Authorization
-@inject IAuthorizationService Authz
+@inject RolePermissions RolePerms
 @{
     ViewData["Title"] = "Audit log";
-    var canExport = (await Authz.AuthorizeAsync(User, Policies.Export)).Succeeded;
+    var perms = await RolePerms.ForUserAsync(User);
+    var canExport = perms.Contains(Permissions.Export);
 }
 <div class="page-head">
     <div>
         <h1>Audit log</h1>
         <p>Every login, receipt, transmission, reprint, export and settings change. Entries are chained and cannot be altered.</p>
     </div>
-    <form method="post" asp-page-handler="Check">
-        <button type="submit" class="btn primary">Run integrity check</button>
-    </form>
+    @if (perms.Contains(Permissions.AuditIntegrity))
+    {
+        <form method="post" asp-page-handler="Check">
+            <button type="submit" class="btn primary">Run integrity check</button>
+        </form>
+    }
 </div>
 
 @if (Model.Integrity is { } i)
