@@ -281,9 +281,16 @@ WHERE s.status = 'pending';
 -- Least-privilege application role
 -- ---------------------------------------------------------------------------
 
+-- Created by the DBA at installation (CREATE ROLE hrs_fiscal_app NOLOGIN;). The database owner normally has no
+-- CREATEROLE privilege, so this only creates it when allowed and otherwise stops with instructions.
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'hrs_fiscal_app') THEN
-        CREATE ROLE hrs_fiscal_app NOLOGIN;
+        BEGIN
+            CREATE ROLE hrs_fiscal_app NOLOGIN;
+        EXCEPTION WHEN insufficient_privilege THEN
+            RAISE EXCEPTION 'Role hrs_fiscal_app is missing. As the postgres superuser run: CREATE ROLE hrs_fiscal_app NOLOGIN;  then start HRS Fiscal Server again.'
+                USING ERRCODE = 'insufficient_privilege';
+        END;
     END IF;
 END $$;
 

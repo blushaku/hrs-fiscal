@@ -90,8 +90,17 @@ if (args.Length > 0 && args[0] is "create-user" or "seed-demo")
     return 0;
 }
 
-await MigrateAsync(app);
-await BootstrapAdminAsync(app);
+try
+{
+    await MigrateAsync(app);
+    await BootstrapAdminAsync(app);
+}
+catch (Exception ex)
+{
+    // Written to the Windows event log (source Hrs.Fiscal.Server) before the service stops.
+    app.Logger.LogCritical(ex, "HRS Fiscal Server could not start: {Reason}", ex.Message);
+    throw;
+}
 
 if (!app.Environment.IsDevelopment()) app.UseExceptionHandler("/Error");
 app.UseStaticFiles();

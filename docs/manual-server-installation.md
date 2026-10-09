@@ -59,6 +59,7 @@ Nothing is exposed to the internet. Do not forward ports 5080/5100 from outside.
 2. Create the database and its owner. Open *SQL Shell (psql)* as `postgres` and run (choose your own password):
    ```sql
    CREATE ROLE hrs_fiscal_owner LOGIN PASSWORD 'choose-a-long-password';
+   CREATE ROLE hrs_fiscal_app NOLOGIN;   -- least-privilege role the schema grants to; the owner may not create roles
    CREATE DATABASE hrs_fiscal OWNER hrs_fiscal_owner ENCODING 'UTF8' TEMPLATE template0;
    ```
 3. If PostgreSQL runs on the same server, leave `listen_addresses = 'localhost'` (the default). If it is on another
@@ -226,7 +227,10 @@ retention period. Export or hand over a backup instead.
 
 | Symptom | Check |
 |---|---|
-| Service stops right after start | Event Viewer › Windows Logs › Application, source *Hrs.Fiscal.Server*. Usually the database connection string or password |
+| Service stops right after start | Event Viewer › Windows Logs › Application, source *Hrs.Fiscal.Server* (or *.NET Runtime*). Faster: stop the service and run `& "C:\Program Files\HRS Fiscal\Server\Hrs.Fiscal.Server.exe" --contentRoot "C:\Program Files\HRS Fiscal\Server" --environment Production` in an elevated PowerShell to see the error on screen. Usual causes below |
+| *Role hrs_fiscal_app is missing* / *permission denied to create role* | As `postgres`: `CREATE ROLE hrs_fiscal_app NOLOGIN;` then `Start-Service HRSFiscalServer` (section 3) |
+| *password authentication failed* / *database does not exist* | Connection string in `appsettings.Production.json`: user, password, database name |
+| *address already in use* | Port 5080 or 5100 is used by another program: re-run the installer with `-AdminPort`/`-FlipPort` |
 | Admin page not reachable from another PC | Firewall rule *HRS Fiscal admin (5080)*; network profile must be Domain or Private, not Public |
 | FLIP messages do not arrive | Firewall rule *HRS Fiscal FLIP (5100)* and its allowed IP (`-FlipSourceIp`); FLIP's partner address; OPERA fiscal configuration |
 | ATK registration or sending times out | Outbound HTTPS to `fiskalizimi(-test).atk-ks.org` through the hotel firewall/proxy |
