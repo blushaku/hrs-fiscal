@@ -84,7 +84,26 @@
             <label class="field">Test reply: body
                 <textarea asp-for="Input.FlipStubBody" rows="3" placeholder="Empty, or a sample answer to see how OPERA reacts"></textarea>
             </label>
-            <p class="small muted" style="margin: 0">Received messages are listed under <a href="/FlipMessages">FLIP messages</a>.</p>
+            <h3 style="margin: 8px 0 0; font-size: 15px">Access token</h3>
+            @if (Model.NewToken is { } tok)
+            {
+                <div class="notice" style="display: flex; flex-direction: column; gap: 6px">
+                    <strong>Copy this token into FLIP's partner configuration now. It is not shown again.</strong>
+                    <code class="mono" style="word-break: break-all; user-select: all; font-size: 14px" id="flip-token">@tok</code>
+                    <span class="small">FLIP sends it as <span class="mono">@Model.Token.Header: Bearer &lt;token&gt;</span> (the bare token is accepted too).</span>
+                </div>
+            }
+            <p class="small" style="margin: 0">
+                @if (Model.Token.HasToken) { <span>Token ending in <span class="mono">…@Model.Token.Hint</span>, created @(Model.Token.CreatedUtc is { } cu ? Model.Clock.ToLocal(cu).ToString("dd.MM.yyyy HH:mm") : "").</span> }
+                else { <span class="muted">No token yet: FLIP requests are accepted from the allowed IP without a token.</span> }
+            </p>
+            <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink)">
+                <input type="checkbox" asp-for="Input.FlipAuthRequired" style="width: 20px; height: 20px"> Require the token (requests without it get 401)
+            </label>
+            <label class="field">Header that carries the token <input type="text" asp-for="Input.FlipAuthHeader" placeholder="Authorization"></label>
+            <div><button type="submit" class="btn" formaction="/Settings?handler=GenerateToken" formnovalidate>@(Model.Token.HasToken ? "Generate new token (replaces the current one)" : "Generate token")</button></div>
+            <p class="small muted" style="margin: 0">Only a hash of the token is stored. Refused requests are recorded without their content and logged as FLIP_AUTH_FAILED. Raw TCP cannot carry a token and is refused while the token is required.
+                Received messages are listed under <a href="/FlipMessages">FLIP messages</a>.</p>
         </section>
     </div>
     <div><button type="submit" class="btn primary">Save settings</button></div>

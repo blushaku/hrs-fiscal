@@ -124,6 +124,7 @@ All settings below are stored in the database and every change is written to the
 | **Signing** | *Workstation client* or *Central* — see 5.4 |
 | OPERA overrides | Off (default). Turn on only if OPERA cannot send a field correctly; then set the codes under *OPERA overrides & VAT* |
 | OPERA / FLIP connection | **Capture** during setup (records what FLIP sends). **Live** once fiscalization is enabled |
+| FLIP access token | **Generate token**, copy it into FLIP's partner configuration (shown only once), keep *Require the token* on. Header: `Authorization` unless FLIP uses another one. *Generate new token* replaces the old one at once, so update FLIP at the same time |
 | VAT calculation | Round VAT half-up (default) — pending ATK's official rule |
 | Retention | Placeholder 10 years until the legal period is confirmed. Nothing is ever deleted automatically |
 
@@ -187,8 +188,8 @@ every folio OPERA sends must appear there.
 - [ ] Sign-in works; the default admin password is changed and removed from the settings file.
 - [ ] Dashboard shows the business, all workstations and certificate dates.
 - [ ] Audit log › **Integrity check** reports the chain as intact.
-- [ ] From the FLIP machine: `Invoke-WebRequest http://<HRS-IP>:5100/flip -Method Post -Body test` returns the test
-      reply and the message appears under FLIP messages.
+- [ ] From the FLIP machine: `Invoke-WebRequest http://<HRS-IP>:5100/flip -Method Post -Body test -Headers @{Authorization="Bearer <token>"}`
+      returns the test reply and the message appears under FLIP messages; without the header it returns 401.
 - [ ] Backup task (section 7) ran once and the event log shows *Backup OK*.
 
 ## 7. Backup
@@ -233,6 +234,7 @@ retention period. Export or hand over a backup instead.
 | *password authentication failed* / *database does not exist* | Connection string in `appsettings.Production.json`: user, password, database name |
 | *address already in use* | Port 5080 or 5100 is used by another program: re-run the installer with `-AdminPort`/`-FlipPort` |
 | Admin page not reachable from another PC | Firewall rule *HRS Fiscal admin (5080)*; network profile must be Domain or Private, not Public |
+| FLIP gets *401 Unauthorized* | Token missing or wrong in FLIP, or FLIP uses another header: the FLIP messages page shows refused requests (mode *rejected*, header check *missing*/*invalid*) and which headers FLIP sent. Set the header name or generate a new token |
 | FLIP messages do not arrive | Firewall rule *HRS Fiscal FLIP (5100)* and its allowed IP (`-FlipSourceIp`); FLIP's partner address; OPERA fiscal configuration |
 | ATK registration or sending times out | Outbound HTTPS to `fiskalizimi(-test).atk-ks.org` through the hotel firewall/proxy |
 | "Register with ATK" says to use the client | The workstation is in workstation-client mode (Signing column) |
@@ -242,7 +244,8 @@ retention period. Export or hand over a backup instead.
 
 ## 10. Security checklist
 
-- [ ] Only the FLIP machine can reach port 5100; only hotel admin PCs need port 5080.
+- [ ] Only the FLIP machine can reach port 5100, and FLIP authenticates with the access token (*Require the token* on);
+      only hotel admin PCs need port 5080.
 - [ ] Personal user accounts with strong passwords; no shared *admin* account in daily use.
 - [ ] `appsettings.Production.json` readable only by Administrators and SYSTEM (the installer sets this).
 - [ ] The `postgres` superuser password is in the hotel's password safe and not used by the application.

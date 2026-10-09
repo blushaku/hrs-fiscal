@@ -111,6 +111,20 @@ one terminal is marked *Primary*, OPERA always uses it **without asking**. Becau
 POS, do not mark a terminal as Primary unless the property has only one workstation; otherwise every receipt would be
 issued under that one POS. Train front-office staff to pick their own workstation's terminal.
 
+## 6a. FLIP → HRS authentication (access token)
+
+FLIP authenticates to the HRS Fiscal Server with a token:
+1. HRS › Settings › General › *OPERA / FLIP connection* › **Generate token**. Copy the token: it is shown only once
+   (HRS stores only a hash). *Require the token* is switched on automatically.
+2. Enter the token in FLIP's configuration for the HRS fiscal partner **[Oracle]** (field name per FLIP's guide).
+   HRS accepts it in the `Authorization` header as `Bearer <token>` or as the bare token. If FLIP sends it in another
+   header, enter that header name in HRS (*Header that carries the token*).
+3. Send a test folio. Requests without the right token are answered with **401**, recorded on the FLIP messages page
+   (mode *rejected*, without content) and logged as `FLIP_AUTH_FAILED`.
+
+To rotate the token, generate a new one in HRS and update FLIP straight away: the old token stops working at once.
+Together with the firewall rule (port 5100 open only to the FLIP machine) this means only FLIP can submit folios.
+
 ## 7. Fiscal Commands
 
 Administration › **Financials › Fiscal Management › Fiscal Commands**: the commands offered depend on the fiscal

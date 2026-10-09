@@ -33,6 +33,7 @@ builder.Services.AddFiscalDatabase(builder.Configuration);
 builder.Services.AddScoped<Exporter>();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<FlipCapture>();
+builder.Services.AddScoped<FlipAuth>();
 builder.Services.AddHostedService<FlipTcpListener>();
 builder.Services.AddServerKeyStore(builder.Configuration);
 builder.Services.AddSingleton<IAtkClientFactory, AtkClientFactory>();

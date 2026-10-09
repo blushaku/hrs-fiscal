@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Hrs.Fiscal.Server.Data;
+using Hrs.Fiscal.Server.Flip;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Hrs.Fiscal.Server.Pages.Settings;
 
-public sealed class IndexModel(SettingsStore settings) : PageModel
+public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, PropertyClock clock) : PageModel
 {
     public sealed class GeneralSettings
     {
@@ -24,12 +25,21 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
         [Range(100, 599)] public int FlipStubStatus { get; set; } = 200;
         public string? FlipStubContentType { get; set; } = "text/plain";
         public string? FlipStubBody { get; set; }
+        public bool FlipAuthRequired { get; set; }
+        [RegularExpression("^[A-Za-z0-9-]{1,64}$", ErrorMessage = "Header name: letters, digits and '-' only.")] public string? FlipAuthHeader { get; set; } = FlipAuth.DefaultHeader;
     }
+
+    public PropertyClock Clock => clock;
+    public FlipAuth.State Token { get; private set; } = new(false, FlipAuth.DefaultHeader, false, null, null);
+    /// <summary>A just-generated token, shown once.</summary>
+    public string? NewToken { get; private set; }
 
     [BindProperty] public GeneralSettings Input { get; set; } = new();
 
     public async Task OnGetAsync()
     {
+        Token = await flipAuth.StateAsync();
+        NewToken = TempData["FlipToken"] as string;
         var all = await settings.AllAsync();
         int Int(string k, int d) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : d;
         long Long(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
@@ -51,11 +61,16 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
             FlipStubStatus = Int("flip_stub_status", 200),
             FlipStubContentType = Str("flip_stub_content_type", "text/plain"),
             FlipStubBody = Str("flip_stub_body", ""),
+            FlipAuthRequired = Bool("flip_auth_required"),
+            FlipAuthHeader = Str("flip_auth_header", FlipAuth.DefaultHeader),
         };
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        Token = await flipAuth.StateAsync();
+        if (Input.FlipAuthRequired && !Token.HasToken)
+            ModelState.AddModelError("", "Generate a FLIP access token before requiring it.");
         if (!ModelState.IsValid) return Page();
         var changed = await settings.SetManyAsync(new Dictionary<string, object?>
         {
@@ -73,11 +88,21 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
             ["flip_stub_status"] = Input.FlipStubStatus,
             ["flip_stub_content_type"] = string.IsNullOrWhiteSpace(Input.FlipStubContentType) ? "text/plain" : Input.FlipStubContentType.Trim(),
             ["flip_stub_body"] = Input.FlipStubBody ?? "",
+            ["flip_auth_required"] = Input.FlipAuthRequired,
+            ["flip_auth_header"] = FlipAuth.NormalizeHeader(Input.FlipAuthHeader),
         }, User.Identity!.Name!);
         var mustRegister = (await settings.TerminalsAsync())
             .Count(t => t.SigningState(Input.SigningModeDefault) == TerminalSigningState.RegisterAgain);
         TempData["Message"] = (changed == 0 ? "No changes." : $"{changed} setting(s) saved and logged.")
             + (mustRegister > 0 ? $" {mustRegister} workstation(s) must now be registered again under Workstations before they can sign." : "");
+        return RedirectToPage();
+    }
+
+    /// <summary>Generates a new FLIP token (replacing the old one) and shows it once.</summary>
+    public async Task<IActionResult> OnPostGenerateTokenAsync()
+    {
+        TempData["FlipToken"] = await flipAuth.GenerateAsync(User.Identity!.Name!);
+        TempData["Message"] = "New FLIP access token created and required from now on. Copy it into FLIP now: it is shown only once.";
         return RedirectToPage();
     }
 }

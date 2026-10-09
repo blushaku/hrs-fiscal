@@ -108,6 +108,22 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         return changed;
     }
 
+    /// <summary>
+    /// Writes settings whose values must not appear in the audit log (e.g. the FLIP token hash). The caller writes its own
+    /// audit entry; here only the keys are logged.
+    /// </summary>
+    public async Task SetSecretAsync(IReadOnlyDictionary<string, object?> values, string actor, CancellationToken ct = default)
+    {
+        await using var conn = await db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        foreach (var (key, value) in values)
+            await conn.ExecuteAsync("""
+                INSERT INTO fiscal.setting (key, value, updated_by) VALUES (@key, @value::jsonb, @actor)
+                ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = now(), updated_by = excluded.updated_by
+                """, new { key, value = JsonSerializer.Serialize(value), actor }, tx);
+        await tx.CommitAsync(ct);
+    }
+
     /// <summary>Whether the optional per-code OPERA overrides are applied (setting opera_overrides_enabled).</summary>
     public async Task<bool> OperaOverridesEnabledAsync(CancellationToken ct = default) =>
         await GetAsync("opera_overrides_enabled", false, ct);

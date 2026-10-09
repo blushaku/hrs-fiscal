@@ -95,9 +95,40 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
     }
 
     /// <summary>HTTP entry point for every method and path under /flip.</summary>
-    public static async Task<IResult> HandleHttpAsync(HttpContext http, FlipCapture capture)
+    public static async Task<IResult> HandleHttpAsync(HttpContext http, FlipCapture capture, FlipAuth auth)
     {
         var ct = http.RequestAborted;
+        var authState = await auth.StateAsync(ct);
+        var authResult = await auth.CheckAsync(http.Request.Headers, ct);
+        var remote = http.Connection.RemoteIpAddress?.ToString();
+        var path = http.Request.Path + http.Request.QueryString;
+
+        // Secrets are never stored: the token header (and cookies) are replaced by the verification result.
+        var headers = http.Request.Headers
+            .Where(h => !h.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+                        && !h.Key.Equals(authState.Header, StringComparison.OrdinalIgnoreCase)
+                        && !h.Key.Equals("Cookie", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(h => h.Key, h => h.Value.ToString());
+        foreach (var name in new[] { "Authorization", authState.Header }.Distinct(StringComparer.OrdinalIgnoreCase))
+            if (http.Request.Headers.ContainsKey(name)) headers[name] = "[present, not stored]";
+        headers["X-HRS-Token-Check"] = authResult switch
+        {
+            FlipAuthResult.Valid => "valid",
+            FlipAuthResult.Missing => "missing",
+            FlipAuthResult.Invalid => "invalid",
+            _ => "not required",
+        };
+
+        if (authResult is FlipAuthResult.Missing or FlipAuthResult.Invalid)
+        {
+            // Rejected requests are logged without their body, so nothing unauthenticated enters the archive.
+            await capture.StoreAsync("http", remote, http.Request.Method, path, headers, http.Request.ContentType, [], "rejected",
+                StatusCodes.Status401Unauthorized, "", ct);
+            await capture.AuditAuthFailureAsync(remote, path, authResult, ct);
+            http.Response.Headers.WWWAuthenticate = "Bearer";
+            return Results.StatusCode(StatusCodes.Status401Unauthorized);
+        }
+
         using var ms = new MemoryStream();
         var buffer = new byte[81920];
         int read;
@@ -106,20 +137,19 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
             if (ms.Length + read > MaxBodyBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             ms.Write(buffer, 0, read);
         }
-        var headers = http.Request.Headers
-            .Where(h => !h.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) && !h.Key.Equals("Cookie", StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(h => h.Key, h => h.Value.ToString());
-        if (http.Request.Headers.ContainsKey("Authorization")) headers["Authorization"] = "[present, not stored]";
 
         var mode = await capture.ModeAsync(ct);
         FlipStub answer = mode == "capture"
             ? await capture.StubAsync(ct)
             : new FlipStub(StatusCodes.Status501NotImplemented, "text/plain", "HRS Fiscal live FLIP processing is not available yet.");
 
-        await capture.StoreAsync("http", http.Connection.RemoteIpAddress?.ToString(), http.Request.Method,
-            http.Request.Path + http.Request.QueryString, headers, http.Request.ContentType, ms.ToArray(), mode, answer.Status, answer.Body, ct);
+        await capture.StoreAsync("http", remote, http.Request.Method, path, headers, http.Request.ContentType, ms.ToArray(), mode, answer.Status, answer.Body, ct);
         return Results.Text(answer.Body, answer.ContentType, Encoding.UTF8, answer.Status);
     }
+
+    public Task AuditAuthFailureAsync(string? remote, string? path, FlipAuthResult result, CancellationToken ct = default) =>
+        audit.WriteAsync("flip", AuditLog.Actions.FlipAuthFailed, "flip_message", null,
+            new { remote, path, reason = result == FlipAuthResult.Missing ? "no token" : "wrong token" }, ct: ct);
 }
 
 /// <summary>
@@ -167,6 +197,15 @@ public sealed class FlipTcpListener(IServiceScopeFactory scopes, IConfiguration 
 
             using var scope = scopes.CreateScope();
             var capture = scope.ServiceProvider.GetRequiredService<FlipCapture>();
+            if ((await scope.ServiceProvider.GetRequiredService<FlipAuth>().StateAsync(ct)).Required)
+            {
+                // Raw TCP has no place for a token: refused while the token is required.
+                var remote = client.Client.RemoteEndPoint?.ToString();
+                await capture.StoreAsync("tcp", remote, null, null, new Dictionary<string, string> { ["X-HRS-Token-Check"] = "not possible over TCP" },
+                    null, [], "rejected", null, "", ct);
+                await capture.AuditAuthFailureAsync(remote, null, FlipAuthResult.Missing, ct);
+                return;
+            }
             var stub = await capture.StubAsync(ct);
             await capture.StoreAsync("tcp", client.Client.RemoteEndPoint?.ToString(), null, null, new Dictionary<string, string>(),
                 null, ms.ToArray(), await capture.ModeAsync(ct), null, stub.Body, ct);
