@@ -7,53 +7,44 @@
 <div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 
-<div class="grid">
-    <section class="card">
-        <div class="tile-head"><h2>Users</h2>@if (!Model.FormOpen) { <a class="btn small primary" href="/Settings/Users?Add=true">Add user</a> }</div>
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th><span class="sr-only">Edit</span></th></tr></thead>
-                <tbody>
-                @foreach (var u in Model.All)
-                {
-                    <tr>
-                        <td class="mono">@u.Username</td><td>@u.DisplayName</td><td>@u.Role</td>
-                        <td><span class="badge @(u.Active ? "accepted" : "neutral")">@(u.Active ? "active" : "inactive")</span></td>
-                        <td><a class="btn small" href="/Settings/Users?Edit=@u.Id">Edit</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
-        <p class="small muted" style="margin: 12px 0 0">What each role may do is set under <a href="/Settings/Roles">Roles &amp; permissions</a>. Users are never deleted; deactivate them instead.</p>
-    </section>
+<section class="card">
+    <div class="tile-head"><h2>Users</h2><a class="btn small primary" href="/Settings/Users?Add=true" data-dialog-open="@(editing ? null : "dlg-user")">Add user</a></div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th><span class="sr-only">Edit</span></th></tr></thead>
+            <tbody>
+            @foreach (var u in Model.All)
+            {
+                <tr class="@(u.Id == Model.Input.Id ? "row-current" : "")">
+                    <td class="mono">@u.Username</td><td>@u.DisplayName</td><td>@u.Role</td>
+                    <td><span class="badge @(u.Active ? "accepted" : "neutral")">@(u.Active ? "active" : "inactive")</span></td>
+                    <td style="text-align: right"><a class="btn small" href="/Settings/Users?Edit=@u.Id">Edit</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted" style="margin: 12px 0 0">What each role may do is set under <a href="/Settings/Roles">Roles &amp; permissions</a>. Users are never deleted; deactivate them instead.</p>
+</section>
 
-    @if (Model.FormOpen)
-    {
-    <form method="post" class="card editing" style="display: flex; flex-direction: column; gap: 12px">
-        <h2 style="margin: 0">@(editing ? $"Edit {Model.Input.Username}" : "Add user")</h2>
+<dialog class="modal" id="dlg-user" aria-labelledby="dlg-user-title" data-autoopen="@(Model.FormOpen ? "1" : null)" open="@Model.FormOpen">
+    <div class="modal-head"><h2 id="dlg-user-title">@(editing ? $"Edit {Model.Input.Username}" : "Add user")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Users" aria-label="Close">×</button></div>
+    <form method="post" class="modal-body" data-confirm="@(editing ? $"Save the changes to {Model.Input.Username}?" : "Add this user?")" data-new="@(editing ? null : "1")">
         <div asp-validation-summary="All" class="validation"></div>
         <input type="hidden" asp-for="Input.Id">
-        <label class="field">Username <input type="text" asp-for="Input.Username" readonly="@editing" autocomplete="off"></label>
-        <label class="field">Full name <input type="text" asp-for="Input.DisplayName"></label>
-        <label class="field">Role
-            <select asp-for="Input.Role">
-                @foreach (var r in Roles.All) { <option value="@r">@r</option> }
-            </select>
-        </label>
-        <label class="field">@(editing ? "New password (leave empty to keep)" : "Password") (min. @UserStore.MinPasswordLength characters)
-            <input type="password" asp-for="Input.Password" autocomplete="new-password">
-        </label>
-        @if (editing)
-        {
-            <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink)">
-                <input type="checkbox" asp-for="Input.Active" style="width: 20px; height: 20px"> Active
+        <div class="form-grid">
+            <label class="field">Username <input type="text" asp-for="Input.Username" readonly="@editing" autocomplete="off"></label>
+            <label class="field">Full name <input type="text" asp-for="Input.DisplayName"></label>
+            <label class="field">Role
+                <select asp-for="Input.Role">
+                    @foreach (var r in Roles.All) { <option value="@r">@r</option> }
+                </select>
             </label>
-        }
-        <div class="actions">
-            <button type="submit" class="btn primary">@(editing ? "Save" : "Add user")</button>
-            <a class="btn" href="/Settings/Users">Cancel</a>
+            <label class="field">@(editing ? "New password (leave empty to keep)" : "Password") <input type="password" asp-for="Input.Password" autocomplete="new-password"></label>
         </div>
+        @if (editing) { <label class="check"><input type="checkbox" asp-for="Input.Active"> Active</label> }
+        <p class="small muted">Passwords need at least @UserStore.MinPasswordLength characters.</p>
+        <partial name="_ConfirmBox" model="@(editing ? "Yes, save" : "Yes, add")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">@(editing ? "Save" : "Add user")</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Users">Cancel</button></div>
     </form>
-    }
-</div>
+</dialog>

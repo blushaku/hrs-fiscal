@@ -118,7 +118,13 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             if (key.StartsWith("Input.") && !def.Fields.Contains(key["Input.".Length..])) ModelState.Remove(key);
         if (section == "token" && Input.FlipAuthRequired && !Token.HasToken)
             ModelState.AddModelError("", "Generate a FLIP access token before requiring it.");
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid)
+        {
+            // Keep the other editors filled with the stored values.
+            foreach (var prop in typeof(GeneralSettings).GetProperties().Where(p => !def.Fields.Contains(p.Name)))
+                prop.SetValue(Input, prop.GetValue(Current));
+            return Page();
+        }
 
         var values = new Dictionary<string, object?>
         {

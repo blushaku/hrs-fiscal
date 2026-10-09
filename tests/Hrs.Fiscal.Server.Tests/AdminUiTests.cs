@@ -85,9 +85,11 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
     public async Task Settings_change_is_audited_with_old_and_new_value()
     {
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
-        // Read-only until Edit: no input fields on the overview, the tile's fields only after Edit.
-        Assert.DoesNotContain("name=\"Input.RetentionYears\"", await client.GetStringAsync("/Settings"));
-        Assert.Contains("name=\"Input.RetentionYears\"", await client.GetStringAsync("/Settings?Edit=retention"));
+        // Read-only until Edit: editors are closed pop-ups; ?Edit= (the no-script fallback) opens that one.
+        Assert.DoesNotContain("open=\"open\"", await client.GetStringAsync("/Settings"));
+        var editPage = await client.GetStringAsync("/Settings?Edit=retention");
+        Assert.Matches("id=\"dlg-retention\"[^>]*open=\"open\"", editPage);
+        Assert.Contains("data-confirm=", editPage);
 
         var timeoutBefore = await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'atk_timeout_seconds'");
         var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings?Edit=retention");
@@ -173,7 +175,7 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
     {
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
         var page = await client.GetStringAsync("/Settings/Mapping");
-        Assert.DoesNotContain("name=\"VatInput.Percent\"", page); // lists are read-only
+        Assert.DoesNotContain("open=\"open\"", page); // lists are read-only; editors are closed pop-ups
         Assert.Contains("Add VAT rate", page);
 
         async Task<HttpResponseMessage> Post(string handler, string query, Dictionary<string, string> fields)

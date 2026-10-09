@@ -11,7 +11,7 @@
 </div>
 <partial name="_SettingsNav" />
 
-<form method="post" class="card" style="display: flex; flex-direction: column; gap: 14px">
+<form method="post" class="card" style="display: flex; flex-direction: column; gap: 14px" data-confirm="Save these permission changes?">
     <h2 style="margin: 0">Roles &amp; permissions</h2>
     <div class="table-wrap">
         <table class="matrix">
@@ -46,5 +46,6 @@
         </table>
     </div>
     <p class="small muted" style="margin: 0">Administrators always have every permission, so the system can never be locked. Changes are recorded in the audit log and apply on the next page a user opens; nobody needs to sign in again.</p>
-    <div class="actions"><button type="submit" class="btn primary">Save permissions</button></div>
+    <partial name="_ConfirmBox" model="@("Yes, save")" />
+    <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save permissions</button></div>
 </form>

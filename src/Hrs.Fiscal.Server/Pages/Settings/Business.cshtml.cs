@@ -24,8 +24,8 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
     [BindProperty(SupportsGet = true)] public bool Edit { get; set; }
     public bool Locked { get; private set; }
     public BusinessInfo? Current { get; private set; }
-    /// <summary>The form is shown when editing, on a failed save, or when nothing is set up yet.</summary>
-    public bool Editing => Edit || Current is null || !ModelState.IsValid;
+    /// <summary>The editor opens by itself when requested (?Edit=true) or after a failed save.</summary>
+    public bool Editing => Edit || !ModelState.IsValid;
 
     public async Task OnGetAsync()
     {

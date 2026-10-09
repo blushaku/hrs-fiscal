@@ -3,61 +3,64 @@
 @{
     ViewData["Title"] = "Business & unit";
     var b = Model.Current;
-    var editing = Model.Editing;
+    var firstSetup = b is null;
 }
 <div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 
-@if (!editing && b is not null)
+@if (b is not null)
 {
-    <div class="grid">
-        <section class="card setting">
-            <div class="tile-head"><h2>Business (taxpayer)</h2><a class="btn small" href="/Settings/Business?Edit=true">Edit</a></div>
+    <div class="tile-grid">
+        <section class="card">
+            <h2>Business (taxpayer)</h2>
             <dl class="kv">
+                <dt>Name</dt><dd>@b.Name</dd>
                 <dt>NUI</dt><dd class="mono">@b.Nui</dd>
-                <dt>Registered name</dt><dd>@b.Name</dd>
-                <dt>VAT number</dt><dd>@(string.IsNullOrEmpty(b.VatNo) ? "not set" : b.VatNo)</dd>
                 <dt>Fiscalization no.</dt><dd class="mono">@b.FiscalizationNo</dd>
             </dl>
+            <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a></div>
         </section>
-        <section class="card setting">
-            <div class="tile-head"><h2>Unit (business premises)</h2><a class="btn small" href="/Settings/Business?Edit=true">Edit</a></div>
+        <section class="card">
+            <h2>Unit (business premises)</h2>
             <dl class="kv">
-                <dt>Unit number</dt><dd class="mono">@b.BranchId</dd>
-                <dt>Unit name</dt><dd>@b.BranchName</dd>
-                <dt>City (printed)</dt><dd>@b.Location</dd>
-                <dt>Address</dt><dd>@(string.IsNullOrEmpty(b.Address) ? "not set" : b.Address)</dd>
-                <dt>OPERA property code</dt><dd class="mono">@(string.IsNullOrEmpty(b.OperaHotelCode) ? "not set" : b.OperaHotelCode)</dd>
+                <dt>Unit</dt><dd><span class="mono">@b.BranchId</span>, @b.BranchName</dd>
+                <dt>City</dt><dd>@b.Location</dd>
+                <dt>OPERA property</dt><dd class="mono">@(string.IsNullOrEmpty(b.OperaHotelCode) ? "not set" : b.OperaHotelCode)</dd>
             </dl>
-            <p class="small muted">NUI and unit number are locked: they are part of every receipt number, certificate and SEF ID.</p>
+            <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a></div>
         </section>
     </div>
 }
 else
 {
-    <form method="post" class="card editing" style="display: flex; flex-direction: column; gap: 16px; max-width: 980px">
-        <h2 style="margin: 0">@(b is null ? "Set up the business" : "Edit business and unit")</h2>
+    <section class="card" style="max-width: 640px; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0">The property is not set up yet</h2>
+        <p style="margin: 0">Enter the business and unit exactly as registered with ATK. NUI and unit number cannot be changed afterwards.</p>
+        <div><a class="btn primary" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Set up the business</a></div>
+    </section>
+}
+
+<dialog class="modal wide" id="dlg-business" aria-labelledby="dlg-business-title" data-autoopen="@(Model.Editing ? "1" : null)" open="@Model.Editing">
+    <div class="modal-head"><h2 id="dlg-business-title">@(firstSetup ? "Set up the business" : "Edit business and unit")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
+    <form method="post" class="modal-body" data-confirm="@(firstSetup ? "Save the business? NUI and unit number cannot be changed afterwards." : "Save the business and unit details?")" data-new="@(firstSetup ? "1" : null)">
         <div asp-validation-summary="All" class="validation"></div>
         <h3 style="margin: 0; font-size: 15px; font-weight: 500">Business (taxpayer)</h3>
         <div class="form-grid">
             <label class="field">NUI (fiscal number) <input type="number" asp-for="Input.Nui" readonly="@Model.Locked"></label>
-            <label class="field wide">Registered name <input type="text" asp-for="Input.Name"></label>
+            <label class="field">Registered name <input type="text" asp-for="Input.Name"></label>
             <label class="field">VAT number <input type="text" asp-for="Input.VatNo"></label>
             <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo"></label>
         </div>
         <h3 style="margin: 0; font-size: 15px; font-weight: 500">Unit (business premises)</h3>
         <div class="form-grid">
             <label class="field">Unit number registered with ATK <input type="number" asp-for="Input.BranchId" readonly="@Model.Locked"></label>
-            <label class="field wide">Unit name <input type="text" asp-for="Input.BranchName"></label>
+            <label class="field">Unit name <input type="text" asp-for="Input.BranchName"></label>
             <label class="field">City / location (printed) <input type="text" asp-for="Input.Location"></label>
-            <label class="field wide">Address <input type="text" asp-for="Input.Address"></label>
+            <label class="field">Address <input type="text" asp-for="Input.Address"></label>
             <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode"></label>
         </div>
-        @if (Model.Locked) { <p class="small muted" style="margin: 0">NUI and unit number cannot be changed once set.</p> }
-        else { <p class="small muted" style="margin: 0">Check NUI and unit number against the ATK registration: they cannot be changed after saving.</p> }
-        <div class="actions">
-            <button type="submit" class="btn primary">Save</button>
-            @if (b is not null) { <a class="btn" href="/Settings/Business">Cancel</a> }
-        </div>
+        <p class="small muted">@(Model.Locked ? "NUI and unit number are locked: they are part of every receipt number, certificate and SEF ID." : "Check NUI and unit number against the ATK registration: they cannot be changed after saving.")</p>
+        <partial name="_ConfirmBox" model="@("Yes, save")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
     </form>
-}
+</dialog>

@@ -21,35 +21,9 @@ else
 <section class="card" id="trx">
     <div class="tile-head">
         <h2>OPERA transaction codes</h2>
-        @if (form != "trx") { <a class="btn small primary" href="/Settings/Mapping?Form=trx#trx">Add transaction code</a> }
+        <a class="btn small primary" href="/Settings/Mapping?Form=trx" data-dialog-open="@(form == "trx" && Model.Editing ? null : "dlg-trx-add")">Add transaction code</a>
     </div>
     <p class="small muted" style="margin: 0 0 12px">Optional. Item name, unit, ATK category and VAT come from OPERA; a code listed here overrides them when overrides are on.</p>
-    @if (form == "trx")
-    {
-        <form method="post" asp-page-handler="Trx" asp-route-Form="trx" asp-route-Key="@Model.Key" class="edit-panel">
-            <h3>@(Model.Editing ? $"Edit transaction code {Model.Key}" : "Add transaction code")</h3>
-            <div asp-validation-summary="All" class="validation"></div>
-            <div class="form-grid">
-                <label class="field">OPERA code <input type="text" asp-for="TrxInput.TrxCode" readonly="@Model.Editing" autocomplete="off" placeholder="1000"></label>
-                <label class="field wide">Item name on receipt <input type="text" asp-for="TrxInput.ItemName" placeholder="Accommodation"></label>
-                <label class="field">Unit <input type="text" asp-for="TrxInput.Unit" placeholder="nate, cope…"></label>
-                <label class="field">ATK category
-                    <input type="text" asp-for="TrxInput.Category" list="categories" placeholder="HT">
-                    <datalist id="categories">@foreach (var c in Hrs.Fiscal.Server.Pages.Settings.MappingModel.SuggestedCategories) { <option value="@c.Code">@c.Label</option> }</datalist>
-                </label>
-                <label class="field">VAT rate
-                    <select asp-for="TrxInput.VatLetter">
-                        @foreach (var v in Model.Vat) { <option value="@v.Letter">@v.Letter · @Pct(v.Percent) · @v.Description</option> }
-                    </select>
-                </label>
-                <label class="check"><input type="checkbox" asp-for="TrxInput.Active"> Active</label>
-            </div>
-            <div class="actions">
-                <button type="submit" class="btn primary">@(Model.Editing ? "Save" : "Add")</button>
-                <a class="btn" href="/Settings/Mapping#trx">Cancel</a>
-            </div>
-        </form>
-    }
     <div class="table-wrap">
         <table>
             <thead><tr><th>OPERA code</th><th>Item name on receipt</th><th>Unit</th><th>ATK category</th><th>VAT</th><th>Active</th><th><span class="sr-only">Edit</span></th></tr></thead>
@@ -59,7 +33,7 @@ else
                 <tr class="@(form == "trx" && Model.Key == t.TrxCode ? "row-current" : "")">
                     <td class="mono">@t.TrxCode</td><td>@t.ItemName</td><td>@t.Unit</td><td>@t.Category</td>
                     <td>@t.VatLetter</td><td>@(t.Active ? "yes" : "no")</td>
-                    <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=trx&Key=@Uri.EscapeDataString(t.TrxCode)#trx">Edit</a></td>
+                    <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=trx&Key=@Uri.EscapeDataString(t.TrxCode)">Edit</a></td>
                 </tr>
             }
             @if (Model.Trx.Count == 0) { <tr><td colspan="7" class="muted">No transaction codes yet.</td></tr> }
@@ -73,29 +47,9 @@ else
     <section class="card" id="pay">
         <div class="tile-head">
             <h2>OPERA payment methods</h2>
-            @if (form != "pay") { <a class="btn small primary" href="/Settings/Mapping?Form=pay#pay">Add payment method</a> }
+            <a class="btn small primary" href="/Settings/Mapping?Form=pay" data-dialog-open="@(form == "pay" && Model.Editing ? null : "dlg-pay-add")">Add payment method</a>
         </div>
         <p class="small muted" style="margin: 0 0 12px">Optional. Without an entry, the ATK payment type is taken from the payment's name (cash, card, voucher, cheque) or set to Other.</p>
-        @if (form == "pay")
-        {
-            <form method="post" asp-page-handler="Payment" asp-route-Form="pay" asp-route-Key="@Model.Key" class="edit-panel">
-                <h3>@(Model.Editing ? $"Edit payment method {Model.Key}" : "Add payment method")</h3>
-                <div asp-validation-summary="All" class="validation"></div>
-                <div class="form-grid">
-                    <label class="field">OPERA code <input type="text" asp-for="PaymentInput.PaymentCode" readonly="@Model.Editing" autocomplete="off" placeholder="9000"></label>
-                    <label class="field">Description <input type="text" asp-for="PaymentInput.Description" placeholder="Cash EUR"></label>
-                    <label class="field">ATK payment type
-                        <select asp-for="PaymentInput.AtkPaymentType">
-                            @foreach (var (value, label) in Hrs.Fiscal.Server.Pages.Settings.MappingModel.AtkPaymentTypes) { <option value="@value">@label</option> }
-                        </select>
-                    </label>
-                </div>
-                <div class="actions">
-                    <button type="submit" class="btn primary">@(Model.Editing ? "Save" : "Add")</button>
-                    <a class="btn" href="/Settings/Mapping#pay">Cancel</a>
-                </div>
-            </form>
-        }
         <div class="table-wrap">
             <table>
                 <thead><tr><th>OPERA code</th><th>Description</th><th>ATK type</th><th><span class="sr-only">Edit</span></th></tr></thead>
@@ -104,7 +58,7 @@ else
                 {
                     <tr class="@(form == "pay" && Model.Key == p.PaymentCode ? "row-current" : "")">
                         <td class="mono">@p.PaymentCode</td><td>@p.Description</td><td>@Model.PaymentLabel(p.AtkPaymentType)</td>
-                        <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=pay&Key=@Uri.EscapeDataString(p.PaymentCode)#pay">Edit</a></td>
+                        <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=pay&Key=@Uri.EscapeDataString(p.PaymentCode)">Edit</a></td>
                     </tr>
                 }
                 @if (Model.Payments.Count == 0) { <tr><td colspan="4" class="muted">No payment methods yet.</td></tr> }
@@ -117,25 +71,9 @@ else
     <section class="card" id="vat">
         <div class="tile-head">
             <h2>VAT rates</h2>
-            @if (form != "vat") { <a class="btn small primary" href="/Settings/Mapping?Form=vat#vat">Add VAT rate</a> }
+            <a class="btn small primary" href="/Settings/Mapping?Form=vat" data-dialog-open="@(form == "vat" && Model.Editing ? null : "dlg-vat-add")">Add VAT rate</a>
         </div>
         <p class="small muted" style="margin: 0 0 12px">ATK's letters: A exempt, C 0 %, D reduced, E standard. Change a rate or add a letter only when the law changes and ATK recognises it; it applies to receipts issued afterwards.</p>
-        @if (form == "vat")
-        {
-            <form method="post" asp-page-handler="Vat" asp-route-Form="vat" asp-route-Key="@Model.Key" class="edit-panel">
-                <h3>@(Model.Editing ? $"Edit VAT rate {Model.Key}" : "Add VAT rate")</h3>
-                <div asp-validation-summary="All" class="validation"></div>
-                <div class="form-grid">
-                    <label class="field">Letter <input type="text" asp-for="VatInput.Letter" maxlength="1" readonly="@Model.Editing" autocomplete="off" placeholder="F" style="text-transform: uppercase"></label>
-                    <label class="field">Percent <input type="number" asp-for="VatInput.Percent" step="0.01" min="0" max="99.99"></label>
-                    <label class="field wide">Description <input type="text" asp-for="VatInput.Description" placeholder="Reduced VAT rate"></label>
-                </div>
-                <div class="actions">
-                    <button type="submit" class="btn primary">@(Model.Editing ? "Save" : "Add")</button>
-                    <a class="btn" href="/Settings/Mapping#vat">Cancel</a>
-                </div>
-            </form>
-        }
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Letter</th><th>Rate</th><th>Description</th><th><span class="sr-only">Edit</span></th></tr></thead>
@@ -144,7 +82,7 @@ else
                 {
                     <tr class="@(form == "vat" && Model.Key == v.Letter ? "row-current" : "")">
                         <td class="mono">@v.Letter</td><td>@Pct(v.Percent)</td><td>@v.Description</td>
-                        <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=vat&Key=@v.Letter#vat">Edit</a></td>
+                        <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=vat&Key=@v.Letter">Edit</a></td>
                     </tr>
                 }
                 </tbody>
@@ -152,3 +90,73 @@ else
         </div>
     </section>
 </div>
+
+@* ======================= editors (pop-ups) ======================= *@
+@{
+    // Add dialogs are always available; an edit dialog exists only for the row being edited (?Form=…&Key=…).
+    bool editTrx = form == "trx" && Model.Editing, editPay = form == "pay" && Model.Editing, editVat = form == "vat" && Model.Editing;
+}
+
+@* Transaction code: add (or edit when ?Key=) *@
+<dialog class="modal" id="@(editTrx ? "dlg-trx-edit" : "dlg-trx-add")" aria-labelledby="trx-title" data-autoopen="@(form == "trx" ? "1" : null)" open="@(form == "trx")">
+    <div class="modal-head"><h2 id="trx-title">@(editTrx ? $"Edit transaction code {Model.Key}" : "Add transaction code")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Mapping" aria-label="Close">×</button></div>
+    <form method="post" asp-page-handler="Trx" asp-route-Form="trx" asp-route-Key="@(editTrx ? Model.Key : null)" class="modal-body"
+          data-confirm="@(editTrx ? $"Save transaction code {Model.Key}?" : "Add this transaction code?")" data-new="@(editTrx ? null : "1")">
+        @if (form == "trx") { <div asp-validation-summary="All" class="validation"></div> }
+        <div class="form-grid">
+            <label class="field">OPERA code <input type="text" asp-for="TrxInput.TrxCode" readonly="@editTrx" autocomplete="off" placeholder="1000"></label>
+            <label class="field">Item name on receipt <input type="text" asp-for="TrxInput.ItemName" placeholder="Accommodation"></label>
+            <label class="field">Unit <input type="text" asp-for="TrxInput.Unit" placeholder="nate, cope…"></label>
+            <label class="field">ATK category
+                <input type="text" asp-for="TrxInput.Category" list="categories" placeholder="HT">
+                <datalist id="categories">@foreach (var cat in Hrs.Fiscal.Server.Pages.Settings.MappingModel.SuggestedCategories) { <option value="@cat.Code">@cat.Label</option> }</datalist>
+            </label>
+            <label class="field">VAT rate
+                <select asp-for="TrxInput.VatLetter">
+                    @foreach (var v in Model.Vat) { <option value="@v.Letter">@v.Letter · @Pct(v.Percent) · @v.Description</option> }
+                </select>
+            </label>
+            <label class="check"><input type="checkbox" asp-for="TrxInput.Active"> Active</label>
+        </div>
+        <p class="small muted">Used only when OPERA overrides are on (General › Receipt defaults).</p>
+        <partial name="_ConfirmBox" model="@(editTrx ? "Yes, save" : "Yes, add")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">@(editTrx ? "Save" : "Add")</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Mapping">Cancel</button></div>
+    </form>
+</dialog>
+
+@* Payment method *@
+<dialog class="modal" id="@(editPay ? "dlg-pay-edit" : "dlg-pay-add")" aria-labelledby="pay-title" data-autoopen="@(form == "pay" ? "1" : null)" open="@(form == "pay")">
+    <div class="modal-head"><h2 id="pay-title">@(editPay ? $"Edit payment method {Model.Key}" : "Add payment method")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Mapping" aria-label="Close">×</button></div>
+    <form method="post" asp-page-handler="Payment" asp-route-Form="pay" asp-route-Key="@(editPay ? Model.Key : null)" class="modal-body"
+          data-confirm="@(editPay ? $"Save payment method {Model.Key}?" : "Add this payment method?")" data-new="@(editPay ? null : "1")">
+        @if (form == "pay") { <div asp-validation-summary="All" class="validation"></div> }
+        <div class="form-grid">
+            <label class="field">OPERA code <input type="text" asp-for="PaymentInput.PaymentCode" readonly="@editPay" autocomplete="off" placeholder="9000"></label>
+            <label class="field">Description <input type="text" asp-for="PaymentInput.Description" placeholder="Cash EUR"></label>
+            <label class="field">ATK payment type
+                <select asp-for="PaymentInput.AtkPaymentType">
+                    @foreach (var (value, label) in Hrs.Fiscal.Server.Pages.Settings.MappingModel.AtkPaymentTypes) { <option value="@value">@label</option> }
+                </select>
+            </label>
+        </div>
+        <partial name="_ConfirmBox" model="@(editPay ? "Yes, save" : "Yes, add")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">@(editPay ? "Save" : "Add")</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Mapping">Cancel</button></div>
+    </form>
+</dialog>
+
+@* VAT rate *@
+<dialog class="modal" id="@(editVat ? "dlg-vat-edit" : "dlg-vat-add")" aria-labelledby="vat-title" data-autoopen="@(form == "vat" ? "1" : null)" open="@(form == "vat")">
+    <div class="modal-head"><h2 id="vat-title">@(editVat ? $"Edit VAT rate {Model.Key}" : "Add VAT rate")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Mapping" aria-label="Close">×</button></div>
+    <form method="post" asp-page-handler="Vat" asp-route-Form="vat" asp-route-Key="@(editVat ? Model.Key : null)" class="modal-body"
+          data-confirm="@(editVat ? $"Change VAT rate {Model.Key}? It applies to receipts issued from now on." : "Add this VAT rate? ATK must recognise the letter before it is used.")" data-new="@(editVat ? null : "1")">
+        @if (form == "vat") { <div asp-validation-summary="All" class="validation"></div> }
+        <div class="form-grid">
+            <label class="field">Letter <input type="text" asp-for="VatInput.Letter" maxlength="1" readonly="@editVat" autocomplete="off" placeholder="F" style="text-transform: uppercase"></label>
+            <label class="field">Percent <input type="number" asp-for="VatInput.Percent" step="0.01" min="0" max="99.99"></label>
+        </div>
+        <label class="field">Description <input type="text" asp-for="VatInput.Description" placeholder="Reduced VAT rate"></label>
+        <p class="small muted">ATK's letters: A exempt, C 0 %, D reduced, E standard.</p>
+        <partial name="_ConfirmBox" model="@(editVat ? "Yes, save" : "Yes, add")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">@(editVat ? "Save" : "Add")</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Mapping">Cancel</button></div>
+    </form>
+</dialog>

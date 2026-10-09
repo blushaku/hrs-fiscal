@@ -1,0 +1,10 @@
+@model string
+@* Shown by site.js when the form is submitted: lists what changes and asks to confirm. Model = label of the confirm button. *@
+<div class="confirm" hidden role="alertdialog" aria-live="polite">
+    <p class="confirm-title"></p>
+    <ul></ul>
+    <div class="actions">
+        <button type="button" class="btn primary" data-confirm-yes>@(string.IsNullOrEmpty(Model) ? "Yes, save" : Model)</button>
+        <button type="button" class="btn" data-confirm-back>Back to editing</button>
+    </div>
+</div>

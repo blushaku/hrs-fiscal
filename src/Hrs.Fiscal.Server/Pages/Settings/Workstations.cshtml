@@ -44,28 +44,23 @@
             <div class="actions">
                 @if (mode == SigningModes.Server && state is TerminalSigningState.NotRegistered or TerminalSigningState.RegisterAgain or TerminalSigningState.Expired)
                 {
-                    <form method="post" asp-page-handler="Register" asp-route-id="@t.Id"><button type="submit" class="btn primary small">Register with ATK</button></form>
+                    <form method="post" asp-page-handler="Register" asp-route-id="@t.Id" onsubmit="return confirm('Register workstation POS @t.PosId with ATK now?')"><button type="submit" class="btn primary small">Register with ATK</button></form>
                 }
                 <a class="btn small" href="/Settings/Workstations?Edit=@t.Id">Edit</a>
             </div>
         </section>
     }
-    @if (!Model.FormOpen)
-    {
-        <a class="card ws add" href="/Settings/Workstations?Add=true"><span class="plus" aria-hidden="true">+</span><strong>Add workstation</strong><span class="small muted">@(central ? "Added and registered with ATK in one step" : "Then install the HRS Fiscal Client on it")</span></a>
-    }
+    <a class="card ws add" href="/Settings/Workstations?Add=true" data-dialog-open="@(editing ? null : "dlg-ws")"><span class="plus" aria-hidden="true">+</span><strong>Add workstation</strong><span class="small muted">@(central ? "Added and registered with ATK in one step" : "Then install the HRS Fiscal Client on it")</span></a>
 </div>
 
-@if (Model.FormOpen)
-{
-    <form method="post" enctype="multipart/form-data" class="card" style="display: flex; flex-direction: column; gap: 14px; max-width: 980px" id="ws-form">
-        <h2 style="margin: 0">@(editing ? $"Edit workstation POS {Model.Input.PosId}" : "Add workstation")</h2>
+<dialog class="modal wide" id="dlg-ws" aria-labelledby="dlg-ws-title" data-autoopen="@(Model.FormOpen ? "1" : null)" open="@Model.FormOpen">
+    <div class="modal-head"><h2 id="dlg-ws-title">@(editing ? $"Workstation POS {Model.Input.PosId}" : "Add workstation")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Workstations" aria-label="Close">×</button></div>
+    <form method="post" enctype="multipart/form-data" class="modal-body" id="ws-form"
+          data-confirm="@(editing ? $"Save the changes to workstation POS {Model.Input.PosId}?" : "Add this workstation? With central signing and \"Register with ATK now\", it is registered with ATK straight away.")" data-new="@(editing ? null : "1")">
         <div asp-validation-summary="All" class="validation"></div>
         <input type="hidden" asp-for="Input.Id">
         <div class="form-grid">
-            <label class="field">POS ID
-                <input type="number" asp-for="Input.PosId" readonly="@editing" min="1">
-            </label>
+            <label class="field">POS ID <input type="number" asp-for="Input.PosId" readonly="@editing" min="1"></label>
             <label class="field">OPERA Fiscal Terminal ID <input type="text" asp-for="Input.OperaTerminalId" placeholder="OPERA9TERMINAL" autocomplete="off"></label>
             <label class="field">Computer name <input type="text" asp-for="Input.Hostname" placeholder="FRONTDESK-01" autocomplete="off"></label>
             <label class="field">Signing
@@ -88,14 +83,13 @@
                 </label>
             }
         </div>
-
         @if (!editing)
         {
             <fieldset style="border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px">
                 <legend class="small muted" style="padding: 0; margin-bottom: 8px">ATK registration (central signing; ignored for workstation-client signing)</legend>
                 <div class="choice">
                     <label><input type="radio" asp-for="Input.Register" value="atk"> <span><strong>Register with ATK now</strong>A new key is created on this server; ATK issues the certificate. Environment: @Model.AtkEnvironment.</span></label>
-                    <label><input type="radio" asp-for="Input.Register" value="import"> <span><strong>Import from ATK's onboarder</strong>Use the key and certificate exported from ATK's onboarder tool for this POS ID.</span></label>
+                    <label><input type="radio" asp-for="Input.Register" value="import"> <span><strong>Import from ATK's onboarder</strong>Key and certificate exported from ATK's onboarder tool for this POS ID.</span></label>
                     <label><input type="radio" asp-for="Input.Register" value="later"> <span><strong>Register later</strong>Only add it now.</span></label>
                 </div>
                 <div class="form-grid import-files">
@@ -106,44 +100,46 @@
         }
         else
         {
-            <p class="small muted" style="margin: 0">The POS ID cannot be changed: it is part of the ATK certificate and of every receipt issued here. Disable the workstation and add a new one instead.</p>
+            <p class="small muted">The POS ID cannot be changed: it is part of the ATK certificate and of every receipt issued here. Disable the workstation and add a new one instead.</p>
         }
-        <div class="actions">
+        <partial name="_ConfirmBox" model="@(editing ? "Yes, save" : "Yes, add")" />
+        <div class="actions" data-hide-on-confirm>
             <button type="submit" class="btn primary">@(editing ? "Save changes" : "Add workstation")</button>
-            <a class="btn" href="/Settings/Workstations">Cancel</a>
+            <button type="button" class="btn" data-dialog-close data-return="/Settings/Workstations">Cancel</button>
         </div>
     </form>
-}
 
-@if (Model.Current is { } cur)
-{
-    var mode = cur.EffectiveMode(Model.DefaultMode);
-    var state = cur.SigningState(Model.DefaultMode);
-    <section class="card" style="display: flex; flex-direction: column; gap: 10px; max-width: 980px">
-        <h2 style="margin: 0">ATK registration, POS @cur.PosId</h2>
-        <p style="margin: 0">@SigningModes.Label(mode) · <span class="badge @StateBadge(state)">@StateText(state)</span>
-            @if (cur.CertificateExpires is { } exp && cur.EnrolledMode is not null) { <span class="small muted"> · certificate valid to @Model.Clock.ToLocal(exp).ToString("dd.MM.yyyy")</span> }</p>
-        @if (mode == SigningModes.Server)
-        {
-            <p class="small muted" style="margin: 0">Creates a new key on this server (@(Model.KeyStoreKind == "cng" ? "Windows key store, non-exportable, TPM when available" : "file key store: development and test only")), sends ATK only the certificate request and stores the certificate. ATK environment: <strong>@Model.AtkEnvironment</strong>. Logged in the audit log.</p>
-            <form method="post" asp-page-handler="Register" asp-route-id="@cur.Id">
-                <button type="submit" class="btn primary" disabled="@(cur.Status == "disabled")">@(state == TerminalSigningState.Ready ? "Renew certificate" : "Register with ATK")</button>
-            </form>
-            <details>
-                <summary class="small">Or import a key and certificate made with ATK's onboarder tool</summary>
-                <form method="post" asp-page-handler="Import" asp-route-id="@cur.Id" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px">
-                    <div class="form-grid">
-                        <label class="field">Private key (private-key.pem) <input type="file" name="key" accept=".pem,.key,.txt"></label>
-                        <label class="field">Certificate (signed-certificate.pem) <input type="file" name="cert" accept=".pem,.crt,.cer,.txt"></label>
-                    </div>
-                    <p class="small muted" style="margin: 0">The certificate must be for this business, unit and POS ID @cur.PosId. The key is stored non-exportable on this server; delete the exported file afterwards.</p>
-                    <div><button type="submit" class="btn" disabled="@(cur.Status == "disabled")">Import</button></div>
+    @if (Model.Current is { } cur)
+    {
+        var mode = cur.EffectiveMode(Model.DefaultMode);
+        var state = cur.SigningState(Model.DefaultMode);
+        <div class="modal-body" style="border-top: 1px solid var(--line)">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 500; color: var(--hrs-navy)">ATK registration</h3>
+            <p>@SigningModes.Label(mode) · <span class="badge @StateBadge(state)">@StateText(state)</span>
+                @if (cur.CertificateExpires is { } exp && cur.EnrolledMode is not null) { <span class="small muted"> · certificate valid to @Model.Clock.ToLocal(exp).ToString("dd.MM.yyyy")</span> }</p>
+            @if (mode == SigningModes.Server)
+            {
+                <form method="post" asp-page-handler="Register" asp-route-id="@cur.Id" data-confirm="@(state == TerminalSigningState.Ready ? "Renew the certificate? A new key is created and ATK issues a new certificate." : "Register this workstation with ATK now?")" data-new>
+                    <p class="small muted" style="margin: 0 0 10px">A new key is created on this server (@(Model.KeyStoreKind == "cng" ? "Windows key store, non-exportable" : "file key store, test only")); ATK environment: @Model.AtkEnvironment.</p>
+                    <partial name="_ConfirmBox" model="@("Yes, register")" />
+                    <div class="actions" data-hide-on-confirm><button type="submit" class="btn" disabled="@(cur.Status == "disabled")">@(state == TerminalSigningState.Ready ? "Renew certificate" : "Register with ATK")</button></div>
                 </form>
-            </details>
-        }
-        else
-        {
-            <p class="small muted" style="margin: 0">This workstation signs with the HRS Fiscal Client. Install the client on @cur.Hostname and register it there; the client reports its certificate to this server.</p>
-        }
-    </section>
-}
+                <details>
+                    <summary class="small">Or import a key and certificate made with ATK's onboarder tool</summary>
+                    <form method="post" asp-page-handler="Import" asp-route-id="@cur.Id" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px" data-confirm="Import this key and certificate for POS @cur.PosId?" data-new>
+                        <div class="form-grid">
+                            <label class="field">Private key (private-key.pem) <input type="file" name="key" accept=".pem,.key,.txt"></label>
+                            <label class="field">Certificate (signed-certificate.pem) <input type="file" name="cert" accept=".pem,.crt,.cer,.txt"></label>
+                        </div>
+                        <partial name="_ConfirmBox" model="@("Yes, import")" />
+                        <div class="actions" data-hide-on-confirm><button type="submit" class="btn" disabled="@(cur.Status == "disabled")">Import</button></div>
+                    </form>
+                </details>
+            }
+            else
+            {
+                <p class="small muted">This workstation signs with the HRS Fiscal Client. Install the client on @cur.Hostname and register it there.</p>
+            }
+        </div>
+    }
+</dialog>
