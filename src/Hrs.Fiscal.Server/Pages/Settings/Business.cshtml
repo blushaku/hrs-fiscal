@@ -2,34 +2,62 @@
 @model Hrs.Fiscal.Server.Pages.Settings.BusinessModel
 @{
     ViewData["Title"] = "Business & unit";
+    var b = Model.Current;
+    var editing = Model.Editing;
 }
 <div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 
-<form method="post" class="card" style="display: flex; flex-direction: column; gap: 16px; max-width: 900px">
-    <div asp-validation-summary="All" class="validation"></div>
-    <h2 style="margin: 0">Business (taxpayer)</h2>
-    <div class="form-grid">
-        <label class="field">NUI (fiscal number)
-            <input type="number" asp-for="Input.Nui" readonly="@Model.Locked">
-        </label>
-        <label class="field wide">Registered name <input type="text" asp-for="Input.Name"></label>
-        <label class="field">VAT number <input type="text" asp-for="Input.VatNo"></label>
-        <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo"></label>
+@if (!editing && b is not null)
+{
+    <div class="grid">
+        <section class="card setting">
+            <div class="tile-head"><h2>Business (taxpayer)</h2><a class="btn small" href="/Settings/Business?Edit=true">Edit</a></div>
+            <dl class="kv">
+                <dt>NUI</dt><dd class="mono">@b.Nui</dd>
+                <dt>Registered name</dt><dd>@b.Name</dd>
+                <dt>VAT number</dt><dd>@(string.IsNullOrEmpty(b.VatNo) ? "not set" : b.VatNo)</dd>
+                <dt>Fiscalization no.</dt><dd class="mono">@b.FiscalizationNo</dd>
+            </dl>
+        </section>
+        <section class="card setting">
+            <div class="tile-head"><h2>Unit (business premises)</h2><a class="btn small" href="/Settings/Business?Edit=true">Edit</a></div>
+            <dl class="kv">
+                <dt>Unit number</dt><dd class="mono">@b.BranchId</dd>
+                <dt>Unit name</dt><dd>@b.BranchName</dd>
+                <dt>City (printed)</dt><dd>@b.Location</dd>
+                <dt>Address</dt><dd>@(string.IsNullOrEmpty(b.Address) ? "not set" : b.Address)</dd>
+                <dt>OPERA property code</dt><dd class="mono">@(string.IsNullOrEmpty(b.OperaHotelCode) ? "not set" : b.OperaHotelCode)</dd>
+            </dl>
+            <p class="small muted">NUI and unit number are locked: they are part of every receipt number, certificate and SEF ID.</p>
+        </section>
     </div>
-    <h2 style="margin: 8px 0 0">Unit (business premises)</h2>
-    <div class="form-grid">
-        <label class="field">Unit number registered with ATK
-            <input type="number" asp-for="Input.BranchId" readonly="@Model.Locked">
-        </label>
-        <label class="field wide">Unit name <input type="text" asp-for="Input.BranchName"></label>
-        <label class="field">City / location (printed) <input type="text" asp-for="Input.Location"></label>
-        <label class="field wide">Address <input type="text" asp-for="Input.Address"></label>
-        <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode"></label>
-    </div>
-    @if (Model.Locked)
-    {
-        <p class="small muted" style="margin: 0">NUI and unit number are locked once set: they are part of every receipt number, certificate and SEF ID.</p>
-    }
-    <div><button type="submit" class="btn primary">Save</button></div>
-</form>
+}
+else
+{
+    <form method="post" class="card editing" style="display: flex; flex-direction: column; gap: 16px; max-width: 980px">
+        <h2 style="margin: 0">@(b is null ? "Set up the business" : "Edit business and unit")</h2>
+        <div asp-validation-summary="All" class="validation"></div>
+        <h3 style="margin: 0; font-size: 15px; font-weight: 500">Business (taxpayer)</h3>
+        <div class="form-grid">
+            <label class="field">NUI (fiscal number) <input type="number" asp-for="Input.Nui" readonly="@Model.Locked"></label>
+            <label class="field wide">Registered name <input type="text" asp-for="Input.Name"></label>
+            <label class="field">VAT number <input type="text" asp-for="Input.VatNo"></label>
+            <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo"></label>
+        </div>
+        <h3 style="margin: 0; font-size: 15px; font-weight: 500">Unit (business premises)</h3>
+        <div class="form-grid">
+            <label class="field">Unit number registered with ATK <input type="number" asp-for="Input.BranchId" readonly="@Model.Locked"></label>
+            <label class="field wide">Unit name <input type="text" asp-for="Input.BranchName"></label>
+            <label class="field">City / location (printed) <input type="text" asp-for="Input.Location"></label>
+            <label class="field wide">Address <input type="text" asp-for="Input.Address"></label>
+            <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode"></label>
+        </div>
+        @if (Model.Locked) { <p class="small muted" style="margin: 0">NUI and unit number cannot be changed once set.</p> }
+        else { <p class="small muted" style="margin: 0">Check NUI and unit number against the ATK registration: they cannot be changed after saving.</p> }
+        <div class="actions">
+            <button type="submit" class="btn primary">Save</button>
+            @if (b is not null) { <a class="btn" href="/Settings/Business">Cancel</a> }
+        </div>
+    </form>
+}

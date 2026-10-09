@@ -21,11 +21,15 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
     }
 
     [BindProperty] public Form Input { get; set; } = new();
+    [BindProperty(SupportsGet = true)] public bool Edit { get; set; }
     public bool Locked { get; private set; }
+    public BusinessInfo? Current { get; private set; }
+    /// <summary>The form is shown when editing, on a failed save, or when nothing is set up yet.</summary>
+    public bool Editing => Edit || Current is null || !ModelState.IsValid;
 
     public async Task OnGetAsync()
     {
-        var b = await settings.BusinessAsync();
+        var b = Current = await settings.BusinessAsync();
         Locked = b is not null;
         if (b is not null)
             Input = new Form
@@ -37,7 +41,9 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        Locked = await settings.BusinessAsync() is not null;
+        Current = await settings.BusinessAsync();
+        Locked = Current is not null;
+        Edit = true;
         if (!ModelState.IsValid) return Page();
         try
         {
@@ -54,6 +60,6 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
             return Page();
         }
         TempData["Message"] = "Business details saved and logged.";
-        return RedirectToPage();
+        return RedirectToPage(new { Edit = false });
     }
 }

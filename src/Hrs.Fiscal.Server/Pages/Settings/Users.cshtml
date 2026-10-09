@@ -9,7 +9,7 @@
 
 <div class="grid">
     <section class="card">
-        <h2>Users</h2>
+        <div class="tile-head"><h2>Users</h2>@if (!Model.FormOpen) { <a class="btn small primary" href="/Settings/Users?Add=true">Add user</a> }</div>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th><span class="sr-only">Edit</span></th></tr></thead>
@@ -28,7 +28,9 @@
         <p class="small muted" style="margin: 12px 0 0">What each role may do is set under <a href="/Settings/Roles">Roles &amp; permissions</a>. Users are never deleted; deactivate them instead.</p>
     </section>
 
-    <form method="post" class="card" style="display: flex; flex-direction: column; gap: 12px">
+    @if (Model.FormOpen)
+    {
+    <form method="post" class="card editing" style="display: flex; flex-direction: column; gap: 12px">
         <h2 style="margin: 0">@(editing ? $"Edit {Model.Input.Username}" : "Add user")</h2>
         <div asp-validation-summary="All" class="validation"></div>
         <input type="hidden" asp-for="Input.Id">
@@ -50,7 +52,8 @@
         }
         <div class="actions">
             <button type="submit" class="btn primary">@(editing ? "Save" : "Add user")</button>
-            @if (editing) { <a class="btn" href="/Settings/Users">Cancel</a> }
+            <a class="btn" href="/Settings/Users">Cancel</a>
         </div>
     </form>
+    }
 </div>

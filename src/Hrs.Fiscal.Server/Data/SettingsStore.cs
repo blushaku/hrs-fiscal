@@ -271,6 +271,15 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         return (await conn.QueryAsync<VatRateRow>("SELECT letter, percent, description FROM fiscal.vat_rate ORDER BY letter")).ToList();
     }
 
+    /// <summary>Adds a new VAT letter. Fails if the letter exists.</summary>
+    public async Task AddVatRateAsync(VatRateRow v, string actor, CancellationToken ct = default)
+    {
+        if ((await VatRatesAsync(ct)).Any(x => x.Letter == v.Letter)) throw new InvalidOperationException($"VAT letter {v.Letter} already exists.");
+        await using var conn = await db.OpenConnectionAsync(ct);
+        await conn.ExecuteAsync("INSERT INTO fiscal.vat_rate (letter, percent, description) VALUES (@Letter, @Percent, @Description)", v);
+        await audit.WriteAsync(actor, AuditLog.Actions.SettingChanged, "vat_rate", v.Letter, new { old = (VatRateRow?)null, @new = v }, ct: ct);
+    }
+
     public async Task SaveVatRateAsync(VatRateRow v, string actor, CancellationToken ct = default)
     {
         var before = (await VatRatesAsync(ct)).SingleOrDefault(x => x.Letter == v.Letter) ?? throw new InvalidOperationException("Unknown VAT letter.");

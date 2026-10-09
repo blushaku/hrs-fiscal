@@ -19,6 +19,8 @@ public sealed class UsersModel(UserStore users) : PageModel
 
     [BindProperty] public Form Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public long? Edit { get; set; }
+    [BindProperty(SupportsGet = true)] public bool Add { get; set; }
+    public bool FormOpen => Add || Input.Id != 0 || !ModelState.IsValid;
     public IReadOnlyList<AppUser> All { get; private set; } = [];
 
     public async Task OnGetAsync()

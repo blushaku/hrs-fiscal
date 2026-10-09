@@ -38,7 +38,44 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
 
     [BindProperty] public GeneralSettings Input { get; set; } = new();
 
+    /// <summary>Tiles on this page; each one is edited and saved on its own.</summary>
+    public static readonly IReadOnlyDictionary<string, (string Title, string[] Fields)> Sections = new Dictionary<string, (string, string[])>
+    {
+        ["retention"] = ("Retention and backup", ["RetentionYears", "BackupTarget"]),
+        ["atk"] = ("ATK connection", ["AtkEnvironment", "AtkApplicationId", "AtkTimeoutSeconds", "AtkRetryMinutes"]),
+        ["alerts"] = ("Alerts", ["AlertEmails"]),
+        ["vat"] = ("VAT calculation", ["VatRounding"]),
+        ["signing"] = ("Signing", ["SigningModeDefault"]),
+        ["overrides"] = ("OPERA overrides and receipt defaults", ["OperaOverridesEnabled", "DefaultItemCategory", "DefaultItemUnit"]),
+        ["flip"] = ("OPERA / FLIP connection", ["FlipMode", "FlipStubStatus", "FlipStubContentType", "FlipStubBody"]),
+        ["token"] = ("FLIP access token", ["FlipAuthRequired", "FlipAuthHeader"]),
+    };
+
+    /// <summary>Field → setting key.</summary>
+    private static readonly Dictionary<string, string> Keys = new()
+    {
+        ["RetentionYears"] = "retention_years", ["BackupTarget"] = "backup_target", ["AtkEnvironment"] = "atk_environment",
+        ["AtkApplicationId"] = "atk_application_id", ["AtkTimeoutSeconds"] = "atk_timeout_seconds", ["AtkRetryMinutes"] = "atk_retry_minutes",
+        ["AlertEmails"] = "alert_emails", ["VatRounding"] = "vat_rounding", ["SigningModeDefault"] = "signing_mode_default",
+        ["OperaOverridesEnabled"] = "opera_overrides_enabled", ["DefaultItemCategory"] = "default_item_category", ["DefaultItemUnit"] = "default_item_unit",
+        ["FlipMode"] = "flip_mode", ["FlipStubStatus"] = "flip_stub_status", ["FlipStubContentType"] = "flip_stub_content_type",
+        ["FlipStubBody"] = "flip_stub_body", ["FlipAuthRequired"] = "flip_auth_required", ["FlipAuthHeader"] = "flip_auth_header",
+    };
+
+    /// <summary>The tile being edited (null = all read-only).</summary>
+    [BindProperty(SupportsGet = true)] public string? Edit { get; set; }
+
+    /// <summary>Saved values, shown in the read-only tiles.</summary>
+    public GeneralSettings Current { get; private set; } = new();
+
     public async Task OnGetAsync()
+    {
+        await LoadAsync();
+        if (Edit is not null && !Sections.ContainsKey(Edit)) Edit = null;
+        Input = Current;
+    }
+
+    private async Task LoadAsync()
     {
         Token = await flipAuth.StateAsync();
         NewToken = TempData["FlipToken"] as string;
@@ -47,7 +84,7 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         long Long(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
         bool Bool(string k) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.True;
         string Str(string k, string d) => all.TryGetValue(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : d;
-        Input = new GeneralSettings
+        Current = new GeneralSettings
         {
             RetentionYears = Int("retention_years", 10),
             BackupTarget = Str("backup_target", ""),
@@ -70,38 +107,49 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         };
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    /// <summary>Saves one tile only.</summary>
+    public async Task<IActionResult> OnPostAsync(string section)
     {
-        Token = await flipAuth.StateAsync();
-        if (Input.FlipAuthRequired && !Token.HasToken)
+        await LoadAsync();
+        if (!Sections.TryGetValue(section ?? "", out var def)) return BadRequest();
+        Edit = section;
+        // Only the posted tile's fields are validated and saved; the others keep their stored values.
+        foreach (var key in ModelState.Keys.ToList())
+            if (key.StartsWith("Input.") && !def.Fields.Contains(key["Input.".Length..])) ModelState.Remove(key);
+        if (section == "token" && Input.FlipAuthRequired && !Token.HasToken)
             ModelState.AddModelError("", "Generate a FLIP access token before requiring it.");
         if (!ModelState.IsValid) return Page();
-        var changed = await settings.SetManyAsync(new Dictionary<string, object?>
+
+        var values = new Dictionary<string, object?>
         {
-            ["retention_years"] = Input.RetentionYears,
-            ["backup_target"] = Input.BackupTarget ?? "",
-            ["atk_environment"] = Input.AtkEnvironment,
-            ["atk_application_id"] = Input.AtkApplicationId,
-            ["atk_timeout_seconds"] = Input.AtkTimeoutSeconds,
-            ["atk_retry_minutes"] = Input.AtkRetryMinutes,
-            ["alert_emails"] = Input.AlertEmails ?? "",
-            ["vat_rounding"] = Input.VatRounding,
-            ["opera_overrides_enabled"] = Input.OperaOverridesEnabled,
-            ["signing_mode_default"] = Input.SigningModeDefault,
-            ["flip_mode"] = Input.FlipMode,
-            ["flip_stub_status"] = Input.FlipStubStatus,
-            ["flip_stub_content_type"] = string.IsNullOrWhiteSpace(Input.FlipStubContentType) ? "text/plain" : Input.FlipStubContentType.Trim(),
-            ["flip_stub_body"] = Input.FlipStubBody ?? "",
-            ["flip_auth_required"] = Input.FlipAuthRequired,
-            ["default_item_category"] = Input.DefaultItemCategory.Trim().ToUpperInvariant(),
-            ["default_item_unit"] = Input.DefaultItemUnit.Trim(),
-            ["flip_auth_header"] = FlipAuth.NormalizeHeader(Input.FlipAuthHeader),
-        }, User.Identity!.Name!);
-        var mustRegister = (await settings.TerminalsAsync())
-            .Count(t => t.SigningState(Input.SigningModeDefault) == TerminalSigningState.RegisterAgain);
-        TempData["Message"] = (changed == 0 ? "No changes." : $"{changed} setting(s) saved and logged.")
-            + (mustRegister > 0 ? $" {mustRegister} workstation(s) must now be registered again under Workstations before they can sign." : "");
-        return RedirectToPage();
+            ["RetentionYears"] = Input.RetentionYears,
+            ["BackupTarget"] = Input.BackupTarget?.Trim() ?? "",
+            ["AtkEnvironment"] = Input.AtkEnvironment,
+            ["AtkApplicationId"] = Input.AtkApplicationId,
+            ["AtkTimeoutSeconds"] = Input.AtkTimeoutSeconds,
+            ["AtkRetryMinutes"] = Input.AtkRetryMinutes,
+            ["AlertEmails"] = Input.AlertEmails?.Trim() ?? "",
+            ["VatRounding"] = Input.VatRounding,
+            ["OperaOverridesEnabled"] = Input.OperaOverridesEnabled,
+            ["SigningModeDefault"] = Input.SigningModeDefault,
+            ["FlipMode"] = Input.FlipMode,
+            ["FlipStubStatus"] = Input.FlipStubStatus,
+            ["FlipStubContentType"] = string.IsNullOrWhiteSpace(Input.FlipStubContentType) ? "text/plain" : Input.FlipStubContentType.Trim(),
+            ["FlipStubBody"] = Input.FlipStubBody ?? "",
+            ["FlipAuthRequired"] = Input.FlipAuthRequired,
+            ["DefaultItemCategory"] = (Input.DefaultItemCategory ?? "TT").Trim().ToUpperInvariant(),
+            ["DefaultItemUnit"] = (Input.DefaultItemUnit ?? "cope").Trim(),
+            ["FlipAuthHeader"] = FlipAuth.NormalizeHeader(Input.FlipAuthHeader),
+        };
+        var changed = await settings.SetManyAsync(def.Fields.ToDictionary(f => Keys[f], f => values[f]), User.Identity!.Name!);
+        var message = changed == 0 ? $"{def.Title}: no changes." : $"{def.Title} saved and logged.";
+        if (section == "signing")
+        {
+            var mustRegister = (await settings.TerminalsAsync()).Count(t => t.SigningState(Input.SigningModeDefault) == TerminalSigningState.RegisterAgain);
+            if (mustRegister > 0) message += $" {mustRegister} workstation(s) must now be registered again under Workstations before they can sign.";
+        }
+        TempData["Message"] = message;
+        return RedirectToPage(new { Edit = (string?)null });
     }
 
     /// <summary>Generates a new FLIP token (replacing the old one) and shows it once.</summary>

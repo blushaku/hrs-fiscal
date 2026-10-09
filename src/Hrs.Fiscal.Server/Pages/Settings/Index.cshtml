@@ -2,113 +2,232 @@
 @model Hrs.Fiscal.Server.Pages.Settings.IndexModel
 @{
     ViewData["Title"] = "Settings";
+    var c = Model.Current;
+    bool Editing(string s) => Model.Edit == s;
+    string Title(string s) => Hrs.Fiscal.Server.Pages.Settings.IndexModel.Sections[s].Title;
+    string OrNone(string? v) => string.IsNullOrWhiteSpace(v) ? "not set" : v;
 }
 <div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 
-<form method="post" style="display: flex; flex-direction: column; gap: 16px">
-    <div asp-validation-summary="All" class="validation"></div>
-    <div class="grid">
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">Retention and backup</h2>
-            <label class="field">Keep receipts and logs for (years)
-                <input type="number" asp-for="Input.RetentionYears" min="1" max="50" style="max-width: 160px">
-            </label>
-            <p class="small muted" style="margin: 0">[Legal minimum per the Law on Tax Administration Procedures — to be confirmed.] Nothing is deleted before this period ends. After it, records can only be moved to a signed archive file by an administrator; that action is logged.</p>
-            <label class="field">Daily backup target (folder or network share)
-                <input type="text" asp-for="Input.BackupTarget" placeholder="\\NAS01\fiscal-backup">
-            </label>
-        </section>
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">ATK connection</h2>
-            <label class="field">Environment
-                <select asp-for="Input.AtkEnvironment">
-                    <option value="Test">Test (fiskalizimi-test.atk-ks.org)</option>
-                    <option value="Production">Production (fiskalizimi.atk-ks.org)</option>
-                </select>
-            </label>
-            <label class="field">Application ID (issued by ATK on certification)
-                <input type="number" asp-for="Input.AtkApplicationId" min="0">
-            </label>
-            <div class="form-grid">
-                <label class="field">Timeout (seconds) <input type="number" asp-for="Input.AtkTimeoutSeconds" min="2" max="60"></label>
-                <label class="field">Retry offline queue every (minutes) <input type="number" asp-for="Input.AtkRetryMinutes" min="1" max="60"></label>
-            </div>
-        </section>
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">Alerts</h2>
-            <label class="field">Email alerts to (comma-separated)
-                <input type="text" asp-for="Input.AlertEmails" placeholder="frontoffice@hotel.com, it@hotel.com">
-            </label>
-            <p class="small muted" style="margin: 0">Planned (not yet active): alerts for receipts waiting longer than 1 hour, the 48-hour deadline, rejected receipts, certificate expiry and failed backups or integrity checks.</p>
-        </section>
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">VAT calculation</h2>
-            <label class="field">Rounding of VAT per rate
-                <select asp-for="Input.VatRounding">
-                    <option value="RoundTaxHalfUp">Round VAT half-up (default)</option>
-                    <option value="TruncateNet">Truncate net amount (matches ATK sample code)</option>
-                </select>
-            </label>
-            <p class="small muted" style="margin: 0">Pending ATK's official rule. Applies only to receipts issued after the change.</p>
-        </section>
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">Signing</h2>
-            <label class="field">Where receipts are signed
-                <select asp-for="Input.SigningModeDefault">
-                    <option value="client">Workstation client (HRS Fiscal Client on each PC)</option>
-                    <option value="server">Central (server, one key per workstation)</option>
-                </select>
-            </label>
-            <p class="small muted" style="margin: 0">Either way every workstation is its own ATK POS with its own certificate. Central mode needs nothing installed on the workstations, but is pending ATK's confirmation. A single workstation can use the other mode (Workstations). Changing the mode means the affected workstations must be registered with ATK again.</p>
-        </section>
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">OPERA overrides</h2>
-            <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink); flex: none">
-                <input type="checkbox" asp-for="Input.OperaOverridesEnabled" style="width: 20px; height: 20px"> Use overrides for transaction codes and payment methods
-            </label>
-            <div class="form-grid">
-                <label class="field">Default ATK category <input type="text" asp-for="Input.DefaultItemCategory" maxlength="5" placeholder="TT"></label>
-                <label class="field">Default unit <input type="text" asp-for="Input.DefaultItemUnit" maxlength="10" placeholder="cope"></label>
-            </div>
-            <p class="small muted" style="margin: 0">Off (default): receipts are fiscalized exactly as OPERA sends them via FLIP. On: the entries under <a href="/Settings/Mapping">OPERA overrides &amp; VAT</a> replace OPERA's values for those codes. Applies to receipts issued after the change.</p>
-        </section>
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
-            <h2 style="margin: 0">OPERA / FLIP connection</h2>
-            <label class="field">Mode
-                <select asp-for="Input.FlipMode">
-                    <option value="capture">Capture: record what FLIP sends, answer with a test reply (demo / setup)</option>
-                    <option value="live">Live: fiscalize OPERA folios (sign, archive, send to ATK, answer FLIP)</option>
-                </select>
-            </label>
-            <div class="form-grid">
-                <label class="field">Test reply: HTTP status <input type="number" asp-for="Input.FlipStubStatus" min="100" max="599"></label>
-                <label class="field">Test reply: content type <input type="text" asp-for="Input.FlipStubContentType" placeholder="text/plain"></label>
-            </div>
-            <label class="field">Test reply: body
-                <textarea asp-for="Input.FlipStubBody" rows="3" placeholder="Empty, or a sample answer to see how OPERA reacts"></textarea>
-            </label>
-            <h3 style="margin: 8px 0 0; font-size: 15px">Access token</h3>
-            @if (Model.NewToken is { } tok)
-            {
-                <div class="notice" style="display: flex; flex-direction: column; gap: 6px">
-                    <strong>Copy this token into FLIP's partner configuration now. It is not shown again.</strong>
-                    <code class="mono" style="word-break: break-all; user-select: all; font-size: 14px" id="flip-token">@tok</code>
-                    <span class="small">FLIP sends it as <span class="mono">@Model.Token.Header: Bearer &lt;token&gt;</span> (the bare token is accepted too).</span>
+@* Each tile shows its saved values. "Edit" turns that one tile into a form with Save and Cancel. *@
+@functions {
+    private Microsoft.AspNetCore.Html.IHtmlContent Head(string section, string title, bool editing) =>
+        new Microsoft.AspNetCore.Html.HtmlString(
+            $"<div class=\"tile-head\"><h2>{System.Net.WebUtility.HtmlEncode(title)}</h2>" +
+            (editing ? "" : $"<a class=\"btn small\" href=\"/Settings?Edit={section}#{section}\">Edit</a>") + "</div>");
+}
+
+<div class="grid">
+    @* ---- Retention and backup ---- *@
+    <section class="card setting @(Editing("retention") ? "editing" : "")" id="retention">
+        @Head("retention", Title("retention"), Editing("retention"))
+        @if (Editing("retention"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="retention">
+                <div asp-validation-summary="All" class="validation"></div>
+                <label class="field">Keep receipts and logs for (years) <input type="number" asp-for="Input.RetentionYears" min="1" max="50"></label>
+                <label class="field">Daily backup target (folder or network share) <input type="text" asp-for="Input.BackupTarget" placeholder="\\NAS01\fiscal-backup"></label>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#retention">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv"><dt>Keep for</dt><dd>@c.RetentionYears years</dd><dt>Backup target</dt><dd>@OrNone(c.BackupTarget)</dd></dl>
+        }
+        <p class="small muted">Legal minimum to be confirmed. Nothing is deleted automatically.</p>
+    </section>
+
+    @* ---- ATK connection ---- *@
+    <section class="card setting @(Editing("atk") ? "editing" : "")" id="atk">
+        @Head("atk", Title("atk"), Editing("atk"))
+        @if (Editing("atk"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="atk">
+                <div asp-validation-summary="All" class="validation"></div>
+                <label class="field">Environment
+                    <select asp-for="Input.AtkEnvironment">
+                        <option value="Test">Test (fiskalizimi-test.atk-ks.org)</option>
+                        <option value="Production">Production (fiskalizimi.atk-ks.org)</option>
+                    </select>
+                </label>
+                <label class="field">Application ID (issued by ATK on certification) <input type="number" asp-for="Input.AtkApplicationId" min="0"></label>
+                <div class="form-grid">
+                    <label class="field">Timeout (seconds) <input type="number" asp-for="Input.AtkTimeoutSeconds" min="2" max="60"></label>
+                    <label class="field">Retry offline queue every (minutes) <input type="number" asp-for="Input.AtkRetryMinutes" min="1" max="60"></label>
                 </div>
-            }
-            <p class="small" style="margin: 0">
-                @if (Model.Token.HasToken) { <span>Token ending in <span class="mono">…@Model.Token.Hint</span>, created @(Model.Token.CreatedUtc is { } cu ? Model.Clock.ToLocal(cu).ToString("dd.MM.yyyy HH:mm") : "").</span> }
-                else { <span class="muted">No token yet: FLIP requests are accepted from the allowed IP without a token.</span> }
-            </p>
-            <label class="field" style="flex-direction: row; align-items: center; gap: 10px; color: var(--ink)">
-                <input type="checkbox" asp-for="Input.FlipAuthRequired" style="width: 20px; height: 20px"> Require the token (requests without it get 401)
-            </label>
-            <label class="field">Header that carries the token <input type="text" asp-for="Input.FlipAuthHeader" placeholder="Authorization"></label>
-            <div><button type="submit" class="btn" formaction="/Settings?handler=GenerateToken" formnovalidate>@(Model.Token.HasToken ? "Generate new token (replaces the current one)" : "Generate token")</button></div>
-            <p class="small muted" style="margin: 0">Only a hash of the token is stored. Refused requests are recorded without their content and logged as FLIP_AUTH_FAILED. Raw TCP cannot carry a token and is refused while the token is required.
-                Received messages are listed under <a href="/FlipMessages">FLIP messages</a>.</p>
-        </section>
-    </div>
-    <div><button type="submit" class="btn primary">Save settings</button></div>
-</form>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#atk">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv">
+                <dt>Environment</dt><dd>@(c.AtkEnvironment == "Production" ? "Production" : "Test")</dd>
+                <dt>Application ID</dt><dd class="mono">@(c.AtkApplicationId > 0 ? c.AtkApplicationId.ToString() : "not set")</dd>
+                <dt>Timeout</dt><dd>@c.AtkTimeoutSeconds s</dd>
+                <dt>Resend queue</dt><dd>every @c.AtkRetryMinutes min</dd>
+            </dl>
+        }
+    </section>
+
+    @* ---- Signing ---- *@
+    <section class="card setting @(Editing("signing") ? "editing" : "")" id="signing">
+        @Head("signing", Title("signing"), Editing("signing"))
+        @if (Editing("signing"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="signing">
+                <label class="field">Where receipts are signed
+                    <select asp-for="Input.SigningModeDefault">
+                        <option value="client">Workstation client (HRS Fiscal Client on each PC)</option>
+                        <option value="server">Central (server, one key per workstation)</option>
+                    </select>
+                </label>
+                <p class="small muted">Changing the mode means the affected workstations must be registered with ATK again.</p>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#signing">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv"><dt>Mode</dt><dd>@(c.SigningModeDefault == "server" ? "Central (server, one key per workstation)" : "Workstation client")</dd></dl>
+            <p class="small muted">Either way every workstation is its own ATK POS with its own certificate. A single workstation can use the other mode (Workstations).</p>
+        }
+    </section>
+
+    @* ---- OPERA / FLIP connection ---- *@
+    <section class="card setting @(Editing("flip") ? "editing" : "")" id="flip">
+        @Head("flip", Title("flip"), Editing("flip"))
+        @if (Editing("flip"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="flip">
+                <div asp-validation-summary="All" class="validation"></div>
+                <label class="field">Mode
+                    <select asp-for="Input.FlipMode">
+                        <option value="capture">Capture: record what FLIP sends, answer with a test reply</option>
+                        <option value="live">Live: fiscalize OPERA folios</option>
+                    </select>
+                </label>
+                <div class="form-grid">
+                    <label class="field">Test reply: HTTP status <input type="number" asp-for="Input.FlipStubStatus" min="100" max="599"></label>
+                    <label class="field">Test reply: content type <input type="text" asp-for="Input.FlipStubContentType" placeholder="text/plain"></label>
+                </div>
+                <label class="field">Test reply: body <textarea asp-for="Input.FlipStubBody" rows="3" placeholder="Empty, or a sample answer to see how OPERA reacts"></textarea></label>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#flip">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv">
+                <dt>Mode</dt><dd>@(c.FlipMode == "live" ? "Live: OPERA folios are fiscalized" : "Capture: recorded, not fiscalized")</dd>
+                <dt>Test reply</dt><dd>HTTP @c.FlipStubStatus, @(string.IsNullOrEmpty(c.FlipStubBody) ? "empty body" : c.FlipStubContentType)</dd>
+            </dl>
+            <p class="small muted">The test reply is used in capture mode only. Messages are listed under <a href="/FlipMessages">FLIP messages</a>.</p>
+        }
+    </section>
+
+    @* ---- FLIP access token ---- *@
+    <section class="card setting @(Editing("token") ? "editing" : "")" id="token">
+        @Head("token", Title("token"), Editing("token"))
+        @if (Model.NewToken is { } tok)
+        {
+            <div class="notice" style="display: flex; flex-direction: column; gap: 6px">
+                <strong>Copy this token into FLIP's partner configuration now. It is not shown again.</strong>
+                <code class="mono" style="word-break: break-all; user-select: all; font-size: 14px" id="flip-token">@tok</code>
+                <span class="small">FLIP sends it as <span class="mono">@Model.Token.Header: Bearer &lt;token&gt;</span> (the bare token is accepted too).</span>
+            </div>
+        }
+        @if (Editing("token"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="token">
+                <div asp-validation-summary="All" class="validation"></div>
+                <label class="check"><input type="checkbox" asp-for="Input.FlipAuthRequired"> Require the token (requests without it get 401)</label>
+                <label class="field">Header that carries the token <input type="text" asp-for="Input.FlipAuthHeader" placeholder="Authorization"></label>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#token">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv">
+                <dt>Token</dt><dd>@if (Model.Token.HasToken) { <span>ending in <span class="mono">…@Model.Token.Hint</span>, created @(Model.Token.CreatedUtc is { } cu ? Model.Clock.ToLocal(cu).ToString("dd.MM.yyyy HH:mm") : "")</span> } else { <span>none</span> }</dd>
+                <dt>Required</dt><dd>@(c.FlipAuthRequired ? "yes" : "no")</dd>
+                <dt>Header</dt><dd class="mono">@c.FlipAuthHeader</dd>
+            </dl>
+            <form method="post" asp-page-handler="GenerateToken">
+                <button type="submit" class="btn small">@(Model.Token.HasToken ? "Generate new token" : "Generate token")</button>
+            </form>
+            <p class="small muted">A new token replaces the current one at once. Only a hash is stored.</p>
+        }
+    </section>
+
+    @* ---- OPERA overrides and receipt defaults ---- *@
+    <section class="card setting @(Editing("overrides") ? "editing" : "")" id="overrides">
+        @Head("overrides", Title("overrides"), Editing("overrides"))
+        @if (Editing("overrides"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="overrides">
+                <div asp-validation-summary="All" class="validation"></div>
+                <label class="check"><input type="checkbox" asp-for="Input.OperaOverridesEnabled"> Use overrides for transaction codes and payment methods</label>
+                <div class="form-grid">
+                    <label class="field">Default ATK category <input type="text" asp-for="Input.DefaultItemCategory" maxlength="5" placeholder="TT"></label>
+                    <label class="field">Default unit <input type="text" asp-for="Input.DefaultItemUnit" maxlength="10" placeholder="cope"></label>
+                </div>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#overrides">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv">
+                <dt>Overrides</dt><dd>@(c.OperaOverridesEnabled ? "on" : "off")</dd>
+                <dt>Default category</dt><dd class="mono">@c.DefaultItemCategory</dd>
+                <dt>Default unit</dt><dd>@c.DefaultItemUnit</dd>
+            </dl>
+            <p class="small muted">Codes, payment methods and VAT rates are under <a href="/Settings/Mapping">OPERA overrides &amp; VAT</a>.</p>
+        }
+    </section>
+
+    @* ---- VAT calculation ---- *@
+    <section class="card setting @(Editing("vat") ? "editing" : "")" id="vat">
+        @Head("vat", Title("vat"), Editing("vat"))
+        @if (Editing("vat"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="vat">
+                <label class="field">Rounding of VAT per rate
+                    <select asp-for="Input.VatRounding">
+                        <option value="RoundTaxHalfUp">Round VAT half-up (default)</option>
+                        <option value="TruncateNet">Truncate net amount (matches ATK sample code)</option>
+                    </select>
+                </label>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#vat">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv"><dt>Rounding</dt><dd>@(c.VatRounding == "TruncateNet" ? "Truncate net amount" : "Round VAT half-up")</dd></dl>
+            <p class="small muted">Pending ATK's official rule. Applies to receipts issued after a change.</p>
+        }
+    </section>
+
+    @* ---- Alerts ---- *@
+    <section class="card setting @(Editing("alerts") ? "editing" : "")" id="alerts">
+        @Head("alerts", Title("alerts"), Editing("alerts"))
+        @if (Editing("alerts"))
+        {
+            <form method="post" class="edit-panel">
+                <input type="hidden" name="section" value="alerts">
+                <label class="field">Email alerts to (comma-separated) <input type="text" asp-for="Input.AlertEmails" placeholder="frontoffice@hotel.com, it@hotel.com"></label>
+                <div class="actions"><button type="submit" class="btn primary">Save</button><a class="btn" href="/Settings#alerts">Cancel</a></div>
+            </form>
+        }
+        else
+        {
+            <dl class="kv"><dt>Send to</dt><dd>@OrNone(c.AlertEmails)</dd></dl>
+            <p class="small muted">Planned: alerts for waiting receipts, the 48-hour deadline, rejections, certificate expiry and failed backups.</p>
+        }
+    </section>
+</div>

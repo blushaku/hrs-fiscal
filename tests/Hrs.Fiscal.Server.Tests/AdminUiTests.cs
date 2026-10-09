@@ -85,16 +85,21 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
     public async Task Settings_change_is_audited_with_old_and_new_value()
     {
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
-        var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings");
+        // Read-only until Edit: no input fields on the overview, the tile's fields only after Edit.
+        Assert.DoesNotContain("name=\"Input.RetentionYears\"", await client.GetStringAsync("/Settings"));
+        Assert.Contains("name=\"Input.RetentionYears\"", await client.GetStringAsync("/Settings?Edit=retention"));
+
+        var timeoutBefore = await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'atk_timeout_seconds'");
+        var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings?Edit=retention");
         var form = new Dictionary<string, string>
         {
-            ["Input.RetentionYears"] = "11", ["Input.BackupTarget"] = "", ["Input.AtkEnvironment"] = "Test", ["Input.AtkApplicationId"] = "0",
-            ["Input.AtkTimeoutSeconds"] = "10", ["Input.AtkRetryMinutes"] = "2", ["Input.AlertEmails"] = "", ["Input.VatRounding"] = "RoundTaxHalfUp",
-            ["__RequestVerificationToken"] = token,
+            ["section"] = "retention", ["Input.RetentionYears"] = "11", ["Input.BackupTarget"] = "", ["__RequestVerificationToken"] = token,
         };
         var response = await client.PostAsync("/Settings", new FormUrlEncodedContent(form));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("11", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'retention_years'"));
+        // Only that tile was saved.
+        Assert.Equal(timeoutBefore, await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'atk_timeout_seconds'"));
         var details = await app.ScalarAsync<string>("SELECT details::text FROM fiscal.audit_log WHERE action = 'SETTING_CHANGED' AND entity_id = 'retention_years' ORDER BY id DESC LIMIT 1");
         Assert.Contains("\"old\": \"10\"", details);
         Assert.Contains("\"new\": \"11\"", details);
@@ -105,20 +110,18 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
     {
         Assert.Equal("false", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'opera_overrides_enabled'"));
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
-        Assert.Contains("Overrides are OFF", await client.GetStringAsync("/Settings/Mapping"));
+        Assert.Contains("Overrides are off", await client.GetStringAsync("/Settings/Mapping"));
 
-        var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings");
-        var current = await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'retention_years'");
+        var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings?Edit=overrides");
         var response = await client.PostAsync("/Settings", new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["Input.RetentionYears"] = current!, ["Input.AtkEnvironment"] = "Test", ["Input.AtkApplicationId"] = "0",
-            ["Input.AtkTimeoutSeconds"] = "10", ["Input.AtkRetryMinutes"] = "2", ["Input.VatRounding"] = "RoundTaxHalfUp",
-            ["Input.OperaOverridesEnabled"] = "true", ["__RequestVerificationToken"] = token,
+            ["section"] = "overrides", ["Input.OperaOverridesEnabled"] = "true", ["Input.DefaultItemCategory"] = "TT",
+            ["Input.DefaultItemUnit"] = "cope", ["__RequestVerificationToken"] = token,
         }));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("true", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'opera_overrides_enabled'"));
         Assert.Equal(1L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'SETTING_CHANGED' AND entity_id = 'opera_overrides_enabled'"));
-        Assert.Contains("Overrides are ON", await client.GetStringAsync("/Settings/Mapping"));
+        Assert.Contains("Overrides are on", await client.GetStringAsync("/Settings/Mapping"));
     }
 
     [PgFact]
@@ -163,5 +166,46 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
         var sig = await app.ScalarAsync<string>("SELECT signature FROM fiscal.receipt ORDER BY id LIMIT 1");
         Assert.Equal(0x30, Convert.FromBase64String(sig!)[0]);
         Assert.Equal(0L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.verify_chain('receipt')"));
+    }
+
+    [PgFact]
+    public async Task Codes_payments_and_vat_rates_are_added_through_a_form()
+    {
+        var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
+        var page = await client.GetStringAsync("/Settings/Mapping");
+        Assert.DoesNotContain("name=\"VatInput.Percent\"", page); // lists are read-only
+        Assert.Contains("Add VAT rate", page);
+
+        async Task<HttpResponseMessage> Post(string handler, string query, Dictionary<string, string> fields)
+        {
+            var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings/Mapping?" + query);
+            fields["__RequestVerificationToken"] = token;
+            return await client.PostAsync($"/Settings/Mapping?handler={handler}&{query}", new FormUrlEncodedContent(fields));
+        }
+
+        var vat = await Post("Vat", "Form=vat", new() { ["VatInput.Letter"] = "f", ["VatInput.Percent"] = "5", ["VatInput.Description"] = "Test rate" });
+        Assert.Equal(HttpStatusCode.Redirect, vat.StatusCode);
+        Assert.Equal(5m, await app.ScalarAsync<decimal>("SELECT percent FROM fiscal.vat_rate WHERE letter = 'F'"));
+        var dup = await Post("Vat", "Form=vat", new() { ["VatInput.Letter"] = "E", ["VatInput.Percent"] = "9", ["VatInput.Description"] = "x" });
+        Assert.Equal(HttpStatusCode.OK, dup.StatusCode);
+        Assert.Contains("already exists", await dup.Content.ReadAsStringAsync());
+        Assert.Equal(18m, await app.ScalarAsync<decimal>("SELECT percent FROM fiscal.vat_rate WHERE letter = 'E'"));
+
+        var trx = await Post("Trx", "Form=trx", new()
+        {
+            ["TrxInput.TrxCode"] = "77001", ["TrxInput.ItemName"] = "Spa treatment", ["TrxInput.Unit"] = "cope",
+            ["TrxInput.Category"] = "shz", ["TrxInput.VatLetter"] = "F", ["TrxInput.Active"] = "true",
+        });
+        Assert.Equal(HttpStatusCode.Redirect, trx.StatusCode);
+        Assert.Equal("SHZ", await app.ScalarAsync<string>("SELECT category FROM fiscal.opera_trx_mapping WHERE trx_code = '77001'"));
+
+        var pay = await Post("Payment", "Form=pay", new() { ["PaymentInput.PaymentCode"] = "9300", ["PaymentInput.Description"] = "Voucher", ["PaymentInput.AtkPaymentType"] = "3" });
+        Assert.Equal(HttpStatusCode.Redirect, pay.StatusCode);
+        Assert.Equal((short)3, await app.ScalarAsync<short>("SELECT atk_payment_type FROM fiscal.opera_payment_mapping WHERE payment_code = '9300'"));
+
+        // Edit keeps the key and changes the rest.
+        var edit = await Post("Vat", "Form=vat&Key=F", new() { ["VatInput.Letter"] = "F", ["VatInput.Percent"] = "6", ["VatInput.Description"] = "Test rate" });
+        Assert.Equal(HttpStatusCode.Redirect, edit.StatusCode);
+        Assert.Equal(6m, await app.ScalarAsync<decimal>("SELECT percent FROM fiscal.vat_rate WHERE letter = 'F'"));
     }
 }
