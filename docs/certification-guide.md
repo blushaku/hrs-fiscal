@@ -1,9 +1,9 @@
-# HRS Fiscal Solution Kosovo — Guide to ATK certification of the SEF
+# Opera Cloud Fiscal Solution - Kosovo — Guide to ATK certification of the SEF
 
 **Source:** ATK, *Kushtet dhe procedurat për aplikimin, certifikimin dhe mirëmbajtjen e Softuerëve Elektronikë Fiskalë
 (SEF)* (Conditions and procedures for application, certification and maintenance of Electronic Fiscal Software), signed by
 the ATK Director General on 03.07.2026, in force from signing. 7 pages, Articles 1–9.
-**Prepared:** 09.10.2026 for HRS Fiscal Solution Kosovo (OPERA Cloud via OFIS/FLIP).
+**Prepared:** 09.10.2026 for Opera Cloud Fiscal Solution - Kosovo (OPERA Cloud via OFIS/FLIP).
 
 ---
 
@@ -120,7 +120,7 @@ Write it in Albanian (English annex if helpful). Suggested chapters, all materia
    with the HRS Fiscal Client (default setting, but the client is **not built yet**). Recommendation: certify central
    signing first, with ATK's written agreement (open question #10), and notify the client later as a change under Art. 7.4.
 2. **Applicant.** Decided 09.10.2026: the application is made by a **natural person without a registered business**
-   (5.2: copy of personal ID). Product name: **HRS Fiscal Solution Kosovo**.
+   (5.2: copy of personal ID). Product name: **Opera Cloud Fiscal Solution - Kosovo**.
 
 **Product gaps**
 | # | Gap | Why it matters | Owner |

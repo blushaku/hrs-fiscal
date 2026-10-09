@@ -1,4 +1,4 @@
-# OPERA Cloud — OFIS / FLIP Configuration for HRS Fiscal Solution (Kosovo)
+# OPERA Cloud — OFIS / FLIP Configuration for Opera Cloud Fiscal Solution - Kosovo
 
 For the HRS PMS team. Connects an OPERA Cloud property to the HRS Fiscal Server through Oracle's fiscal integration
 (**OFIS**) with **FLIP** installed on-premise. Install the HRS Fiscal Server first

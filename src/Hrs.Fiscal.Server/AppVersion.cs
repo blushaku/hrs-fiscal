@@ -6,7 +6,7 @@ namespace Hrs.Fiscal.Server;
 public static class AppVersion
 {
     /// <summary>Product name as registered with ATK (SEF certification).</summary>
-    public const string ProductName = "HRS Fiscal Solution Kosovo";
+    public const string ProductName = "Opera Cloud Fiscal Solution - Kosovo";
 
     private static readonly string Informational =
         typeof(AppVersion).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";

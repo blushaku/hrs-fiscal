@@ -1,4 +1,4 @@
-# HRS Fiscal Solution — Kosovo SEF Requirements, ATK API & Architecture
+# Opera Cloud Fiscal Solution - Kosovo — SEF Requirements, ATK API & Architecture
 
 Sources:
 - UA MF Nr. 01/2026 (Administrative Instruction), Ch. IV Arts 31–47, Arts 5–7, 49–50
