@@ -234,6 +234,7 @@ retention period. Export or hand over a backup instead.
 | *password authentication failed* / *database does not exist* | Connection string in `appsettings.Production.json`: user, password, database name |
 | *address already in use* | Port 5080 or 5100 is used by another program: re-run the installer with `-AdminPort`/`-FlipPort` |
 | Admin page not reachable from another PC | Firewall rule *HRS Fiscal admin (5080)*; network profile must be Domain or Private, not Public |
+| FLIP: *HttpClient.Timeout … elapsing*, but PowerShell tests work | FLIP's EndPoint Url uses the computer name: use the IP address (`http://<HRS-IP>:5100/flip`) |
 | FLIP gets *401 Unauthorized* | Token missing or wrong in FLIP, or FLIP uses another header: the FLIP messages page shows refused requests (mode *rejected*, header check *missing*/*invalid*) and which headers FLIP sent. Set the header name or generate a new token |
 | FLIP messages do not arrive | Firewall rule *HRS Fiscal FLIP (5100)* and its allowed IP (`-FlipSourceIp`); FLIP's partner address; OPERA fiscal configuration |
 | ATK registration or sending times out | Outbound HTTPS to `fiskalizimi(-test).atk-ks.org` through the hotel firewall/proxy |

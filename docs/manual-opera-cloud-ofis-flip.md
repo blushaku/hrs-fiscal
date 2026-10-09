@@ -103,7 +103,7 @@ Administration › **Financials › Fiscal Management › Fiscal Terminals** ›
 | Partner | the HRS partner |
 | Primary | **Off** (see below) |
 | Terminal Label | Readable name, e.g. `Front desk 1` |
-| Address and Port | HRS Fiscal Server: `<HRS-IP>:5100` (FLIP forwards to this address) **[Oracle]** confirm whether FLIP expects host:port or a full URL (`http://<HRS-IP>:5100/flip`) |
+| Address and Port | HRS Fiscal Server **by IP address**, not computer name: `<HRS-IP>:5100` (FLIP forwards to this address) **[Oracle]** confirm whether FLIP expects host:port or a full URL (`http://<HRS-IP>:5100/flip`) |
 | Device Value | HRS **POS ID** of that workstation (for reference; HRS identifies the workstation by Terminal ID) |
 
 **Primary terminal and terminal selection.** OPERA prompts the user to choose a Fiscal Terminal when several exist. If
@@ -111,7 +111,13 @@ one terminal is marked *Primary*, OPERA always uses it **without asking**. Becau
 POS, do not mark a terminal as Primary unless the property has only one workstation; otherwise every receipt would be
 issued under that one POS. Train front-office staff to pick their own workstation's terminal.
 
-## 6a. FLIP → HRS authentication (access token)
+## 6a. FLIP endpoint address
+
+In FLIP's partner configuration (e.g. *GENERIC1 – EndPoint Url*) enter the HRS server **by IP address**:
+`http://192.168.x.y:5100/flip`. A computer name can resolve to an IPv6 address, which the HRS server and its firewall
+rule do not accept, and FLIP then fails with *HttpClient.Timeout … elapsing*. Give the HRS server a static IP.
+
+## 6b. FLIP → HRS authentication (access token)
 
 FLIP authenticates to the HRS Fiscal Server with a token:
 1. HRS › Settings › General › *OPERA / FLIP connection* › **Generate token**. Copy the token: it is shown only once
