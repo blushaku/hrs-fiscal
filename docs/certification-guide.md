@@ -7,6 +7,17 @@ the ATK Director General on 03.07.2026, in force from signing. 7 pages, Articles
 
 ---
 
+## Glossary
+
+- **OFIS — OPERA Fiscal Integration Solution.** Oracle's fiscal framework inside OPERA Cloud. At each fiscal event (folio
+  settlement, check-out, payment) OPERA builds a standard payload with the whole folio — lines, taxes, payments, totals,
+  hotel and terminal — and sends it to the configured fiscal partner. Configured in OPERA under Administration ›
+  Financials › Fiscal Management. OFIS does not fiscalize; it only delivers the folio.
+- **FLIP — Fiscal Layer Integration Platform.** Oracle software installed on the hotel's network. It receives the OFIS
+  payload from OPERA Cloud, calls the local fiscal software (our server, over the LAN, with an access token) and returns
+  the answer to OPERA. It is the bridge between OPERA in the cloud and the fiscal server in the hotel.
+- **SEF** — Softuer Elektronik Fiskal: the certified fiscal software; here, Opera Cloud Fiscal Solution - Kosovo.
+
 ## 1. In one paragraph
 
 HRS, as the **developer and maintainer** of HRS Fiscal, must be **registered and certified by the ATK SEF Certification
@@ -95,10 +106,10 @@ review.
 ## 6. What to put in the technical description (5.5)
 
 Write it in Albanian (English annex if helpful). Suggested chapters, all material already exists in our docs:
-1. **Product and developer** — HRS Fiscal Solution, version, HRS company data, contact for the Commission.
+1. **Product and developer** — Opera Cloud Fiscal Solution - Kosovo, version, developer Behar Lushaku, contact for the Commission.
 2. **Purpose and scope** — fiscalization of hotel folios from Oracle OPERA Cloud (rooms, F&B and other services) for
    B2C sales in Kosovo.
-3. **Architecture** — OPERA Cloud → OFIS → on-premise FLIP → HRS Fiscal Server (hotel LAN) → ATK; workstation = ATK POS;
+3. **Architecture** — OPERA Cloud → OFIS → on-premise FLIP → fiscal server (hotel LAN) → ATK; workstation = ATK POS; explain OFIS and FLIP (glossary below);
    diagram.
 4. **Integration with ATK** — environments, onboarding (`/ca/verify`, `/ca/signcsr`, CSR subject), `/pos/coupon`,
    protobuf, signing over the Base64 text, QR = CitizenCoupon | signature, money units.
