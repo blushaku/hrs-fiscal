@@ -40,8 +40,8 @@ transmitted must be notified to ATK in advance** (Art. 7.4).
 | # | Document (Albanian) | What it is | What HRS submits | Status |
 |---|---|---|---|---|
 | 5.1 | *Kërkesa për certifikim të SEF-it* | ATK's standard application form (annex to the document), completed and signed | Form signed by HRS's authorised representative | **Form missing** — the annex is not in our PDF; get it from ATK |
-| 5.2 | Personal ID copy | Only if the applicant is a natural person without a business | — | Not applicable |
-| 5.3 | *Certifikata e Regjistrimit të Biznesit* (ARBK) | Business registration certificate, for a business person or legal entity | HRS's ARBK certificate | **Check:** HRS needs a Kosovo-registered entity, or ATK must say what a foreign company submits |
+| 5.2 | Personal ID copy | Applicant is a natural person without a registered business | Copy of the applicant's valid ID card or passport | **Applies** — the applicant applies as a natural person |
+| 5.3 | *Certifikata e Regjistrimit të Biznesit* (ARBK) | Business registration certificate, for a business person or legal entity | — | Not applicable (natural person) |
 | 5.4 | *Certifikata e Numrit Fiskal* | Only for a consortium | — | Only if HRS applies together with a partner |
 | 5.5 | *Përshkrimi i përgjithshëm i zgjidhjes softuerike* | General description: functionality, **how it integrates with ATK's system**, list of technologies (free format) | Technical description (see §6) | To write — in Albanian |
 | 5.6 | *Manuali i përdoruesit dhe udhëzimet bazë* | User manual and basic instructions (free format) | Hotel-user manual + installation manual | We have installation and OPERA manuals in English; a **front-desk/admin user manual in Albanian** is needed |
@@ -119,8 +119,8 @@ Write it in Albanian (English annex if helpful). Suggested chapters, all materia
 1. **Which configuration we certify.** Central signing on the HRS server (built, tested) or signing on each workstation
    with the HRS Fiscal Client (default setting, but the client is **not built yet**). Recommendation: certify central
    signing first, with ATK's written agreement (open question #10), and notify the client later as a change under Art. 7.4.
-2. **Applicant entity.** The ARBK certificate (5.3) presumes a Kosovo-registered business. Confirm HRS's Kosovo
-   registration, or ask ATK what a foreign company submits instead (or apply as a consortium with a Kosovo partner, 5.4).
+2. **Applicant.** Decided 09.10.2026: the application is made by a **natural person without a registered business**
+   (5.2: copy of personal ID). Product name: **HRS Fiscal Solution Kosovo**.
 
 **Product gaps**
 | # | Gap | Why it matters | Owner |
@@ -179,3 +179,13 @@ Practical consequences for HRS:
 | 4–5 | Submit; keep a developer on standby for the 7-working-day correction windows; decision within 15 working days |
 
 Sources: ATK document of 03.07.2026 (Arts. 1–9); *sef-requirements-and-api.md*; ATK TEST run of 08.10.2026.
+
+## 10. Submission package (drafted 09.10.2026)
+
+| Doc | Status |
+|---|---|
+| 5.1 Application request (cover letter / data for ATK's form) | Drafted (Albanian) — fill in personal data, sign |
+| 5.2 Copy of personal ID | Applicant attaches |
+| 5.5 General description of the software solution | Drafted (Albanian), with architecture diagram |
+| 5.6 User manual and basic instructions | Drafted (Albanian); installation manual attached as technical annex (English) |
+| 5.7 Declaration of software compliance | Drafted (Albanian) — fill in, sign |
