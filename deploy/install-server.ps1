@@ -58,10 +58,16 @@ New-NetFirewallRule -DisplayName "HRS Fiscal FLIP ($FlipPort)" -Direction Inboun
 if ($FlipTcpPort -gt 0) { New-NetFirewallRule -DisplayName "HRS Fiscal FLIP TCP ($FlipTcpPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipTcpPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null }
 Start-Service $svc
 Start-Sleep 3
-try { Invoke-RestMethod "http://localhost:$AdminPort/health" | Out-Null; Write-Host "Health check OK." -ForegroundColor Green }
+try { Invoke-RestMethod "http://127.0.0.1:$AdminPort/health" | Out-Null; Write-Host "Health check OK." -ForegroundColor Green }
 catch { Write-Host "Service started but /health did not answer. See Event Viewer > Windows Logs > Application (source Hrs.Fiscal.Server)." -ForegroundColor Red }
 
 Write-Host "HRS Fiscal Server installed and started."
-Write-Host "  Admin:  http://$(hostname):$AdminPort   (user 'admin')"
-Write-Host "  FLIP:   http://<this server's LAN IP>:$FlipPort/flip"
+# Show real IPv4 addresses: FLIP must be configured with the IP, not the computer name (which may resolve to IPv6).
+$ips = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+         Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } | ForEach-Object IPAddress)
+if ($ips.Count -eq 0) { $ips = @("<this server's IP>") }
+Write-Host "  Admin web UI (browser, port $AdminPort):"
+$ips | ForEach-Object { Write-Host "      http://$($_):$AdminPort   (user 'admin')" }
+Write-Host "  FLIP EndPoint Url (enter in FLIP, port $FlipPort, use the IP):"
+$ips | ForEach-Object { Write-Host "      http://$($_):$FlipPort/flip" -ForegroundColor Cyan }
 if ($AdminPassword) { Write-Host "  Remove Bootstrap.AdminPassword from appsettings.Production.json after the first sign-in." -ForegroundColor Yellow }
