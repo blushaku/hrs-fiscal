@@ -59,6 +59,23 @@
             </label>
             <p class="small muted" style="margin: 0">Off (default): receipts are fiscalized exactly as OPERA sends them via FLIP. On: the entries under <a href="/Settings/Mapping">OPERA overrides &amp; VAT</a> replace OPERA's values for those codes. Applies to receipts issued after the change.</p>
         </section>
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0">OPERA / FLIP connection</h2>
+            <label class="field">Mode
+                <select asp-for="Input.FlipMode">
+                    <option value="capture">Capture: record what FLIP sends, answer with a test reply (demo / setup)</option>
+                    <option value="live">Live: fiscalize folios (available once Oracle's FLIP specification is implemented)</option>
+                </select>
+            </label>
+            <div class="form-grid">
+                <label class="field">Test reply: HTTP status <input type="number" asp-for="Input.FlipStubStatus" min="100" max="599"></label>
+                <label class="field">Test reply: content type <input type="text" asp-for="Input.FlipStubContentType" placeholder="text/plain"></label>
+            </div>
+            <label class="field">Test reply: body
+                <textarea asp-for="Input.FlipStubBody" rows="3" placeholder="Empty, or a sample answer to see how OPERA reacts"></textarea>
+            </label>
+            <p class="small muted" style="margin: 0">Received messages are listed under <a href="/FlipMessages">FLIP messages</a>.</p>
+        </section>
     </div>
     <div><button type="submit" class="btn primary">Save settings</button></div>
 </form>

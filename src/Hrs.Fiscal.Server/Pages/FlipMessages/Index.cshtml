@@ -1,0 +1,80 @@
+@page
+@model Hrs.Fiscal.Server.Pages.FlipMessages.IndexModel
+@{
+    ViewData["Title"] = "FLIP messages";
+    var baseUrl = $"{Request.Scheme}://{Request.Host}";
+}
+<div class="page-head">
+    <div>
+        <h1>FLIP messages</h1>
+        <p>Everything OPERA sends through FLIP, stored exactly as received, with HRS Fiscal's answer.</p>
+    </div>
+    <a class="btn" href="/FlipMessages">Refresh</a>
+</div>
+
+@if (Model.Mode == "capture")
+{
+    <div class="notice warn"><strong>Capture mode.</strong> Messages are recorded but not fiscalized. HRS Fiscal answers every message with the test answer set under <a href="/Settings">Settings › General</a> (now HTTP @Model.Stub.Status@(string.IsNullOrEmpty(Model.Stub.Body) ? ", empty body" : "")).</div>
+}
+
+<section class="card">
+    <h2>Where FLIP should send to</h2>
+    <div class="kv">
+        <div>HTTP address</div><div class="mono">@baseUrl/flip &nbsp;(any path below /flip is accepted)</div>
+        <div>Raw TCP</div><div class="mono">@(Model.TcpPort > 0 ? $"port {Model.TcpPort}" : "off (set Flip:TcpPort in appsettings.json to enable)")</div>
+    </div>
+    <p class="small muted" style="margin: 12px 0 0">Use this server's LAN address as the FLIP Server Address / Fiscal Terminal address in OPERA, or in FLIP's own partner configuration. Messages appear here within a second.</p>
+</section>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start">
+    <section class="card">
+        <h2>Received (@Model.Messages.Count)</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>#</th><th>Received</th><th>From</th><th>Request</th><th>Format</th><th style="text-align: right">Size</th></tr></thead>
+                <tbody>
+                @foreach (var m in Model.Messages)
+                {
+                    <tr style="@(Model.Selected?.Id == m.Id ? "background: #F0F1F6" : "")">
+                        <td class="mono"><a href="/FlipMessages?Id=@m.Id">@m.Id</a></td>
+                        <td class="mono">@Model.Clock.Format(m.ReceivedAt)</td>
+                        <td class="mono">@m.RemoteAddress</td>
+                        <td class="mono">@(m.Transport == "tcp" ? "TCP" : $"{m.Method} {m.Path}")</td>
+                        <td><span class="badge neutral">@m.Kind</span></td>
+                        <td class="num">@m.Size.ToString("N0") B</td>
+                    </tr>
+                }
+                @if (Model.Messages.Count == 0)
+                {
+                    <tr><td colspan="6" class="muted">Nothing received yet. Generate a folio in OPERA once FLIP points to this server.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @if (Model.Selected is { } s)
+    {
+        <section class="card" style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
+            <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center">
+                <h2 style="margin: 0">Message @s.Id</h2>
+                <a class="btn small" href="/flip-messages/@s.Id/raw">Download raw</a>
+            </div>
+            <div class="kv">
+                <div>Received</div><div>@Model.Clock.Format(s.ReceivedAt)</div>
+                <div>From</div><div class="mono">@s.RemoteAddress</div>
+                <div>Request</div><div class="mono">@(s.Transport == "tcp" ? "raw TCP" : $"{s.Method} {s.Path}")</div>
+                <div>Content type</div><div class="mono">@(s.ContentType ?? "—")</div>
+                <div>Our answer</div><div class="mono">@(s.ResponseStatus?.ToString() ?? "—") @(string.IsNullOrEmpty(s.ResponseBody) ? "" : "· " + s.ResponseBody)</div>
+            </div>
+            <details>
+                <summary style="cursor: pointer; font-weight: 600">Headers</summary>
+                <pre class="payload">@s.Headers</pre>
+            </details>
+            <div>
+                <div class="small muted">Body (@s.Kind, @s.Size.ToString("N0") bytes)</div>
+                <pre class="payload" style="max-height: 560px; overflow: auto">@s.Pretty()</pre>
+            </div>
+        </section>
+    }
+</div>

@@ -122,6 +122,31 @@ public class AdminUiTests(ServerFixture app) : IClassFixture<ServerFixture>
     }
 
     [PgFact]
+    public async Task Flip_capture_stores_any_message_and_answers_with_test_reply()
+    {
+        const string xml = "<FiscalPayload><Folio No=\"4711\"><Line Code=\"1000\" Amount=\"85.00\"/></Folio></FiscalPayload>";
+        var flip = app.Anonymous();
+        var response = await flip.PostAsync("/flip/some/partner/path?terminal=FO1", new StringContent(xml, Encoding.UTF8, "application/xml"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        Assert.Equal("/flip/some/partner/path?terminal=FO1", await app.ScalarAsync<string>("SELECT path FROM fiscal.flip_message ORDER BY id DESC LIMIT 1"));
+        Assert.Equal(xml, await app.ScalarAsync<string>("SELECT convert_from(body, 'UTF8') FROM fiscal.flip_message ORDER BY id DESC LIMIT 1"));
+        Assert.Equal("capture", await app.ScalarAsync<string>("SELECT mode FROM fiscal.flip_message ORDER BY id DESC LIMIT 1"));
+
+        var admin = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
+        var page = await admin.GetStringAsync("/FlipMessages");
+        Assert.Contains("Folio No=&quot;4711&quot;", page);
+
+        var id = await app.ScalarAsync<long>("SELECT max(id) FROM fiscal.flip_message");
+        var raw = await admin.GetByteArrayAsync($"/flip-messages/{id}/raw");
+        Assert.Equal(xml, Encoding.UTF8.GetString(raw));
+
+        // FLIP traffic is not readable without login, and stored messages are append-only.
+        Assert.Equal(HttpStatusCode.Redirect, (await flip.GetAsync($"/flip-messages/{id}/raw")).StatusCode);
+        await Assert.ThrowsAsync<Npgsql.PostgresException>(() => app.ScalarAsync<int>($"DELETE FROM fiscal.flip_message WHERE id = {id} RETURNING 1"));
+    }
+
+    [PgFact]
     public async Task Integrity_check_passes_on_demo_data_and_is_logged()
     {
         var client = await app.SignedInAsync("auditor", "demo-password-3");

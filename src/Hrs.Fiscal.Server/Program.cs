@@ -6,7 +6,7 @@
 //   Data/        PostgreSQL access; db/migrations are applied on startup
 //   Services/    exports, QR rendering, demo data
 // Planned:
-//   Flip/        LAN endpoint called by Oracle FLIP (OFIS on-premise). Contract pending Oracle's specification.
+//   Flip/        LAN endpoint for Oracle FLIP (OFIS on-premise): capture mode stores every message; live mode pending Oracle's spec.
 //   Routing/     OPERA Fiscal Terminal ID -> HRS Fiscal Client (PosId)
 //   Queue/       offline queue re-send, 48h / 10th-of-month alerts
 //
@@ -18,6 +18,7 @@
 using System.Security.Claims;
 using Hrs.Fiscal.Server;
 using Hrs.Fiscal.Server.Data;
+using Hrs.Fiscal.Server.Flip;
 using Hrs.Fiscal.Server.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -29,6 +30,8 @@ builder.Services.AddSingleton<PropertyClock>();
 builder.Services.AddFiscalDatabase(builder.Configuration);
 builder.Services.AddScoped<Exporter>();
 builder.Services.AddScoped<DemoSeeder>();
+builder.Services.AddScoped<FlipCapture>();
+builder.Services.AddHostedService<FlipTcpListener>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -55,6 +58,7 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AllowAnonymousToPage("/Login");
     o.Conventions.AuthorizeFolder("/Settings", Policies.Admin);
     o.Conventions.AuthorizePage("/Export/Index", Policies.Export);
+    o.Conventions.AuthorizeFolder("/FlipMessages", Policies.Export);
 });
 
 var app = builder.Build();
@@ -93,8 +97,16 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", component = "hrs-fiscal-server" })).AllowAnonymous();
 
 // Endpoint called by Oracle FLIP over the hotel LAN (OPERA: Fiscal Folio parameter "FLIP Server Address",
-// Fiscal Terminals "Address and Port"). Protocol/contract pending Oracle's FLIP fiscal-partner specification.
-app.MapPost("/flip/fiscal-payload", () => Results.StatusCode(StatusCodes.Status501NotImplemented)).AllowAnonymous();
+// Fiscal Terminals "Address and Port"). Any method and any path under /flip is accepted and stored as received.
+// Mode "capture" (Settings) answers with a configurable stub so the real payload format can be learned on a demo.
+app.MapMethods("/flip/{**path}", ["GET", "POST", "PUT", "PATCH", "DELETE"], FlipCapture.HandleHttpAsync).AllowAnonymous().DisableAntiforgery();
+app.MapMethods("/flip", ["GET", "POST", "PUT"], FlipCapture.HandleHttpAsync).AllowAnonymous().DisableAntiforgery();
+
+app.MapGet("/flip-messages/{id:long}/raw", async (long id, FlipCapture capture) =>
+{
+    var m = await capture.GetAsync(id);
+    return m is null ? Results.NotFound() : Results.File(m.Body, m.ContentType ?? "application/octet-stream", $"flip-message-{id}.bin");
+}).RequireAuthorization(Policies.Export);
 
 app.MapGet("/receipts/{id:long}/qr.svg", async (long id, ReceiptQueries q) =>
 {

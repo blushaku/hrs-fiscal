@@ -19,6 +19,10 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
         public string? AlertEmails { get; set; }
         [RegularExpression("RoundTaxHalfUp|TruncateNet")] public string VatRounding { get; set; } = "RoundTaxHalfUp";
         public bool OperaOverridesEnabled { get; set; }
+        [RegularExpression("capture|live")] public string FlipMode { get; set; } = "capture";
+        [Range(100, 599)] public int FlipStubStatus { get; set; } = 200;
+        public string? FlipStubContentType { get; set; } = "text/plain";
+        public string? FlipStubBody { get; set; }
     }
 
     [BindProperty] public GeneralSettings Input { get; set; } = new();
@@ -41,6 +45,10 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
             AlertEmails = Str("alert_emails", ""),
             VatRounding = Str("vat_rounding", "RoundTaxHalfUp"),
             OperaOverridesEnabled = Bool("opera_overrides_enabled"),
+            FlipMode = Str("flip_mode", "capture"),
+            FlipStubStatus = Int("flip_stub_status", 200),
+            FlipStubContentType = Str("flip_stub_content_type", "text/plain"),
+            FlipStubBody = Str("flip_stub_body", ""),
         };
     }
 
@@ -58,6 +66,10 @@ public sealed class IndexModel(SettingsStore settings) : PageModel
             ["alert_emails"] = Input.AlertEmails ?? "",
             ["vat_rounding"] = Input.VatRounding,
             ["opera_overrides_enabled"] = Input.OperaOverridesEnabled,
+            ["flip_mode"] = Input.FlipMode,
+            ["flip_stub_status"] = Input.FlipStubStatus,
+            ["flip_stub_content_type"] = string.IsNullOrWhiteSpace(Input.FlipStubContentType) ? "text/plain" : Input.FlipStubContentType.Trim(),
+            ["flip_stub_body"] = Input.FlipStubBody ?? "",
         }, User.Identity!.Name!);
         TempData["Message"] = changed == 0 ? "No changes." : $"{changed} setting(s) saved and logged.";
         return RedirectToPage();

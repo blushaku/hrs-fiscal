@@ -37,6 +37,7 @@ else
                 <a class="@Active("/Receipts")" href="/Receipts">Receipts</a>
                 <a class="@Active("/Audit")" href="/Audit">Audit log</a>
                 @if (canExport) { <a class="@Active("/Export")" href="/Export">Export</a> }
+                @if (canExport) { <a class="@Active("/FlipMessages")" href="/FlipMessages">FLIP messages</a> }
                 @if (isAdmin) { <a class="@Active("/Settings")" href="/Settings">Settings</a> }
             </div>
             <div class="sidebar-foot">

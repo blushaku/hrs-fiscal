@@ -107,6 +107,13 @@ The logo, favicon and fonts are served locally from `wwwroot/` (no internet need
   Confirm HRS's eligibility; otherwise buy a Professional licence or swap the PDF library.
 - QRCoder, Dapper, Npgsql, Google.Protobuf: MIT / Apache 2.0 / BSD.
 
+## Testing on an OPERA Cloud demo
+
+See [docs/opera-demo-test-plan.md](docs/opera-demo-test-plan.md). The server's **capture mode** stores every
+message FLIP sends (any path under `/flip`, or raw TCP via `Flip:TcpPort`) and answers with a configurable test reply.
+That lets the real OFIS/FLIP payload be recorded on a demo before Oracle's specification arrives. Windows install:
+`deploy/install-server.ps1`.
+
 ## Testing against ATK (hrs-fiscal-cli)
 
 `src/Hrs.Fiscal.Cli` talks to ATK's **TEST** environment (`fiskalizimi-test.atk-ks.org`). It refuses production unless
