@@ -41,7 +41,7 @@
 else
 {
     <header class="suitebar">
-        <a class="suite-app" href="/" aria-label="@AppVersion.ProductName — dashboard"><span class="suite-mark" aria-hidden="true">HRS</span>Opera Cloud Fiscal Solution <span class="suite-sub">Kosovo</span></a>
+        <a class="suite-app" href="/" aria-label="@AppVersion.ProductName — dashboard"><img class="suite-logo" src="~/img/mark-white.svg" alt="" aria-hidden="true">Opera Cloud Fiscal Solution <span class="suite-sub">Kosovo</span></a>
         <span class="suite-property">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</span>
         <div class="suite-right">
             <span class="suite-user" title="@User.Role()"><span class="suite-avatar" aria-hidden="true">@Initials(User.Display())</span><span class="who">@User.Display()</span></span>
@@ -68,7 +68,7 @@ else
                 }
             </div>
             <div class="sidebar-foot">
-                <img class="brand-logo" src="~/img/hrs-logo.svg" alt="HRS Hospitality &amp; Retail Systems">
+                <img class="brand-logo" src="~/img/logo.svg" alt="@AppVersion.ProductName">
                 <div class="version" title="Build @AppVersion.Commit">@AppVersion.ProductName @AppVersion.Version · @User.Role()</div>
                 <div class="version">Developer: @AppVersion.Developer</div>
             </div>

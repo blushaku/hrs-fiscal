@@ -1,7 +1,7 @@
 # Opera Cloud Fiscal Solution - Kosovo — Printing fiscal data and the QR code on the OPERA Cloud folio
 
 **Audience:** OPERA Cloud administrator / implementation consultant. **Applies to:** OPERA Cloud with OFIS
-(on-premise FLIP) and HRS Fiscal Server 0.9 in live mode.
+(on-premise FLIP) and fiscal server 0.9 in live mode.
 
 Items marked **[Oracle]** depend on how FLIP stores the partner response in OPERA and must be confirmed with Oracle
 (FLIP installation guide / Oracle support) before go-live. Everything else uses standard OPERA Cloud features.
@@ -11,7 +11,7 @@ Items marked **[Oracle]** depend on how FLIP stores the partner response in OPER
 ## 1. How the data reaches the folio
 
 ```
-Settle folio in OPERA ──► OPERA builds the fiscal payload ──► FLIP ──► HRS Fiscal Server
+Settle folio in OPERA ──► OPERA builds the fiscal payload ──► FLIP ──► fiscal server
                                                                          │ validate, sign, archive, send to ATK
 Folio PDF ◄── folio template (RTF) ◄── OPERA stores fiscal data ◄── FLIP ◄┘ answer: receipt no., NUIKF, SEF ID, QR …
 ```
@@ -21,13 +21,13 @@ what OPERA stored from the answer; the QR image is drawn by OPERA from a **QR Co
 
 ## 2. What must be printed (Kosovo)
 
-| On the folio | Comes from HRS answer field | Notes |
+| On the folio | Comes from answer field | Notes |
 |---|---|---|
 | QR code | `QrCode` | Exactly as received: `<base64 CitizenCoupon>\|<base64 signature>` — no spaces, no line breaks. Min. 12 × 12 mm; recommended 30 × 30 mm. **No logo inside.** |
 | NUIKF (verification no.) | `VerificationNo` | Max 16 characters |
 | Receipt number | `FiscalBillNo` | ATK coupon number |
 | SEF ID | `SefId` | Unit–NUI–POS |
-| ATK transaction | `AtkTransactionId` | Empty while `AtkStatus` = `pending` (receipt is still valid; HRS sends it later) |
+| ATK transaction | `AtkTransactionId` | Empty while `AtkStatus` = `pending` (receipt is still valid; the fiscal server sends it later) |
 | Date/time of the receipt | `IssuedAt` | |
 | Text **e-kupon** | fixed text | |
 
@@ -39,11 +39,11 @@ that holds at least ~450 bytes (see step 4).
 - OPERA Cloud tasks for your role: **Reports › Manage Reports**, **Copy Reports**, **QR Code Configuration**.
 - OPERA controls: **Cashiering › Fiscal Folio Printing** = On (already on for OFIS).
 - On the workstation: Microsoft Word + **Oracle BI Publisher Desktop** (template builder add-in, same bitness as Office).
-- One test folio already fiscalized by HRS in the TEST environment (HRS › Receipts shows it).
+- One test folio already fiscalized by the fiscal server in the TEST environment (Admin UI › Receipts shows it).
 - **[Oracle]** The OPERA data elements that hold the fiscal answer. Confirm with Oracle which FLIP response fields are
   stored and under which names in the folio data model. OPERA documents a *Fiscal Bill No* returned by the fiscal
   service; the QR string, NUIKF, SEF ID and ATK transaction need the extended response
-  (`FLIP_EXTENDED_RESPONSE = YES`, already set in your fiscal folio parameters). HRS will adapt its answer to the
+  (`FLIP_EXTENDED_RESPONSE = YES`, already set in your fiscal folio parameters). The fiscal server will adapt its answer to the
   exact FLIP response format once Oracle confirms it — the current JSON answer is provisional.
 
 ## 4. Create the QR Code Definition
@@ -53,7 +53,7 @@ that holds at least ~450 bytes (see step 4).
    | Field | Value |
    |---|---|
    | Property | your property |
-   | Code | `HRSFISCALQR` (referenced in the template; letters/digits only) |
+   | Code | `FISCALQR` (referenced in the template; letters/digits only) |
    | Description | Kosovo fiscal QR (ATK) |
    | Stationery (Template) Type | Folio |
    | Stationery (Template) Section | the folio header/body section that lists the fiscal fields **[Oracle]** |
@@ -63,7 +63,7 @@ that holds at least ~450 bytes (see step 4).
    | Add Logo to QR Code | **Off** (ATK: no logo inside the QR) |
 3. **QR Code Configuration** (rich text): click **Merge Codes** and insert **only** the merge code for the fiscal QR
    string **[Oracle]**. No other text, no spaces, no empty line after it — any extra character makes the QR invalid.
-4. **Preview** — with real data the preview must scan to the same text HRS shows on the receipt. **Save.**
+4. **Preview** — with real data the preview must scan to the same text the fiscal server shows on the receipt. **Save.**
 
 ## 5. Copy the folio template
 
@@ -89,9 +89,9 @@ that holds at least ~450 bytes (see step 4).
    ```
 4. **QR code** — insert a form field (BI Publisher › Field) in the left cell and, in its *Help text*, enter:
    ```
-   <fo:instream-foreign-object content-type="image/jpg"><xsl:value-of select=".//HRSFISCALQR"/></fo:instream-foreign-object>
+   <fo:instream-foreign-object content-type="image/jpg"><xsl:value-of select=".//FISCALQR"/></fo:instream-foreign-object>
    ```
-   (`HRSFISCALQR` = the code from step 4.)
+   (`FISCALQR` = the code from step 4.)
 5. **Text fields** in the right cell (insert each with BI Publisher › Field, real element names **[Oracle]**):
    ```
    e-kupon
@@ -111,7 +111,7 @@ Tip: to check the layout in Word, put test values into the fiscal elements of th
 
 1. Back in **Create Report**: **Choose File** → the RTF (max 10 MB), Print Copies, Language → **Save**.
 2. Make it the folio template the cashiers use (the folio style / default folio template for the property).
-3. Generate the test folio again. HRS recognises the same fiscal folio and answers with the **same** receipt, so a
+3. Generate the test folio again. The fiscal server recognises the same fiscal folio and answers with the **same** receipt, so a
    reprint never creates a new receipt.
 
 ## 8. Test checklist
@@ -120,19 +120,19 @@ Tip: to check the layout in Word, put test values into the fiscal elements of th
 |---|---|---|
 | 1 | Settle a folio (cash), print | Fiscal block with QR, receipt no., NUIKF, SEF ID, ATK transaction, e-kupon |
 | 2 | Scan the QR with the ATK citizen app (TEST) | Coupon found, totals = folio |
-| 3 | Compare with HRS › Receipts | Same receipt no., NUIKF and QR text |
+| 3 | Compare with admin UI › Receipts | Same receipt no., NUIKF and QR text |
 | 4 | Two VAT rates on one folio | QR still scans (QR version large enough) |
-| 5 | ATK offline (HRS test) | Folio prints; ATK transaction empty/hidden; HRS sends later |
-| 6 | Reprint the folio | Same fiscal data; no new receipt in HRS |
+| 5 | ATK offline (test) | Folio prints; ATK transaction empty/hidden; the fiscal server sends later |
+| 6 | Reprint the folio | Same fiscal data; no new receipt in the fiscal server |
 | 7 | Credit folio (return) | New receipt no. and QR for the return |
-| 8 | Folio refused by HRS (e.g. wrong property) | OPERA shows the HRS reason; no fiscal block |
+| 8 | Folio refused by the fiscal server (e.g. wrong property) | OPERA shows the reason; no fiscal block |
 | 9 | Non-fiscal / information folio | No fiscal block |
 
 ## 9. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| No fiscal block at all | Condition element name wrong (case-sensitive), or OPERA did not store the answer → check *Miscellaneous › Monitoring › Fiscal Business Event Status* and HRS › FLIP messages |
+| No fiscal block at all | Condition element name wrong (case-sensitive), or OPERA did not store the answer → check *Miscellaneous › Monitoring › Fiscal Business Event Status* and admin UI › FLIP messages |
 | QR missing, text OK | QR Definition code ≠ name in the expression, wrong stationery type/section, or the merge code is empty |
 | QR prints but the app says invalid | Extra characters in the QR definition (space, line break, label) — the content must be the merge code only |
 | QR cut or not readable | QR version too small or printed too small; use version ≥ 15 and ≥ 30 mm |
@@ -141,11 +141,11 @@ Tip: to check the layout in Word, put test values into the fiscal elements of th
 ## 10. Open points
 
 - **[Oracle]** FLIP partner response format and the OPERA folio elements that receive the fiscal fields (QR string,
-  NUIKF, SEF ID, ATK transaction). Until confirmed, only the receipt number is likely to be stored, and HRS's answer
+  NUIKF, SEF ID, ATK transaction). Until confirmed, only the receipt number is likely to be stored, and the fiscal server's answer
   is provisional.
-- **Alternative if FLIP cannot pass the QR text:** OPERA templates can load an image by URL. HRS could serve each
+- **Alternative if FLIP cannot pass the QR text:** OPERA templates can load an image by URL. The fiscal server could serve each
   receipt's QR as an image (`url:{…}` in the template, keyed by property + fiscal folio ID). This needs development
-  in HRS and an HTTPS endpoint reachable from OPERA Cloud — not available yet.
+  in the fiscal server and an HTTPS endpoint reachable from OPERA Cloud — not available yet.
 - **[ATK]** Whether an OPERA folio reprint must carry a "copy" mark (*KOPJE*) on the fiscal block.
 
 ## Sources

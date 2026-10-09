@@ -1,14 +1,14 @@
-# HRS Fiscal Solution
+# Opera Cloud Fiscal Solution - Kosovo
 
 Kosovo fiscalization software (**SEF – Softuer Elektronik Fiskal**) for hotels on **Oracle OPERA Cloud**.
 OPERA Cloud sends fiscal payloads via **OFIS with FLIP** (installed on-premise). FLIP delivers them over the hotel LAN
-to the HRS Fiscal Server. Every workstation that issues folios is its own ATK POS with its own key and certificate.
-**Signing is selectable** (Settings › General, overridable per workstation): the HRS Fiscal Client on the workstation
+to the fiscal server. Every workstation that issues folios is its own ATK POS with its own key and certificate.
+**Signing is selectable** (Settings › General, overridable per workstation): the Fiscal Client on the workstation
 signs, or the server signs centrally with a separate non-exportable key per workstation.
 Everything is archived in an append-only PostgreSQL store.
 
 ```
-OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ HRS Fiscal Server ──route by Fiscal Terminal ID──▶ HRS Fiscal Client (each workstation)
+OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ fiscal server ──route by Fiscal Terminal ID──▶ Fiscal Client (each workstation)
    ▲                  │ mapping, numbering                                  │ own PosId + non-exportable key
    │                  │ archive + audit log (PostgreSQL)                    │ signs PosCoupon + QR
    └── fiscal data ◀──┘ offline queue, admin UI, exports   ◀── result ─────┘──▶ ATK /pos/coupon
@@ -53,7 +53,7 @@ createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initi
   && psql -d hrs_fiscal_test -v ON_ERROR_STOP=1 -f db/tests/schema_test.sql
 ```
 
-## Admin web UI (HRS Fiscal Server)
+## Admin web UI (fiscal server)
 
 | Page | What it does | Roles |
 |---|---|---|
@@ -70,7 +70,7 @@ account is blocked for 15 minutes after 5 failures. Users and workstations are d
 
 All receipt fields (item name, unit, quantity, price, VAT letter, ATK category, payment type) come from OPERA via
 FLIP. The per-code mappings in Settings are **optional overrides** for exceptions, switched on or off under Settings › General
-(`opera_overrides_enabled`, off by default). HRS validates every folio
+(`opera_overrides_enabled`, off by default). The fiscal server validates every folio
 (known VAT letter, VAT consistent with the rates, totals = payments) before sending it to ATK.
 
 No fiscal printer is involved. OPERA prints the fiscal data (SEF ID, receipt no., NUIKF, ATK transaction, QR,
@@ -107,13 +107,13 @@ mutual TLS between server and clients. The CA certificate is installed on admin 
 ATK signing certificates are separate: one per workstation, issued by ATK's CA.
 
 ### Branding
-The admin UI follows the HRS website (hrsinternational.com): HRS logo, Poppins, HRS navy `#000254`, logo navy `#16254C` and slate `#6F8695`,
-orange call-to-action buttons `#D6470F`, 5px radius. Links use the site teal darkened to `#00738C` for contrast.
-The logo, favicon and fonts are served locally from `wwwroot/` (no internet needed). Poppins is under the SIL OFL (`wwwroot/fonts/OFL-Poppins.txt`).
+The admin UI uses a Microsoft 365-style theme (Segoe UI, square corners) in navy `#000254` with orange `#D6470F` for
+main buttons. The product logo (cloud with a fiscal receipt and check mark) is original artwork in `wwwroot/img`
+(`logo.svg`, `mark.svg`, `mark-white.svg`) and `wwwroot/favicon.png`; everything is served locally (no internet needed).
 
 ### Licences
 - QuestPDF (PDF exports) is used under its **Community licence**: free for companies under USD 1M annual revenue.
-  Confirm HRS's eligibility; otherwise buy a Professional licence or swap the PDF library.
+  Confirm eligibility; otherwise buy a Professional licence or swap the PDF library.
 - QRCoder, Dapper, Npgsql, Google.Protobuf: MIT / Apache 2.0 / BSD.
 
 ## Live fiscalization (OPERA → FLIP → ATK)
@@ -159,7 +159,7 @@ without reference; the alternative VAT rounding; citizen QR verification. The "o
 actually does, which answers the open questions on idempotency and rounding.
 
 The test profile keeps the private key as a PEM file. That is for TEST only; production keys live non-exportable in
-the HRS Fiscal Client.
+the Fiscal Client.
 
 ## Version
 

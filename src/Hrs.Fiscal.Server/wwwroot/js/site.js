@@ -1,4 +1,4 @@
-// HRS Fiscal admin: pop-up editors and "are you sure?" before saving. Works without a framework; pages still work
+// Fiscal Solution admin: pop-up editors and "are you sure?" before saving. Works without a framework; pages still work
 // without JavaScript (Edit links fall back to ?Edit=… and the server opens the editor).
 (function () {
     'use strict';

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 6 56 56" role="img" aria-label="Opera Cloud Fiscal Solution">
+  <path d="M17 47h29a11 11 0 0 0 1.6-21.9A15 15 0 0 0 19.6 22 12.5 12.5 0 0 0 17 47z" fill="#000254"/>
+  <path d="M26 24h17v26l-2.8-2-2.9 2-2.8-2-2.9 2-2.8-2-2.8 2z" fill="#FFFFFF"/>
+  <rect x="29" y="28" width="6" height="6" fill="#000254"/><rect x="30.5" y="29.5" width="3" height="3" fill="#FFFFFF"/>
+  <rect x="37" y="28" width="3" height="2" fill="#000254"/><rect x="37" y="32" width="3" height="2" fill="#000254"/>
+  <rect x="29" y="37" width="11" height="1.8" fill="#000254"/><rect x="29" y="40.5" width="8" height="1.8" fill="#000254"/>
+  <circle cx="47" cy="46" r="8" fill="#D6470F"/>
+  <path d="M43.2 46.2l2.6 2.6 5-5.2" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

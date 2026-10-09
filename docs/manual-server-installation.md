@@ -1,22 +1,22 @@
 # Opera Cloud Fiscal Solution - Kosovo — Installation and Configuration Manual
 
-For HRS implementation engineers. One HRS Fiscal Server is installed per hotel (property), on the hotel LAN, close to
+For implementation engineers. One fiscal server is installed per hotel (property), on the hotel LAN, close to
 Oracle FLIP. Time needed: about 1 hour, plus ATK registration of the workstations.
 
 > Status (October 2026): the server, admin UI, archive, central signing and FLIP capture mode are ready. Live
-> fiscalization of OPERA folios follows once Oracle's FLIP interface specification is implemented. The HRS Fiscal
+> fiscalization of OPERA folios follows once Oracle's FLIP interface specification is implemented. The Opera Cloud Fiscal Solution
 > Client (workstation signing) is not released yet: until then, use **central signing** for tests.
 
 ## 1. What gets installed
 
 | Component | Where | Purpose |
 |---|---|---|
-| HRS Fiscal Server (Windows service `HRSFiscalServer`) | Hotel server | Receives folios from FLIP, builds and signs receipts, sends them to ATK, archives everything, admin web UI |
+| fiscal server (Windows service `OperaCloudFiscalKosovo`) | Hotel server | Receives folios from FLIP, builds and signs receipts, sends them to ATK, archives everything, admin web UI |
 | PostgreSQL 16 | Same server (recommended) or a database server on the LAN | Append-only archive of receipts, ATK transmissions, OPERA/FLIP messages and the audit log |
-| HRS Fiscal Client (only in *workstation client* signing mode) | Every PC that can issue a folio | Holds that workstation's ATK key and signs its receipts |
+| Fiscal Client (only in *workstation client* signing mode) | Every PC that can issue a folio | Holds that workstation's ATK key and signs its receipts |
 
 ```
-OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ HRS Fiscal Server ──HTTPS :443──▶ ATK (fiskalizimi.atk-ks.org)
+OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fiscal server ──HTTPS :443──▶ ATK (fiskalizimi.atk-ks.org)
                                                              │ PostgreSQL :5432 (local)
                                          admin browser ──LAN :5080──┘
 ```
@@ -33,22 +33,22 @@ OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ HRS 
 **Software** (download before going on site)
 - [.NET 8 ASP.NET Core Runtime — Windows Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) (x64).
 - [PostgreSQL 16 for Windows](https://www.postgresql.org/download/windows/) (EDB installer).
-- `HRS-Fiscal-Server-win-x64.zip` (release package: application, `install-server.ps1`, `backup-db.ps1`).
+- `Opera-Cloud-Fiscal-Solution-Kosovo-win-x64.zip` (release package: application, `install-server.ps1`, `backup-db.ps1`).
 
 **Network**
 
 | Direction | From → To | Port | Why |
 |---|---|---|---|
-| Inbound | FLIP machine → HRS server | TCP 5100 (HTTP) | Folios from OPERA via FLIP |
-| Inbound | Admin PCs → HRS server | TCP 5080 (HTTP) | Admin web UI |
-| Outbound | HRS server → `fiskalizimi.atk-ks.org` (production), `fiskalizimi-test.atk-ks.org` (test) | TCP 443 | ATK API. Allow through the hotel firewall/proxy without TLS inspection |
-| Local | HRS server → PostgreSQL | TCP 5432 | Only if PostgreSQL is on another machine |
+| Inbound | FLIP machine → fiscal server | TCP 5100 (HTTP) | Folios from OPERA via FLIP |
+| Inbound | Admin PCs → fiscal server | TCP 5080 (HTTP) | Admin web UI |
+| Outbound | fiscal server → `fiskalizimi.atk-ks.org` (production), `fiskalizimi-test.atk-ks.org` (test) | TCP 443 | ATK API. Allow through the hotel firewall/proxy without TLS inspection |
+| Local | fiscal server → PostgreSQL | TCP 5432 | Only if PostgreSQL is on another machine |
 
 Nothing is exposed to the internet. Do not forward ports 5080/5100 from outside.
 
 **From the hotel / ATK** (collect before installation)
 - Business **NUI**, **Fiscalization number** (from ATK's EDI), **unit (branch) number** registered with ATK, business name, city.
-- **Application ID** of HRS Fiscal Solution (issued by ATK on certification; for tests the ATK TEST Application ID).
+- **Application ID** of Opera Cloud Fiscal Solution - Kosovo (issued by ATK on certification; for tests the ATK TEST Application ID).
 - List of workstations that can issue folios: computer name, OPERA **Fiscal Terminal ID** to be used, location.
 
 ## 3. Install PostgreSQL
@@ -63,14 +63,14 @@ Nothing is exposed to the internet. Do not forward ports 5080/5100 from outside.
    CREATE DATABASE hrs_fiscal OWNER hrs_fiscal_owner ENCODING 'UTF8' TEMPLATE template0;
    ```
 3. If PostgreSQL runs on the same server, leave `listen_addresses = 'localhost'` (the default). If it is on another
-   machine, allow only the HRS server's IP in `pg_hba.conf` (`host hrs_fiscal hrs_fiscal_owner <HRS-IP>/32 scram-sha-256`).
+   machine, allow only the fiscal server's IP in `pg_hba.conf` (`host hrs_fiscal hrs_fiscal_owner <SERVER-IP>/32 scram-sha-256`).
 
-The tables are created automatically when the HRS service starts the first time (migrations `V001`…).
+The tables are created automatically when the service starts the first time (migrations `V001`…).
 
-## 4. Install the HRS Fiscal Server
+## 4. Install the fiscal server
 
 1. Install the **.NET 8 Windows Hosting Bundle**, then restart the server (or run `net stop was /y` and `net start w3svc`).
-2. Unzip `HRS-Fiscal-Server-win-x64.zip` to a temporary folder.
+2. Unzip `Opera-Cloud-Fiscal-Solution-Kosovo-win-x64.zip` to a temporary folder.
 3. Open **PowerShell as Administrator** in that folder and run:
    ```powershell
    Set-ExecutionPolicy -Scope Process Bypass
@@ -84,7 +84,7 @@ The tables are created automatically when the HRS service starts the first time 
    |---|---|---|
    | `-ConnectionString` | (required) | PostgreSQL connection from step 3 |
    | `-AdminPassword` | empty | Creates the first user `admin` with this password on first start |
-   | `-InstallDir` | `C:\Program Files\HRS Fiscal\Server` | Program folder |
+   | `-InstallDir` | `C:\Program Files\Opera Cloud Fiscal Solution\Server` | Program folder |
    | `-AdminPort` | 5080 | Admin web UI |
    | `-FlipPort` | 5100 | Endpoint for FLIP (`http://<server>:5100/flip`) |
    | `-FlipSourceIp` | empty (any LAN address) | IP of the FLIP machine; only it may connect to the FLIP port. **Recommended** |
@@ -97,7 +97,7 @@ The tables are created automatically when the HRS service starts the first time 
    `http://localhost:5080/health`.
 4. Open `http://<server>:5080` and sign in as `admin` with the temporary password.
 5. **Immediately**: Settings › Users › change the admin password, create personal accounts (see roles below), then remove
-   the `AdminPassword` value from `C:\Program Files\HRS Fiscal\Server\appsettings.Production.json` and restart the service.
+   the `AdminPassword` value from `C:\Program Files\Opera Cloud Fiscal Solution\Server\appsettings.Production.json` and restart the service.
 
 **Roles and permissions**
 
@@ -128,7 +128,7 @@ All settings below are stored in the database and every change is written to the
 | Setting | Value |
 |---|---|
 | ATK environment | **Test** until the hotel goes live, then **Production**. Never send test receipts to production |
-| Application ID | The ID ATK issued for HRS Fiscal Solution (test or production) |
+| Application ID | The ID ATK issued for Opera Cloud Fiscal Solution - Kosovo (test or production) |
 | Timeout / retry | 10 s / 2 min (defaults) |
 | **Signing** | *Workstation client* or *Central* — see 5.4 |
 | OPERA overrides | Off (default). Turn on only if OPERA cannot send a field correctly; then set the codes under *OPERA overrides & VAT* |
@@ -145,7 +145,7 @@ address and the OPERA property code. **The OPERA property code is required for l
 property are refused. **NUI and unit number cannot be changed** after saving, because every receipt
 refers to them — check them against the ATK registration before saving.
 
-When a workstation is registered with ATK (or an ATK certificate is imported), HRS keeps the business name ATK
+When a workstation is registered with ATK (or an ATK certificate is imported), the fiscal server keeps the business name ATK
 returns and shows it on the Business tile as **Name at ATK** — *matches* or *differs*. If it differs, the
 registration message says so and **Use ATK's name** (with confirmation, logged) takes it over, so receipts carry
 the name ATK has on record. Address and VAT details cannot be looked up automatically: ATK's API returns only the
@@ -171,8 +171,8 @@ Every workstation is its own ATK POS with its own key and certificate in both mo
 
 | | Workstation client | Central (server) |
 |---|---|---|
-| Key and certificate | On each PC, in that PC's Windows key store / TPM | On the HRS server, one per workstation, Windows key store / TPM |
-| Installed on PCs | HRS Fiscal Client | Nothing |
+| Key and certificate | On each PC, in that PC's Windows key store / TPM | On the fiscal server, one per workstation, Windows key store / TPM |
+| Installed on PCs | Fiscal Client | Nothing |
 | If a PC is off | Its folios wait in the queue until it is back | No effect |
 | ATK registration | From the client on each PC | Settings › Workstations › Edit › **Register with ATK** |
 | Status | Matches ATK's statement that every invoicing workstation needs the software | **Pending ATK's confirmation** |
@@ -191,7 +191,7 @@ records (check them in EDI); *timeout* — outbound HTTPS to ATK is blocked.
 **Changing the mode** (property-wide or for one workstation) means the affected workstations show
 *register again* and cannot sign until they are registered in the new place. The old certificates remain in the audit log.
 
-**Workstation client mode** — install the HRS Fiscal Client on each PC and register it there (separate client manual,
+**Workstation client mode** — install the Fiscal Client on each PC and register it there (separate client manual,
 available with the client release).
 
 ### 5.5 OPERA Cloud and FLIP
@@ -213,7 +213,7 @@ reprints, registration and settings changes. Every export is itself logged with 
 - [ ] Sign-in works; the default admin password is changed and removed from the settings file.
 - [ ] Dashboard shows the business, all workstations and certificate dates.
 - [ ] Audit log › **Integrity check** reports the chain as intact.
-- [ ] From the FLIP machine: `Invoke-WebRequest http://<HRS-IP>:5100/flip -Method Post -Body test -Headers @{Authorization="Bearer <token>"}`
+- [ ] From the FLIP machine: `Invoke-WebRequest http://<SERVER-IP>:5100/flip -Method Post -Body test -Headers @{Authorization="Bearer <token>"}`
       returns the test reply and the message appears under FLIP messages; without the header it returns 401.
 - [ ] Backup task (section 7) ran once and the event log shows *Backup OK*.
 
@@ -227,15 +227,15 @@ The database is the legal archive of the hotel's fiscal receipts and logs. Back 
 3. Task Scheduler › Create Task: run as the backup account, *whether user is logged on or not*, daily at 04:00:
    ```
    Program:   powershell.exe
-   Arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\HRS Fiscal\Server\backup-db.ps1" -Target "\\nas\hrs-fiscal-backup" -KeepDays 90
+   Arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\Opera Cloud Fiscal Solution\Server\backup-db.ps1" -Target "\\nas\hrs-fiscal-backup" -KeepDays 90
    ```
 4. The script writes `hrs_fiscal_<date>.dump` and a `.sha256` file, checks the dump is readable and writes
-   *Backup OK* / *Backup FAILED* to the Windows Application log (source *HRS Fiscal Backup*). Monitor that event.
+   *Backup OK* / *Backup FAILED* to the Windows Application log (source *Fiscal Solution Backup*). Monitor that event.
 
 Keep at least one monthly copy off site. `-KeepDays` only removes old backup files, never data in the database.
 
 **Restore** (new server or disaster): install PostgreSQL, create the empty database and owner (section 3), then
-`pg_restore -h localhost -U hrs_fiscal_owner -d hrs_fiscal --no-owner <file>.dump`, install the HRS server
+`pg_restore -h localhost -U hrs_fiscal_owner -d hrs_fiscal --no-owner <file>.dump`, install the fiscal server
 pointing to it, and run Audit log › Integrity check. In central mode the signing keys are **not** in the backup
 (they cannot leave the server): register the workstations again on the new server.
 
@@ -245,28 +245,28 @@ pointing to it, and run Audit log › Integrity check. In central mode the signi
 (without `-AdminPassword`). The service is replaced; the database is kept and migrated automatically on start.
 Settings in `appsettings.Production.json` are rewritten from the parameters.
 
-**Uninstall**: `Stop-Service HRSFiscalServer; sc.exe delete HRSFiscalServer`, remove the program folder and the two
-firewall rules *HRS Fiscal …*. **Do not drop the database**: the receipts and logs must be kept for the legal
+**Uninstall**: `Stop-Service OperaCloudFiscalKosovo; sc.exe delete OperaCloudFiscalKosovo`, remove the program folder and the two
+firewall rules *Fiscal Solution …*. **Do not drop the database**: the receipts and logs must be kept for the legal
 retention period. Export or hand over a backup instead.
 
 ## 9. Troubleshooting
 
 | Symptom | Check |
 |---|---|
-| Service stops right after start | Event Viewer › Windows Logs › Application, source *Hrs.Fiscal.Server* (or *.NET Runtime*). Faster: stop the service and run `& "C:\Program Files\HRS Fiscal\Server\Hrs.Fiscal.Server.exe" --contentRoot "C:\Program Files\HRS Fiscal\Server" --environment Production` in an elevated PowerShell to see the error on screen. Usual causes below |
-| *Role hrs_fiscal_app is missing* / *permission denied to create role* | As `postgres`: `CREATE ROLE hrs_fiscal_app NOLOGIN;` then `Start-Service HRSFiscalServer` (section 3) |
+| Service stops right after start | Event Viewer › Windows Logs › Application, source *Hrs.Fiscal.Server* (or *.NET Runtime*). Faster: stop the service and run `& "C:\Program Files\Opera Cloud Fiscal Solution\Server\Hrs.Fiscal.Server.exe" --contentRoot "C:\Program Files\Opera Cloud Fiscal Solution\Server" --environment Production` in an elevated PowerShell to see the error on screen. Usual causes below |
+| *Role hrs_fiscal_app is missing* / *permission denied to create role* | As `postgres`: `CREATE ROLE hrs_fiscal_app NOLOGIN;` then `Start-Service OperaCloudFiscalKosovo` (section 3) |
 | *No such host is known* | The `Host=` in the connection string cannot be resolved. For a database on the same server use `Host=127.0.0.1`; for another machine use its IP address |
 | *password authentication failed* / *database does not exist* | Connection string in `appsettings.Production.json`: user, password, database name |
 | *address already in use* | Port 5080 or 5100 is used by another program: re-run the installer with `-AdminPort`/`-FlipPort` |
-| Admin page not reachable from another PC | Firewall rule *HRS Fiscal admin (5080)*; network profile must be Domain or Private, not Public |
-| FLIP: *HttpClient.Timeout … elapsing*, but PowerShell tests work | FLIP's EndPoint Url uses the computer name: use the IP address (`http://<HRS-IP>:5100/flip`) |
+| Admin page not reachable from another PC | Firewall rule *Fiscal Solution admin (5080)*; network profile must be Domain or Private, not Public |
+| FLIP: *HttpClient.Timeout … elapsing*, but PowerShell tests work | FLIP's EndPoint Url uses the computer name: use the IP address (`http://<SERVER-IP>:5100/flip`) |
 | FLIP gets *401 Unauthorized* | Token missing or wrong in FLIP, or FLIP uses another header: the FLIP messages page shows refused requests (mode *rejected*, header check *missing*/*invalid*) and which headers FLIP sent. Set the header name or generate a new token |
-| FLIP messages do not arrive | Firewall rule *HRS Fiscal FLIP (5100)* and its allowed IP (`-FlipSourceIp`); FLIP's partner address; OPERA fiscal configuration |
+| FLIP messages do not arrive | Firewall rule *Fiscal Solution FLIP (5100)* and its allowed IP (`-FlipSourceIp`); FLIP's partner address; OPERA fiscal configuration |
 | ATK registration or sending times out | Outbound HTTPS to `fiskalizimi(-test).atk-ks.org` through the hotel firewall/proxy |
 | "Register with ATK" says to use the client | The workstation is in workstation-client mode (Signing column) |
 | Workstation shows *register again* | The signing mode was changed after registration. Register it again |
 | Dashboard: receipts waiting | ATK unreachable; receipts are kept and resent automatically. ATK's limit is 48 hours |
-| Integrity check fails | Stop and escalate to HRS: the archive was changed outside the application. Do not repair it yourself |
+| Integrity check fails | Stop and escalate to the software maintainer: the archive was changed outside the application. Do not repair it yourself |
 
 ## 10. Security checklist
 

@@ -31,7 +31,7 @@
             <strong>Integrity check FAILED.</strong>
             @if (i.Receipt is { } rb) { <div>Receipt chain broken at record @rb.BrokenId: @rb.Reason.</div> }
             @if (i.Audit is { } ab) { <div>Audit chain broken at entry @ab.BrokenId: @ab.Reason.</div> }
-            <div>Do not change anything. Secure the server and the latest backup, and contact HRS support.</div>
+            <div>Do not change anything. Secure the server and the latest backup, and contact the software maintainer.</div>
         </div>
     }
 }

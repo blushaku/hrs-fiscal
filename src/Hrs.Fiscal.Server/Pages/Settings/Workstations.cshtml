@@ -47,7 +47,7 @@
             </div>
         </section>
     }
-    <a class="card ws add" href="/Settings/Workstations?Add=true" data-dialog-open="@(editing ? null : "dlg-ws")"><span class="plus" aria-hidden="true">+</span><strong>Add workstation</strong><span class="small muted">@(central ? "Added and registered with ATK in one step" : "Then install the HRS Fiscal Client on it")</span></a>
+    <a class="card ws add" href="/Settings/Workstations?Add=true" data-dialog-open="@(editing ? null : "dlg-ws")"><span class="plus" aria-hidden="true">+</span><strong>Add workstation</strong><span class="small muted">@(central ? "Added and registered with ATK in one step" : "Then install the Fiscal Client on it")</span></a>
 </div>
 
 <dialog class="modal wide" id="dlg-ws" aria-labelledby="dlg-ws-title" data-autoopen="@(Model.FormOpen ? "1" : null)" open="@Model.FormOpen">
@@ -135,7 +135,7 @@
             }
             else
             {
-                <p class="small muted">This workstation signs with the HRS Fiscal Client. Install the client on @cur.Hostname and register it there.</p>
+                <p class="small muted">This workstation signs with the Fiscal Client. Install the client on @cur.Hostname and register it there.</p>
             }
         </div>
     }

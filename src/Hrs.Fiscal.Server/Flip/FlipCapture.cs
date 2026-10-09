@@ -116,7 +116,7 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
             .ToDictionary(h => h.Key, h => h.Value.ToString());
         foreach (var name in new[] { "Authorization", authState.Header }.Distinct(StringComparer.OrdinalIgnoreCase))
             if (http.Request.Headers.ContainsKey(name)) headers[name] = "[present, not stored]";
-        headers["X-HRS-Token-Check"] = authResult switch
+        headers["X-Fiscal-Token-Check"] = authResult switch
         {
             FlipAuthResult.Valid => "valid",
             FlipAuthResult.Missing => "missing",
@@ -155,13 +155,13 @@ public sealed class FlipCapture(NpgsqlDataSource db, SettingsStore settings, Aud
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 capture.Log.LogError(ex, "Fiscalization failed");
-                result = FlipResult.Error("HRS Fiscal internal error: " + ex.Message, http: 500);
+                result = FlipResult.Error("Fiscal server internal error: " + ex.Message, http: 500);
             }
             receiptId = result.ReceiptId;
             answer = new FlipStub(result.HttpStatus, "application/json", JsonSerializer.Serialize(result, ResponseJson));
         }
         else if (mode == "live")
-            answer = new FlipStub(StatusCodes.Status200OK, "application/json", "{\"Status\":\"OK\",\"Message\":\"HRS Fiscal Server reachable.\"}"); // connection tests
+            answer = new FlipStub(StatusCodes.Status200OK, "application/json", "{\"Status\":\"OK\",\"Message\":\"Opera Cloud Fiscal Solution - Kosovo reachable.\"}"); // connection tests
         else
             answer = await capture.StubAsync(ct);
 
@@ -223,7 +223,7 @@ public sealed class FlipTcpListener(IServiceScopeFactory scopes, IConfiguration 
             {
                 // Raw TCP has no place for a token: refused while the token is required.
                 var remote = client.Client.RemoteEndPoint?.ToString();
-                await capture.StoreAsync("tcp", remote, null, null, new Dictionary<string, string> { ["X-HRS-Token-Check"] = "not possible over TCP" },
+                await capture.StoreAsync("tcp", remote, null, null, new Dictionary<string, string> { ["X-Fiscal-Token-Check"] = "not possible over TCP" },
                     null, [], "rejected", null, "", ct);
                 await capture.AuditAuthFailureAsync(remote, null, FlipAuthResult.Missing, ct);
                 return;

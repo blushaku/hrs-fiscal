@@ -158,7 +158,7 @@
     <form method="post" class="modal-body" data-confirm="Save the folio validation settings?">
         <input type="hidden" name="section" value="validation">
         <div asp-validation-summary="All" class="validation"></div>
-        <p>Before a folio is fiscalized, HRS checks that it belongs to this property and that OPERA's numbers add up. Any finding refuses the folio with the reason (FLIP gets HTTP 422; the audit log records FOLIO_REFUSED).</p>
+        <p>Before a folio is fiscalized, the fiscal server checks that it belongs to this property and that OPERA's numbers add up. Any finding refuses the folio with the reason (FLIP gets HTTP 422; the audit log records FOLIO_REFUSED).</p>
         <ul class="small" style="margin: 0; padding-left: 18px; color: var(--muted)">
             <li>OPERA property code = Business &amp; unit › OPERA property code (always)</li>
             <li>Price × quantity = line amount; VAT per line = rate × amount; net + VAT = amount</li>
@@ -178,7 +178,7 @@
         <input type="hidden" name="section" value="signing">
         <label class="field">Where receipts are signed
             <select asp-for="Input.SigningModeDefault">
-                <option value="client">Workstation client (HRS Fiscal Client on each PC)</option>
+                <option value="client">Workstation client (Fiscal Client on each PC)</option>
                 <option value="server">Central (server, one key per workstation)</option>
             </select>
         </label>

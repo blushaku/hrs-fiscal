@@ -1,8 +1,8 @@
 <#
-  Installs HRS Fiscal Server as a Windows service.
+  Installs Opera Cloud Fiscal Solution - Kosovo (server) as a Windows service.
   Run in an elevated PowerShell from the unzipped release folder:
     .\install-server.ps1 -ConnectionString "Host=127.0.0.1;Database=hrs_fiscal;Username=hrs_fiscal_owner;Password=..." `
-                         -AdminPassword "first-admin-password" [-InstallDir "C:\Program Files\HRS Fiscal\Server"] `
+                         -AdminPassword "first-admin-password" [-InstallDir "C:\Program Files\Opera Cloud Fiscal Solution\Server"] `
                          [-AdminPort 5080] [-FlipPort 5100] [-FlipTcpPort 0] [-FlipSourceIp 192.168.1.10]
   Requires the .NET 8 ASP.NET Core Runtime (Windows Hosting Bundle) and PostgreSQL 14+ with an empty database.
   Migrations run on first start. Re-running the script upgrades in place: the service is replaced, the database is kept.
@@ -11,7 +11,7 @@
 param(
   [Parameter(Mandatory)] [string] $ConnectionString,
   [string] $AdminPassword = "",
-  [string] $InstallDir = "C:\Program Files\HRS Fiscal\Server",
+  [string] $InstallDir = "C:\Program Files\Opera Cloud Fiscal Solution\Server",
   [int] $AdminPort = 5080,
   [int] $FlipPort = 5100,
   [int] $FlipTcpPort = 0,
@@ -21,11 +21,13 @@ param(
   [string] $SigningKeyStore = "auto"
 )
 $ErrorActionPreference = "Stop"
-$svc = "HRSFiscalServer"
+$svc = "OperaCloudFiscalKosovo"
 # Event log source used by the service (errors, start-up, ATK problems).
 if (-not [System.Diagnostics.EventLog]::SourceExists("Hrs.Fiscal.Server")) { New-EventLog -LogName Application -Source "Hrs.Fiscal.Server" }
 
-if (Get-Service $svc -ErrorAction SilentlyContinue) { Stop-Service $svc; sc.exe delete $svc | Out-Null; Start-Sleep 2 }
+# Replace the service (also the one from releases before the rename, "HRSFiscalServer").
+foreach ($old in @($svc, "HRSFiscalServer")) { if (Get-Service $old -ErrorAction SilentlyContinue) { Stop-Service $old; sc.exe delete $old | Out-Null; Start-Sleep 2 } }
+Remove-NetFirewallRule -DisplayName "HRS Fiscal*" -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $InstallDir | Out-Null
 Copy-Item -Recurse -Force (Join-Path $PSScriptRoot "*") $InstallDir -Exclude "install-server.ps1"
 
@@ -52,16 +54,16 @@ New-Service -Name $svc -DisplayName "Opera Cloud Fiscal Solution - Kosovo - Serv
   -BinaryPathName "`"$(Join-Path $InstallDir 'Hrs.Fiscal.Server.exe')`" --contentRoot `"$InstallDir`" --environment Production" | Out-Null
 # Restart automatically after a crash (after 10 s, 30 s, then every 60 s).
 sc.exe failure $svc reset= 86400 actions= restart/10000/restart/30000/restart/60000 | Out-Null
-New-NetFirewallRule -DisplayName "HRS Fiscal admin ($AdminPort)" -Direction Inbound -Protocol TCP -LocalPort $AdminPort -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null
+New-NetFirewallRule -DisplayName "Fiscal Solution admin ($AdminPort)" -Direction Inbound -Protocol TCP -LocalPort $AdminPort -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null
 $remote = if ($FlipSourceIp) { $FlipSourceIp } else { "Any" }
-New-NetFirewallRule -DisplayName "HRS Fiscal FLIP ($FlipPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null
-if ($FlipTcpPort -gt 0) { New-NetFirewallRule -DisplayName "HRS Fiscal FLIP TCP ($FlipTcpPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipTcpPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null }
+New-NetFirewallRule -DisplayName "Fiscal Solution FLIP ($FlipPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null
+if ($FlipTcpPort -gt 0) { New-NetFirewallRule -DisplayName "Fiscal Solution FLIP TCP ($FlipTcpPort)" -Direction Inbound -Protocol TCP -LocalPort $FlipTcpPort -RemoteAddress $remote -Profile Domain,Private -Action Allow -ErrorAction SilentlyContinue | Out-Null }
 Start-Service $svc
 Start-Sleep 3
 try { $h = Invoke-RestMethod "http://127.0.0.1:$AdminPort/health"; Write-Host "Health check OK. Opera Cloud Fiscal Solution - Kosovo $($h.version) ($($h.commit))." -ForegroundColor Green }
 catch { Write-Host "Service started but /health did not answer. See Event Viewer > Windows Logs > Application (source Hrs.Fiscal.Server)." -ForegroundColor Red }
 
-Write-Host "HRS Fiscal Server installed and started."
+Write-Host "Opera Cloud Fiscal Solution - Kosovo installed and started."
 # Show real IPv4 addresses: FLIP must be configured with the IP, not the computer name (which may resolve to IPv6).
 $ips = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
          Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } | ForEach-Object IPAddress)

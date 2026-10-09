@@ -67,7 +67,7 @@ public sealed class TerminalEnrollment(
                        ?? throw new InvalidOperationException("Unknown workstation.");
         var defaultMode = await settings.SigningModeDefaultAsync(ct);
         if (terminal.EffectiveMode(defaultMode) != SigningModes.Server)
-            throw new InvalidOperationException("This workstation signs with the HRS Fiscal Client. Register it from the client on that computer.");
+            throw new InvalidOperationException("This workstation signs with the Fiscal Client. Register it from the client on that computer.");
         if (terminal.Status == "disabled") throw new InvalidOperationException("The workstation is disabled.");
 
         var applicationId = await settings.GetAsync<long>("atk_application_id", 0, ct);
@@ -130,7 +130,7 @@ public sealed class TerminalEnrollment(
         var terminal = (await settings.TerminalsAsync(ct)).SingleOrDefault(t => t.Id == terminalId)
                        ?? throw new InvalidOperationException("Unknown workstation.");
         if (terminal.EffectiveMode(await settings.SigningModeDefaultAsync(ct)) != SigningModes.Server)
-            throw new InvalidOperationException("This workstation signs with the HRS Fiscal Client. Import the certificate on that computer.");
+            throw new InvalidOperationException("This workstation signs with the Fiscal Client. Import the certificate on that computer.");
 
         X509Certificate2 certificate;
         try { certificate = X509Certificate2.CreateFromPem(certificatePem); }

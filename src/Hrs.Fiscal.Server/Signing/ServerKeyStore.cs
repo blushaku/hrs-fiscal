@@ -74,7 +74,7 @@ public sealed class SigningOptions
 
 internal static class KeyNames
 {
-    public static string For(long branchId, long posId) => $"HRS-Fiscal-{branchId}-{posId}-{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}";
+    public static string For(long branchId, long posId) => $"FiscalKosovo-{branchId}-{posId}-{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}";
 }
 
 /// <summary>Windows CNG machine keys, created non-exportable. Uses the TPM ("Microsoft Platform Crypto Provider") when present.</summary>

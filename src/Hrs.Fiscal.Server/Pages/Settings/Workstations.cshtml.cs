@@ -92,7 +92,7 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
             TempData["Message"] = isNew
                 ? (mode == SigningModes.Server
                     ? $"Workstation POS {terminal.PosId} added. Register it with ATK on its tile when you are ready."
-                    : $"Workstation POS {terminal.PosId} added. Install the HRS Fiscal Client on {terminal.Hostname} and register it there.")
+                    : $"Workstation POS {terminal.PosId} added. Install the Fiscal Client on {terminal.Hostname} and register it there.")
                 : "Workstation saved and logged.";
             return RedirectToPage(new { Edit = (long?)null, Add = false });
         }

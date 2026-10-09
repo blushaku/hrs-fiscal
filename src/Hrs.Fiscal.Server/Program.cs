@@ -123,7 +123,7 @@ catch (Exception ex)
         app.Logger.LogCritical(ex, "{Hint}", hint);
         Console.Error.WriteLine(hint);
     }
-    else app.Logger.LogCritical(ex, "HRS Fiscal Server could not start: {Reason}", ex.Message);
+    else app.Logger.LogCritical(ex, "Opera Cloud Fiscal Solution - Kosovo could not start: {Reason}", ex.Message);
     throw;
 }
 

@@ -76,7 +76,7 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
         var id = await TerminalIdAsync(11);
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
         var page = await client.GetStringAsync($"/Settings/Workstations?Edit={id}");
-        Assert.Contains("signs with the HRS Fiscal Client", page);
+        Assert.Contains("signs with the Fiscal Client", page);
 
         var token = await ServerFixture.AntiforgeryTokenAsync(client, $"/Settings/Workstations?Edit={id}");
         await client.PostAsync($"/Settings/Workstations?handler=Register&id={id}",
@@ -109,7 +109,7 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
         Assert.Contains("registered with ATK (Test)", await client.GetStringAsync("/Settings/Workstations"));
 
         Assert.Equal("server", await app.ScalarAsync<string>($"SELECT enrolled_mode FROM fiscal.terminal WHERE id = {id}"));
-        Assert.StartsWith("file:HRS-Fiscal-", await app.ScalarAsync<string>($"SELECT key_reference FROM fiscal.terminal WHERE id = {id}"));
+        Assert.StartsWith("file:FiscalKosovo-", await app.ScalarAsync<string>($"SELECT key_reference FROM fiscal.terminal WHERE id = {id}"));
         Assert.Equal(1L, await app.ScalarAsync<long>($"SELECT count(*) FROM fiscal.audit_log WHERE action = 'TERMINAL_ENROLLED' AND entity_id = '{id}'"));
         // The private key never reaches the database or the audit log.
         Assert.Equal(0L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE details::text LIKE '%PRIVATE KEY%'"));

@@ -45,7 +45,7 @@ public class FlipTokenTests(ServerFixture app) : IClassFixture<ServerFixture>
 
         // The right token works as "Bearer <token>" and bare.
         Assert.Equal(HttpStatusCode.OK, (await flip.SendAsync(Folio("Bearer " + token))).StatusCode);
-        Assert.Equal("valid", await app.ScalarAsync<string>("SELECT headers->>'X-HRS-Token-Check' FROM fiscal.flip_message ORDER BY id DESC LIMIT 1"));
+        Assert.Equal("valid", await app.ScalarAsync<string>("SELECT headers->>'X-Fiscal-Token-Check' FROM fiscal.flip_message ORDER BY id DESC LIMIT 1"));
         Assert.Equal("[present, not stored]", await app.ScalarAsync<string>("SELECT headers->>'Authorization' FROM fiscal.flip_message ORDER BY id DESC LIMIT 1"));
         Assert.Equal(HttpStatusCode.OK, (await flip.SendAsync(Folio(token))).StatusCode);
 

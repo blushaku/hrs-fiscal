@@ -1,5 +1,5 @@
 <#
-  Backs up the HRS Fiscal database (all receipts, transmissions, OPERA/FLIP messages and the audit log).
+  Backs up the Opera Cloud Fiscal Solution database (all receipts, transmissions, OPERA/FLIP messages and the audit log).
   Schedule it daily with Task Scheduler (see docs/manual-server-installation.md, "Backup"):
     .\backup-db.ps1 -Target "\\nas\hrs-fiscal-backup" [-Database hrs_fiscal] [-User hrs_fiscal_owner] [-KeepDays 90]
   The password is read from %APPDATA%\postgresql\pgpass.conf of the account running the task (never from this script).
@@ -16,7 +16,7 @@ param(
   [string] $PgBin = ""
 )
 $ErrorActionPreference = "Stop"
-$source = "HRS Fiscal Backup"
+$source = "Fiscal Solution Backup"
 if (-not [System.Diagnostics.EventLog]::SourceExists($source)) { New-EventLog -LogName Application -Source $source }
 
 if (-not $PgBin) { $PgBin = (Get-ChildItem "C:\Program Files\PostgreSQL\*\bin\pg_dump.exe" | Sort-Object FullName -Descending | Select-Object -First 1).DirectoryName }

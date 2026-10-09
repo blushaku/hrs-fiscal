@@ -43,7 +43,7 @@
             <div class="state"><span class="dot @(Model.LastFlipAt is null ? "idle" : Model.LastFlipMode == "rejected" ? "warn" : "")"></span>last call @Model.Ago(Model.LastFlipAt)@(Model.LastFlipMode == "rejected" ? " (refused: token)" : "")</div>
         </div>
         <div class="stage">
-            <div class="name">HRS Fiscal</div>
+            <div class="name">Fiscal server</div>
             <div class="state"><span class="dot @(live && ready > 0 ? "" : live ? "warn" : "idle")"></span>@(live ? "live" : "capture") · @ready of @Model.Terminals.Count workstation(s) ready</div>
         </div>
         <div class="stage">

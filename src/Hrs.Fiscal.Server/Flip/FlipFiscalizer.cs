@@ -74,7 +74,7 @@ public sealed class FlipFiscalizer(
             var findings = FolioValidator.Check(folio, business, validation);
             if (findings.Count > 0) throw new FiscalValidationException(findings);
             var terminal = (await settings.TerminalsAsync(ct)).FirstOrDefault(t => string.Equals(t.OperaTerminalId, folio.TerminalId, StringComparison.OrdinalIgnoreCase))
-                           ?? throw new FiscalValidationException($"OPERA terminal '{folio.TerminalId}' is not set up as a workstation in HRS (Settings › Workstations › OPERA Fiscal Terminal ID).");
+                           ?? throw new FiscalValidationException($"OPERA terminal '{folio.TerminalId}' is not set up as a workstation in the fiscal server (Settings › Workstations › OPERA Fiscal Terminal ID).");
             var defaultMode = await settings.SigningModeDefaultAsync(ct);
             if (terminal.EffectiveMode(defaultMode) != SigningModes.Server)
                 throw new FiscalValidationException($"Workstation POS {terminal.PosId} is set to workstation-client signing, which is not available yet. Set it to central signing (Settings › Workstations).");
@@ -129,7 +129,7 @@ public sealed class FlipFiscalizer(
                 return view with { Status = "ERROR", Message = "ATK rejected the receipt: " + result.Message, HttpStatus = 422 };
             return view with
             {
-                Message = result.Outcome == AtkOutcome.Accepted ? "Fiscalized." : "Fiscalized offline; HRS sends it to ATK automatically within 48 hours.",
+                Message = result.Outcome == AtkOutcome.Accepted ? "Fiscalized." : "Fiscalized offline; it is sent to ATK automatically within 48 hours.",
             };
         }
         catch (FiscalValidationException ex)
