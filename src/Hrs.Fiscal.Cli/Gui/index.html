@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATK Test Console · HRS Fiscal</title>
+<link rel="icon" href="/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* HRS brand: navy, logo slate, orange call-to-action, 5px radius. Single light theme like the HRS Fiscal admin. */
+:root {
+  --navy: #000254; --navy-2: #16254C; --slate: #6F8695; --orange: #D6470F; --orange-hover: #B93B0B; --teal: #00738C;
+  --bg: #F5F5F7; --surface: #FFFFFF; --ink: #12142B; --muted: #4F5D69; --line: #E2E4E8; --field: #B7BFC7; --code: #F0F1F5;
+  --ok-bg: #E2F3EC; --ok: #0E5B3A; --bad-bg: #FCE3DF; --bad: #8F1D12; --obs-bg: #E8EAF6; --warn-bg: #FFF6E8; --warn: #6B4300;
+  --sans: "Poppins", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", Consolas, ui-monospace, monospace; --r: 5px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.card > label.f, form.card label.f { flex: none; }
+.row > label.f, form.card .row > label.f { flex: 1 1 140px; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+a { color: var(--teal); }
+h1, h2, h3 { color: var(--navy); margin: 0; text-wrap: balance; }
+h2 { font-size: 16px; font-weight: 600; }
+h3 { font-size: 14px; font-weight: 600; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.muted { color: var(--muted); }
+
+header.bar { background: var(--surface); border-bottom: 1px solid var(--line); }
+.bar-inner { max-width: 1180px; margin: 0 auto; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand img { height: 44px; width: auto; }
+.brand .name { font-weight: 600; color: var(--navy); font-size: 16px; }
+.brand .sub { font-size: 12px; color: var(--muted); }
+.ws { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; }
+.env { background: var(--navy); color: #fff; font-weight: 600; font-size: 11px; letter-spacing: .08em; padding: 3px 9px; border-radius: var(--r); }
+.ws b { color: var(--navy); font-weight: 600; }
+nav.tabs { max-width: 1180px; margin: 0 auto; padding: 0 20px; display: flex; gap: 4px; flex-wrap: wrap; }
+nav.tabs button { font: inherit; font-weight: 500; color: var(--navy); background: none; border: none; border-bottom: 3px solid transparent; padding: 12px 14px; cursor: pointer; min-height: 44px; }
+nav.tabs button[aria-selected="true"] { border-bottom-color: var(--orange); font-weight: 600; }
+.stripe { background: var(--surface); border-bottom: 1px solid var(--line); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 20px 64px; display: flex; flex-direction: column; gap: 18px; }
+.panel { display: flex; flex-direction: column; gap: 18px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.grid2 { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); align-items: start; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); flex: 1 1 140px; min-width: 0; }
+input, select, textarea { font: inherit; font-size: 14px; color: var(--ink); background: #fff; border: 1px solid var(--field); border-radius: var(--r); min-height: 40px; padding: 0 10px; width: 100%; }
+input[type=file] { padding: 8px; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid #7FA6D9; outline-offset: 1px; }
+.btn { font: inherit; font-weight: 600; border-radius: var(--r); border: 2px solid var(--navy); background: #fff; color: var(--navy); min-height: 42px; padding: 0 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { background: #F0F1F6; }
+.btn.primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+.btn.primary:hover { background: var(--orange-hover); border-color: var(--orange-hover); }
+.btn.sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.btn.icon { min-height: 34px; padding: 0 10px; border-width: 1px; border-color: var(--field); color: var(--muted); }
+.btn[disabled] { opacity: .55; cursor: progress; }
+.notice { padding: 10px 14px; border-radius: var(--r); border: 1px solid var(--line); border-left: 4px solid var(--slate); background: #F3F4F8; font-size: 13.5px; }
+.notice.bad { background: var(--bad-bg); border-color: #E8A79F; color: var(--bad); }
+.notice.ok { background: var(--ok-bg); border-color: #9FD3BB; color: var(--ok); }
+.notice.warn { background: var(--warn-bg); border-color: #F2C77D; border-left-color: var(--orange); color: var(--warn); }
+
+.tablebox { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--navy); border-bottom: 2px solid var(--navy); padding: 6px 8px; white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lines td input, .lines td select { min-height: 36px; }
+.lines td:nth-child(1) { min-width: 170px; }
+.lines td:nth-child(3), .lines td:nth-child(4), .lines td:nth-child(5) { width: 104px; }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; }
+.chip.Accepted { background: var(--ok-bg); color: var(--ok); }
+.chip.Rejected { background: var(--bad-bg); color: var(--bad); }
+.chip.Transient, .chip.obs { background: var(--obs-bg); color: var(--navy); }
+.totals { display: flex; flex-direction: column; gap: 2px; align-self: flex-end; min-width: 260px; font-size: 13.5px; }
+.totals div { display: flex; justify-content: space-between; gap: 18px; color: var(--muted); }
+.totals .grand { color: var(--ink); font-weight: 600; border-top: 1px solid var(--line); padding-top: 4px; }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; font-size: 13.5px; }
+.kv > :nth-child(odd) { color: var(--muted); }
+.kv > :nth-child(even) { overflow-wrap: anywhere; }
+.result { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+.qrbox { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: var(--r); background: #fff; }
+.qrbox img { width: 180px; height: 180px; image-rendering: pixelated; }
+pre { margin: 0; padding: 10px 12px; background: var(--code); border-radius: var(--r); font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto; }
+details summary { cursor: pointer; font-weight: 500; color: var(--navy); min-height: 32px; display: flex; align-items: center; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hist { cursor: pointer; }
+.hist:hover td { background: #F7F8FB; }
+.hist.sel td { background: #EEF0F8; }
+.empty { padding: 28px; text-align: center; color: var(--muted); }
+.spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s .8s linear infinite; display: inline-block; }
+@keyframes s { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+@media (max-width: 720px) { .result { grid-template-columns: 1fr; } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand">
+      <img src="/logo.svg" alt="HRS Hospitality &amp; Retail Systems">
+      <div><div class="name">ATK Test Console</div><div class="sub">HRS Fiscal · Kosovo SEF</div></div>
+    </div>
+    <div class="ws" id="ws"></div>
+  </div>
+</header>
+<div class="stripe">
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-receipt" aria-controls="p-receipt" aria-selected="true">New receipt</button>
+    <button role="tab" id="t-tests" aria-controls="p-tests" aria-selected="false">Test set</button>
+    <button role="tab" id="t-history" aria-controls="p-history" aria-selected="false">History</button>
+    <button role="tab" id="t-ws" aria-controls="p-ws" aria-selected="false">Workstation</button>
+  </nav>
+</div>
+
+<main>
+  <div id="global"></div>
+
+  <!-- NEW RECEIPT -->
+  <section class="panel" id="p-receipt" role="tabpanel" aria-labelledby="t-receipt">
+    <div class="card">
+      <div class="row" style="justify-content: space-between">
+        <h2>Receipt</h2>
+        <div class="presets"><span class="muted" style="font-size:12px">Examples:</span>
+          <button class="btn sm" data-preset="hotel">Hotel stay</button>
+          <button class="btn sm" data-preset="restaurant">Restaurant</button>
+          <button class="btn sm" data-preset="allvat">All VAT letters</button>
+          <button class="btn sm" data-preset="empty">Empty</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="f" style="flex: 0 1 160px">Type
+          <select id="r-type"><option value="sale">Sale</option><option value="return">Return</option></select></label>
+        <label class="f" style="flex: 0 1 240px" id="r-ref-wrap" hidden>Original receipt no. (for a return)
+          <input id="r-ref" inputmode="numeric" placeholder="e.g. 19050026301"></label>
+        <label class="f" style="flex: 0 1 200px">Cashier / operator <input id="r-op" value="HRS test"></label>
+      </div>
+      <div class="tablebox">
+        <table class="lines">
+          <thead><tr><th>Item</th><th>Unit</th><th class="num">Qty</th><th class="num">Unit price €</th><th class="num">Discount €</th><th>VAT</th><th>Category</th><th class="num">Amount</th><th><span hidden>Remove</span></th></tr></thead>
+          <tbody id="r-lines"></tbody>
+        </table>
+      </div>
+      <div><button class="btn sm" id="add-line">+ Add line</button></div>
+
+      <div class="row" style="align-items: flex-start; justify-content: space-between">
+        <div style="display:flex; flex-direction:column; gap:8px; flex: 1 1 340px">
+          <h3>Payments</h3>
+          <div id="r-pays" style="display:flex; flex-direction:column; gap:8px"></div>
+          <div><button class="btn sm" id="add-pay">+ Add payment</button></div>
+        </div>
+        <div class="totals" id="r-totals"></div>
+      </div>
+      <div class="row" style="justify-content: flex-end">
+        <span class="muted" style="font-size:12.5px">Prices include VAT. Sent to ATK's <b>test</b> system.</span>
+        <button class="btn primary" id="send">Sign and send to ATK</button>
+      </div>
+    </div>
+    <div id="r-result"></div>
+  </section>
+
+  <!-- TEST SET -->
+  <section class="panel" id="p-tests" role="tabpanel" aria-labelledby="t-tests" hidden>
+    <div class="card">
+      <h2>ATK test set</h2>
+      <p class="muted" style="margin:0">Eleven receipts covering sales, every VAT letter, discounts, 4-decimal prices, a return, duplicates, a tampered signature, a return without reference, the other VAT rounding, and a QR check. "Observed" cases record what ATK does.</p>
+      <div class="row">
+        <label class="f" style="flex: 0 1 260px">Citizen ID for the QR check <input id="t-cid" inputmode="numeric" placeholder="your personal number"></label>
+        <button class="btn primary" id="run-tests">Run all 11</button>
+      </div>
+    </div>
+    <div id="t-result"></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="panel" id="p-history" role="tabpanel" aria-labelledby="t-history" hidden>
+    <div class="panel">
+      <div class="card">
+        <div class="row" style="justify-content: space-between"><h2>Sent receipts</h2><button class="btn sm" id="h-refresh">Refresh</button></div>
+        <div class="tablebox" style="max-height: 360px; overflow: auto"><table><thead><tr><th>Sent</th><th>Receipt no.</th><th>Type</th><th class="num">Total</th><th>ATK</th></tr></thead><tbody id="h-list"></tbody></table></div>
+      </div>
+      <div id="h-detail"></div>
+    </div>
+  </section>
+
+  <!-- WORKSTATION -->
+  <section class="panel" id="p-ws" role="tabpanel" aria-labelledby="t-ws" hidden>
+    <div class="card" id="ws-current"></div>
+    <div class="grid2">
+      <form class="card" id="f-import">
+        <h2>Use the onboarder's certificate</h2>
+        <p class="muted" style="margin:0">In ATK's onboarder: Certificate tab › tick <i>Show private key</i> › <i>Export Certificate</i>. Then choose the two files.</p>
+        <label class="f">Private key (private-key.pem) <input type="file" name="key" accept=".pem,.key,.txt" required></label>
+        <label class="f">Certificate (signed-certificate.pem) <input type="file" name="cert" accept=".pem,.crt,.cer,.txt" required></label>
+        <div class="row">
+          <label class="f">ApplicationId <input name="app" inputmode="numeric" required></label>
+          <label class="f">City printed on receipts <input name="location" value="Prishtinë"></label>
+        </div>
+        <div><button class="btn primary" type="submit">Import</button></div>
+      </form>
+      <form class="card" id="f-onboard">
+        <h2>Register a new test workstation</h2>
+        <p class="muted" style="margin:0">Creates a new key here, asks ATK to verify the business and signs the certificate. Each POS ID can be registered once.</p>
+        <div class="row">
+          <label class="f">NUI <input name="nui" inputmode="numeric" required></label>
+          <label class="f">Fiscalization no. (EDI) <input name="fiscalNo" required></label>
+        </div>
+        <div class="row">
+          <label class="f">Unit (branch) <input name="branch" inputmode="numeric" value="1" required></label>
+          <label class="f">POS ID <input name="pos" inputmode="numeric" required></label>
+          <label class="f">ApplicationId <input name="app" inputmode="numeric" required></label>
+        </div>
+        <label class="f">City printed on receipts <input name="location" value="Prishtinë"></label>
+        <div><button class="btn primary" type="submit">Register with ATK</button></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<script>
+const TOKEN = "__TOKEN__";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const eur = cents => "€ " + (Number(cents) / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const eur4 = units => "€ " + (Number(units) / 10000).toLocaleString("de-DE", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const VAT = { A: 0, C: 0, D: 8, E: 18 };
+const VAT_LABEL = { A: "A · exempt", C: "C · 0%", D: "D · 8%", E: "E · 18%" };
+const CATS = ["HT", "UR", "SUA", "TT"];
+const PAY = [["Cash", "Cash"], ["CreditCard", "Card"], ["Voucher", "Voucher"], ["Cheque", "Cheque"], ["Other", "Other"]];
+let profile = null;
+
+async function api(path, opts = {}) {
+  const headers = { "X-Console-Token": TOKEN, ...(opts.body && !(opts.body instanceof FormData) ? { "Content-Type": "application/json" } : {}) };
+  const res = await fetch("/api" + path, { ...opts, headers });
+  const text = await res.text();
+  let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
+  if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+  return data;
+}
+function busy(btn, on, label) {
+  if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spin" aria-hidden="true"></span> ${label}`; }
+  else { btn.disabled = false; btn.innerHTML = btn.dataset.label; }
+}
+function notice(el, kind, html) { el.innerHTML = `<div class="notice ${kind}" role="${kind === "bad" ? "alert" : "status"}">${html}</div>`; }
+
+/* ---------- tabs ---------- */
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+function show(id) {
+  tabs.forEach(t => { const on = t.id === id; t.setAttribute("aria-selected", on); $("#" + t.getAttribute("aria-controls")).hidden = !on; });
+  if (id === "t-history") loadHistory();
+  try { localStorage.setItem("atk-console-tab", id); } catch {}
+}
+tabs.forEach(t => t.addEventListener("click", () => show(t.id)));
+
+/* ---------- workstation ---------- */
+function renderProfile() {
+  const ws = $("#ws");
+  if (!profile) {
+    ws.innerHTML = `<span class="env">TEST</span><span class="muted">No workstation yet</span>`;
+    $("#ws-current").innerHTML = `<h2>No workstation set up</h2><div class="notice warn">Import the certificate from ATK's onboarder, or register a new test workstation below. Receipts can be sent once this is done.</div>`;
+    return;
+  }
+  const exp = profile.certificateExpiresUtc ? new Date(profile.certificateExpiresUtc).toLocaleDateString("de-DE") : "—";
+  ws.innerHTML = `<span class="env">${profile.environment === "Test" ? "TEST" : "PRODUCTION"}</span><span><b>${esc(profile.businessName)}</b></span><span>NUI <b>${profile.nui}</b></span><span>Unit <b>${profile.branchId}</b></span><span>POS <b>${profile.posId}</b></span>`;
+  $("#ws-current").innerHTML = `<h2>Current workstation</h2>
+    <div class="kv">
+      <div>Business</div><div>${esc(profile.businessName)}</div>
+      <div>NUI</div><div class="mono">${profile.nui}</div>
+      <div>Unit (branch)</div><div class="mono">${profile.branchId}</div>
+      <div>POS ID</div><div class="mono">${profile.posId}</div>
+      <div>ApplicationId</div><div class="mono">${profile.applicationId}</div>
+      <div>Certificate</div><div>valid until ${exp}</div>
+      <div>Profile folder</div><div class="mono">${esc("__DIR__")}</div>
+    </div>
+    <p class="muted" style="margin:0; font-size:12.5px">Importing or registering again replaces this workstation.</p>`;
+}
+async function loadState() {
+  try { profile = (await api("/state")).profile; } catch (e) { notice($("#global"), "bad", esc(e.message)); }
+  renderProfile();
+}
+$("#f-import").addEventListener("submit", async e => {
+  e.preventDefault(); const btn = e.submitter;
+  busy(btn, true, "Importing…");
+  try { profile = await api("/import", { method: "POST", body: new FormData(e.target) }); renderProfile(); notice($("#global"), "ok", `Workstation imported: <b>${esc(profile.businessName)}</b>, POS ${profile.posId}.`); }
+  catch (err) { notice($("#global"), "bad", esc(err.message)); }
+  finally { busy(btn, false); }
+});
+$("#f-onboard").addEventListener("submit", async e => {
+  e.preventDefault(); const btn = e.submitter; const f = Object.fromEntries(new FormData(e.target));
+  busy(btn, true, "Registering with ATK…");
+  try {
+    const r = await api("/onboard", { method: "POST", body: JSON.stringify({ nui: +f.nui, fiscalNo: f.fiscalNo, branch: +f.branch, pos: +f.pos, app: +f.app, location: f.location }) });
+    profile = r.profile; renderProfile();
+    notice($("#global"), "ok", `ATK issued the certificate for <b>${esc(profile.businessName)}</b>, POS ${profile.posId}.<br><span class="mono">${r.log.map(esc).join("<br>")}</span>`);
+  } catch (err) { notice($("#global"), "bad", "ATK did not register the workstation: " + esc(err.message)); }
+  finally { busy(btn, false); }
+});
+
+/* ---------- receipt editor ---------- */
+const PRESETS = {
+  hotel: { lines: [["Room night", "nate", 2, 85, 0, "D", "HT"], ["Breakfast", "cope", 4, 9.5, 0, "E", "UR"], ["Minibar", "cope", 3, 2.35, 0, "E", "UR"]], pays: [["CreditCard", ""]] },
+  restaurant: { lines: [["Dinner menu", "cope", 2, 24.8, 0, "E", "UR"], ["Wine by glass", "cope", 3, 6.5, 0, "E", "UR"], ["Mineral water", "cope", 2, 2, 0, "E", "UR"]], pays: [["Cash", ""]] },
+  allvat: { lines: [["Room night", "nate", 1, 110, 0, "D", "HT"], ["City tax", "nate", 2, 1, 0, "A", "HT"], ["Airport transfer", "cope", 1, 25, 0, "C", "SUA"], ["Dinner", "cope", 2, 18.4, 0, "E", "UR"]], pays: [["Cash", "50"], ["CreditCard", ""]] },
+  empty: { lines: [["", "cope", 1, 0, 0, "E", "UR"]], pays: [["Cash", ""]] },
+};
+function lineRow([name, unit, qty, price, disc, vat, cat]) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input aria-label="Item" data-k="name" value="${esc(name)}" placeholder="Item name"></td>
+    <td><input aria-label="Unit" data-k="unit" value="${esc(unit)}" style="width:80px"></td>
+    <td><input aria-label="Quantity" data-k="qty" type="number" step="0.001" min="0" value="${qty}"></td>
+    <td><input aria-label="Unit price" data-k="price" type="number" step="0.0001" min="0" value="${price}"></td>
+    <td><input aria-label="Discount" data-k="disc" type="number" step="0.01" min="0" value="${disc}"></td>
+    <td><select aria-label="VAT letter" data-k="vat">${Object.keys(VAT).map(k => `<option value="${k}" ${k === vat ? "selected" : ""}>${VAT_LABEL[k]}</option>`).join("")}</select></td>
+    <td><input aria-label="Category" data-k="cat" list="cats" value="${esc(cat)}" style="width:80px"></td>
+    <td class="num" data-k="amount"></td>
+    <td><button class="btn icon" title="Remove line" aria-label="Remove line">✕</button></td>`;
+  tr.querySelector("button").addEventListener("click", () => { tr.remove(); recalc(); });
+  tr.addEventListener("input", recalc);
+  return tr;
+}
+function payRow([type, amount]) {
+  const d = document.createElement("div"); d.className = "row";
+  d.innerHTML = `<label class="f" style="flex: 0 1 170px">Method <select data-k="type">${PAY.map(([v, l]) => `<option value="${v}" ${v === type ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    <label class="f" style="flex: 0 1 170px">Amount € <input data-k="amount" type="number" step="0.01" min="0" value="${amount}" placeholder="rest of total"></label>
+    <button class="btn icon" aria-label="Remove payment">✕</button>`;
+  d.querySelector("button").addEventListener("click", () => { d.remove(); recalc(); });
+  d.addEventListener("input", recalc);
+  return d;
+}
+function readLines() {
+  return [...$("#r-lines").children].map(tr => {
+    const v = k => tr.querySelector(`[data-k="${k}"]`).value;
+    return { name: v("name").trim(), unit: v("unit").trim() || "cope", qty: +v("qty") || 0, price: +v("price") || 0, discount: +v("disc") || 0, vat: v("vat"), category: v("cat").trim() || "UR", tr };
+  });
+}
+function readPays() { return [...$("#r-pays").children].map(d => ({ type: d.querySelector('[data-k="type"]').value, amount: d.querySelector('[data-k="amount"]').value })); }
+function recalc() {
+  const lines = readLines(); const groups = {}; let total = 0;
+  for (const l of lines) {
+    const gross = Math.round((Math.round(l.price * 10000) * l.qty) - Math.round(l.discount * 10000)) / 100; // cents
+    l.tr.querySelector('[data-k="amount"]').textContent = eur(gross);
+    groups[l.vat] = (groups[l.vat] || 0) + gross; total += gross;
+  }
+  let tax = 0; const rows = Object.keys(groups).sort().map(k => {
+    const g = Math.round(groups[k]); const t = VAT[k] ? Math.round(g * VAT[k] / (100 + VAT[k])) : 0; tax += t;
+    return `<div><span>VAT ${k} on ${eur(g)}</span><span class="mono">${eur(t)}</span></div>`;
+  });
+  const fixed = readPays().filter(p => p.amount !== "").reduce((s, p) => s + Math.round(+p.amount * 100), 0);
+  $("#r-totals").innerHTML = rows.join("") + `<div><span>Excl. VAT</span><span class="mono">${eur(Math.round(total) - tax)}</span></div>
+    <div class="grand"><span>Total</span><span class="mono">${eur(Math.round(total))}</span></div>
+    ${fixed > Math.round(total) ? `<div style="color:var(--bad)"><span>Payments exceed the total</span><span></span></div>` : ""}`;
+}
+function loadPreset(name) {
+  const p = PRESETS[name]; $("#r-lines").replaceChildren(...p.lines.map(lineRow)); $("#r-pays").replaceChildren(...p.pays.map(payRow)); recalc();
+}
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => loadPreset(b.dataset.preset)));
+$("#add-line").addEventListener("click", () => { $("#r-lines").append(lineRow(["", "cope", 1, 0, 0, "E", "UR"])); recalc(); });
+$("#add-pay").addEventListener("click", () => { $("#r-pays").append(payRow(["CreditCard", ""])); recalc(); });
+$("#r-type").addEventListener("change", e => { $("#r-ref-wrap").hidden = e.target.value !== "return"; });
+document.body.insertAdjacentHTML("beforeend", `<datalist id="cats">${CATS.map(c => `<option value="${c}"></option>`).join("")}</datalist>`);
+
+$("#send").addEventListener("click", async e => {
+  const btn = e.currentTarget; const out = $("#r-result");
+  if (!profile) { show("t-ws"); notice($("#global"), "warn", "Set up a workstation first."); return; }
+  const lines = readLines().map(({ tr, ...l }) => l);
+  if (lines.some(l => !l.name)) { notice(out, "bad", "Every line needs an item name."); return; }
+  const body = {
+    type: $("#r-type").value, reference: $("#r-type").value === "return" ? +($("#r-ref").value || 0) : 0, operator: $("#r-op").value,
+    lines, payments: readPays().map(p => ({ type: p.type, amount: p.amount === "" ? 0 : +p.amount })),
+  };
+  busy(btn, true, "Signing and sending…");
+  try { const r = await api("/send", { method: "POST", body: JSON.stringify(body) }); out.innerHTML = receiptView(r, true); wireReceipt(out, r); out.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  catch (err) { notice(out, "bad", esc(err.message)); }
+  finally { busy(btn, false); }
+});
+
+/* ---------- receipt view (result + history) ---------- */
+function receiptView(r, fresh) {
+  const a = r.atk || {};
+  const outcome = a.Outcome || a.outcome;
+  const head = outcome
+    ? `<span class="chip ${esc(outcome)}">${esc(outcome)}</span><span class="muted">HTTP ${esc(a.HttpStatus ?? a.httpStatus ?? "—")}</span><span>${esc(a.Message ?? a.message ?? "")}</span>${(a.transactionId) ? `<span class="mono">ATK transaction ${esc(a.transactionId)}</span>` : ""}`
+    : `<span class="chip obs">From the test set</span><span class="muted">ATK's answer is in that run's report</span>`;
+  return `<div class="card">
+    <div class="row" style="justify-content: space-between"><h2>${fresh ? "ATK's answer" : "Receipt " + esc(r.couponId)}</h2><div class="row" style="gap:8px 14px">${head}</div></div>
+    <div class="result">
+      <div style="display:flex; flex-direction:column; gap:14px; min-width:0">
+        <div class="tablebox"><table>
+          <thead><tr><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit price</th><th>VAT</th><th class="num">Amount</th><th>Cat.</th></tr></thead>
+          <tbody>${r.items.map(i => `<tr><td>${esc(i.name)}</td><td class="num">${i.quantity}</td><td>${esc(i.unit)}</td><td class="num">${eur4(i.price)}</td><td>${esc(i.taxRate)}</td><td class="num">${eur(i.total / 100)}</td><td>${esc(i.category)}</td></tr>`).join("")}</tbody>
+        </table></div>
+        <div class="totals">
+          ${r.taxGroups.map(g => `<div><span>VAT ${esc(g.taxRate)} · base ${eur(g.totalForTax)}</span><span class="mono">${eur(g.totalTax)}</span></div>`).join("")}
+          ${r.totalDiscount ? `<div><span>Discount</span><span class="mono">${eur(r.totalDiscount)}</span></div>` : ""}
+          <div><span>Excl. VAT</span><span class="mono">${eur(r.totalNoTax)}</span></div>
+          <div class="grand"><span>Total</span><span class="mono">${eur(r.total)}</span></div>
+          ${r.payments.map(p => `<div><span>${esc(p.type)}</span><span class="mono">${eur(p.amount)}</span></div>`).join("")}
+        </div>
+        <div class="kv">
+          <div>Receipt no.</div><div class="mono">${esc(r.couponId)}</div>
+          <div>NUIKF</div><div class="mono">${esc(r.verificationNo)}</div>
+          <div>SEF ID</div><div class="mono">${esc(r.sefId)}</div>
+          <div>Type</div><div>${esc(r.type)}${r.referenceNo ? ` · refers to <span class="mono">${esc(r.referenceNo)}</span>` : ""}</div>
+          <div>Issued</div><div>${esc(r.time)} · ${esc(r.operatorId)}</div>
+        </div>
+        <details><summary>Signed data sent to ATK</summary>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <div class="muted" style="font-size:12px">details (Base64 protobuf)</div><pre>${esc(r.details)}</pre>
+            <div class="muted" style="font-size:12px">signature (ECDSA P-256, DER)</div><pre>${esc(r.signature)}</pre>
+            <div class="muted" style="font-size:12px">QR content</div><pre>${esc(r.qr)}</pre>
+            <div><button class="btn sm" data-copy>Copy QR content</button></div>
+          </div>
+        </details>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; align-items:stretch">
+        <div class="qrbox"><img alt="Fiscal QR code for receipt ${esc(r.couponId)}" src="data:image/png;base64,${r.qrPng}"><span class="muted" style="font-size:11px">Scannable fiscal QR</span></div>
+        <label class="f">Citizen ID <input data-cid inputmode="numeric" placeholder="personal number"></label>
+        <button class="btn sm" data-verify>Verify QR with ATK</button>
+        ${r.type === "Sale" ? `<button class="btn sm" data-return>Create a return for it</button>` : ""}
+        <div data-verify-out></div>
+      </div>
+    </div>
+  </div>`;
+}
+function wireReceipt(root, r) {
+  const cid = root.querySelector("[data-cid]");
+  try { cid.value = localStorage.getItem("atk-console-cid") || ""; } catch {}
+  root.querySelector("[data-verify]").addEventListener("click", async e => {
+    const btn = e.currentTarget; const out = root.querySelector("[data-verify-out]");
+    if (!/^\d+$/.test(cid.value)) { notice(out, "bad", "Enter a citizen ID (digits only)."); return; }
+    try { localStorage.setItem("atk-console-cid", cid.value); } catch {}
+    busy(btn, true, "Checking…");
+    try {
+      const v = await api("/verify", { method: "POST", body: JSON.stringify({ qr: r.qr, citizenId: +cid.value }) });
+      if (v.status === 200) { const d = JSON.parse(v.body); notice(out, "ok", `Verified by ATK: <b>${esc(d.BusinessName)}</b>, total ${eur(d.Total)}, VAT ${eur(d.TotalTax)}.`); }
+      else notice(out, "bad", `ATK answered ${v.status}: ${esc(v.body)}`);
+    } catch (err) { notice(out, "bad", esc(err.message)); }
+    finally { busy(btn, false); }
+  });
+  root.querySelector("[data-return]")?.addEventListener("click", () => {
+    $("#r-type").value = "return"; $("#r-ref-wrap").hidden = false; $("#r-ref").value = r.couponId;
+    $("#r-lines").replaceChildren(lineRow([r.items[0].name, r.items[0].unit, 1, r.items[0].price / 10000, 0, r.items[0].taxRate, r.items[0].category]));
+    $("#r-pays").replaceChildren(payRow([r.payments[0]?.type || "Cash", ""])); recalc();
+    $("#r-result").innerHTML = ""; show("t-receipt"); window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  root.querySelector("[data-copy]").addEventListener("click", async e => {
+    try { await navigator.clipboard.writeText(r.qr); e.target.textContent = "Copied"; } catch { e.target.textContent = "Select the text above to copy"; }
+  });
+}
+
+/* ---------- test set ---------- */
+try { $("#t-cid").value = localStorage.getItem("atk-console-cid") || ""; } catch {}
+$("#run-tests").addEventListener("click", async e => {
+  const btn = e.currentTarget; const out = $("#t-result");
+  if (!profile) { show("t-ws"); notice($("#global"), "warn", "Set up a workstation first."); return; }
+  const cid = $("#t-cid").value.trim();
+  if (cid) try { localStorage.setItem("atk-console-cid", cid); } catch {}
+  busy(btn, true, "Running…"); notice(out, "", "Sending 11 receipts to ATK. This takes about half a minute.");
+  try {
+    const rs = await api("/scenarios", { method: "POST", body: JSON.stringify({ citizenId: cid ? +cid : null }) });
+    const ok = rs.filter(r => r.asExpected).length;
+    out.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2>${ok} of ${rs.length} as expected</h2><span class="muted">Signed data and QR codes are saved under History.</span></div>
+      <div class="tablebox"><table><thead><tr><th>#</th><th>Scenario</th><th>Expected</th><th>Result</th><th>HTTP</th><th>ATK message</th><th>Transaction</th></tr></thead><tbody>
+      ${rs.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(r.name)}</td><td class="muted">${esc(r.expected)}</td><td><span class="chip ${esc(r.outcome)}">${r.asExpected ? "✓ " : "⚠ "}${esc(r.outcome)}</span></td><td class="num">${esc(r.httpStatus ?? "")}</td><td style="max-width:360px; overflow-wrap:anywhere">${esc(r.message ?? "")}</td><td class="mono">${esc(r.transactionId ?? "")}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+  } catch (err) { notice(out, "bad", esc(err.message)); }
+  finally { busy(btn, false); }
+});
+
+/* ---------- history ---------- */
+async function loadHistory() {
+  const list = $("#h-list");
+  try {
+    const items = await api("/history");
+    if (!items.length) { list.innerHTML = `<tr><td colspan="5" class="empty">Nothing sent yet. Send a receipt or run the test set.</td></tr>`; return; }
+    list.innerHTML = items.map(h => `<tr class="hist" tabindex="0" data-id="${esc(h.id)}"><td>${new Date(h.at).toLocaleString("de-DE")}</td><td class="mono">${esc(h.couponId)}</td><td>${esc(h.type)}<div class="muted" style="font-size:12px">${esc(h.scenario)}</div></td><td class="num">${eur(h.total)}</td><td>${h.outcome ? `<span class="chip ${esc(h.outcome)}">${esc(h.outcome)}</span>` : `<span class="chip obs">test set</span>`}</td></tr>`).join("");
+    list.querySelectorAll(".hist").forEach(tr => {
+      const open = async () => {
+        list.querySelectorAll(".hist").forEach(x => x.classList.toggle("sel", x === tr));
+        const r = await api("/history/" + tr.dataset.id); const box = $("#h-detail"); box.innerHTML = receiptView(r, false); wireReceipt(box, r); box.scrollIntoView({ behavior: "smooth", block: "start" });
+      };
+      tr.addEventListener("click", open); tr.addEventListener("keydown", ev => { if (ev.key === "Enter") open(); });
+    });
+  } catch (err) { list.innerHTML = `<tr><td colspan="5">${esc(err.message)}</td></tr>`; }
+}
+$("#h-refresh").addEventListener("click", loadHistory);
+
+/* ---------- start ---------- */
+loadPreset("hotel");
+loadState();
+let start = "t-receipt"; try { start = localStorage.getItem("atk-console-tab") || start; } catch {}
+show(tabs.some(t => t.id === start) ? start : "t-receipt");
+</script>
+</body>
+</html>

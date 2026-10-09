@@ -9,6 +9,8 @@ using QRCoder;
 
 namespace Hrs.Fiscal.Cli;
 
+public sealed record SentReceipt(DateTime SentAt, PosCoupon Coupon, SignedPayload Payload, string Qr, string Outcome, int? HttpStatus, ulong? TransactionId, string? Message);
+
 public sealed record ScenarioResult(string Name, string Expected, AtkOutcome Outcome, int? HttpStatus, ulong? TransactionId, string? Message, ulong CouponId)
 {
     public bool AsExpected => Expected switch
@@ -26,8 +28,9 @@ public sealed record ScenarioResult(string Name, string Expected, AtkOutcome Out
 public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient atk, string dir, long citizenId = 38344000000L)
 {
     private readonly CouponSigner _signer = new(key);
+    private string _operator = "HRS test";
     private readonly string _runDir = Path.Combine(dir, "runs", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-    private ulong _seq = (ulong)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % 1_000_000) * 100;
+    private ulong _seq = (ulong)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 900_000_000);
 
     public static List<ReceiptLine> HotelStay() =>
     [
@@ -96,6 +99,27 @@ public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient
         return results;
     }
 
+    /// <summary>One receipt from the GUI editor. Saves the signed payload, QR and ATK's answer under runs/.</summary>
+    public async Task<SentReceipt> SendCustomAsync(List<ReceiptLine> lines, List<ReceiptPayment> payments, CouponType type, ulong reference, string operatorId)
+    {
+        _operator = operatorId;
+        var coupon = Build(lines, payments, type: type, reference: reference);
+        var payload = _signer.Sign(coupon);
+        var qr = _signer.Sign(CouponBuilder.ToCitizenCoupon(coupon)).ToQrString();
+        var r = await atk.SendPosCouponAsync(payload);
+        var sent = new SentReceipt(DateTime.Now, coupon, payload, qr, r.Outcome.ToString(), r.HttpStatus, r.TransactionId, r.Message);
+        Save(type == CouponType.Return ? "GUI return" : "GUI sale", coupon, payload, qr, sent);
+        return sent;
+    }
+
+    /// <summary>Asks ATK's citizen endpoint to verify a QR string (what the ATK app does when a guest scans it).</summary>
+    public static async Task<(int Status, string Body)> VerifyQrRawAsync(AtkEnvironment env, string qr, long citizenId)
+    {
+        using var http = new HttpClient { BaseAddress = AtkEndpoints.BaseUri(env), Timeout = TimeSpan.FromSeconds(20) };
+        using var response = await http.PostAsJsonAsync("citizen/coupon", new { citizen_id = citizenId, qr_code = qr });
+        return ((int)response.StatusCode, await response.Content.ReadAsStringAsync());
+    }
+
     public async Task<ScenarioResult> SaleAsync(string name, List<ReceiptLine> lines) =>
         (await SendBuiltAsync(name, "accepted", lines, [new(PaymentType.CreditCard, 0)])).Result;
 
@@ -126,7 +150,7 @@ public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient
         bool skipPaymentCheck = false) => new()
     {
         BusinessId = profile.Nui, BranchId = profile.BranchId, PosId = profile.PosId, ApplicationId = profile.ApplicationId,
-        CouponId = couponId, VerificationNo = VerificationNumber.New(), Location = profile.Location, OperatorId = "HRS test",
+        CouponId = couponId, VerificationNo = VerificationNumber.New(), Location = profile.Location, OperatorId = _operator,
         IssuedAt = DateTimeOffset.UtcNow, Type = type, ReferenceNo = reference, Lines = lines,
         Payments = skipPaymentCheck ? [new ReceiptPayment(PaymentType.Cash, lines.Sum(l => l.UnitPrice * l.Quantity - l.Discount))] : payments,
     };
@@ -150,7 +174,7 @@ public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient
         return new ScenarioResult(name, "accepted", ok ? AtkOutcome.Accepted : AtkOutcome.Rejected, (int)response.StatusCode, null, Trim(body), couponId);
     }
 
-    private void Save(string name, PosCoupon coupon, SignedPayload payload, string qr)
+    private void Save(string name, PosCoupon coupon, SignedPayload payload, string qr, SentReceipt? result = null)
     {
         Directory.CreateDirectory(_runDir);
         var stem = Path.Combine(_runDir, $"{coupon.CouponId}");
@@ -161,6 +185,7 @@ public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient
             details = payload.Details,
             signature = payload.Signature,
             qr,
+            atk = result is null ? null : new { result.Outcome, result.HttpStatus, transactionId = result.TransactionId?.ToString(), result.Message, sentAt = result.SentAt },
         }, new JsonSerializerOptions { WriteIndented = true }));
         using var data = QRCodeGenerator.GenerateQrCode(qr, QRCodeGenerator.ECCLevel.M);
         File.WriteAllBytes(stem + "-qr.png", new PngByteQRCode(data).GetGraphic(6));

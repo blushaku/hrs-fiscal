@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\Hrs.Fiscal.Core\Hrs.Fiscal.Core.csproj" />
@@ -15,5 +15,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Gui\index.html" LogicalName="Hrs.Fiscal.Cli.Gui.index.html" />
+    <EmbeddedResource Include="Gui\hrs-logo.svg" LogicalName="Hrs.Fiscal.Cli.Gui.hrs-logo.svg" />
+    <Content Remove="Gui\**" />
+  </ItemGroup>
 
 </Project>
