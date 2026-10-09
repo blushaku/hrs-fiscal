@@ -2,7 +2,6 @@
 @model Hrs.Fiscal.Server.Pages.FlipMessages.IndexModel
 @{
     ViewData["Title"] = "FLIP messages";
-    var baseUrl = $"{Request.Scheme}://{Request.Host}";
 }
 <div class="page-head">
     <div>
@@ -20,10 +19,10 @@
 <section class="card">
     <h2>Where FLIP should send to</h2>
     <div class="kv">
-        <div>HTTP address</div><div class="mono">@baseUrl/flip &nbsp;(any path below /flip is accepted)</div>
+        <div>HTTP address</div><div class="mono">@foreach (var u in Model.FlipUrls(HttpContext.Connection.LocalPort)) { <div>@u</div> }<div class="small muted" style="font-family: inherit">Use the IP address, not the computer name. Any path below /flip is accepted; a URL without /flip is not recorded.</div></div>
         <div>Raw TCP</div><div class="mono">@(Model.TcpPort > 0 ? $"port {Model.TcpPort}" : "off (set Flip:TcpPort in appsettings.json to enable)")</div>
     </div>
-    <p class="small muted" style="margin: 12px 0 0">Use this server's LAN address as the FLIP Server Address / Fiscal Terminal address in OPERA, or in FLIP's own partner configuration. Messages appear here within a second.</p>
+    <p class="small muted" style="margin: 12px 0 0">Enter one of these as the EndPoint Url in FLIP's partner configuration (port 5080 is only for this admin page). Messages appear here within a second.</p>
 </section>
 
 <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start">
