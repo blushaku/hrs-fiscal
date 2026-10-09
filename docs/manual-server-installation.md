@@ -146,7 +146,7 @@ One line per workstation that can issue a folio. Each one is a separate ATK POS 
 | Signing | *Property default*, or force *Workstation client* / *Server (central)* for this workstation |
 | Client address | Only for workstation-client mode: `https://<PC IP>:5100` |
 
-A new workstation starts as *pending*. It becomes *active* only after ATK registration (5.4).
+Each workstation is shown as a tile with its POS ID, OPERA terminal, signing and certificate state. **Add workstation** opens one form: in central signing it adds the workstation *and* registers it with ATK in the same step (or imports the key and certificate from ATK's onboarder tool, or registers later). If registration fails, the workstation stays *pending* and its tile offers **Register with ATK** again.
 
 ### 5.4 Signing mode and ATK registration
 
@@ -162,7 +162,7 @@ Every workstation is its own ATK POS with its own key and certificate in both mo
 
 **Central mode — registering a workstation**
 1. Settings › General: ATK environment and Application ID are set; Settings › Business is complete.
-2. Settings › Workstations › **Edit** the workstation › **Register with ATK**.
+2. Settings › Workstations › **Add workstation** with *Register with ATK now* selected (for an existing workstation: **Register with ATK** on its tile).
 3. The server checks the business with ATK, creates a new non-exportable key for this workstation, sends ATK only the
    certificate request (public key) and stores the certificate. The workstation becomes *active*; the certificate expiry
    is shown in the list and on the dashboard.

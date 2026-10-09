@@ -3,98 +3,134 @@
 @using Hrs.Fiscal.Server.Data
 @using Hrs.Fiscal.Server.Signing
 @{
-    string StateText(TerminalSigningState s) => s switch
-    {
-        TerminalSigningState.Ready => "ready",
-        TerminalSigningState.NotRegistered => "not registered",
-        TerminalSigningState.RegisterAgain => "register again (mode changed)",
-        TerminalSigningState.Expired => "certificate expired",
-        _ => "disabled",
-    };
-    string StateBadge(TerminalSigningState s) => s == TerminalSigningState.Ready ? "accepted" : s == TerminalSigningState.Disabled ? "neutral" : s == TerminalSigningState.NotRegistered ? "pending" : "rejected";
     ViewData["Title"] = "Workstations";
     var editing = Model.Input.Id != 0;
+    string StateText(TerminalSigningState s) => s switch
+    {
+        TerminalSigningState.Ready => "Ready",
+        TerminalSigningState.NotRegistered => "Not registered",
+        TerminalSigningState.RegisterAgain => "Register again (mode changed)",
+        TerminalSigningState.Expired => "Certificate expired",
+        _ => "Disabled",
+    };
+    string StateBadge(TerminalSigningState s) => s == TerminalSigningState.Ready ? "accepted" : s == TerminalSigningState.Disabled ? "neutral" : s == TerminalSigningState.NotRegistered ? "pending" : "rejected";
+    var central = Model.DefaultMode == SigningModes.Server;
 }
-<div class="page-head"><div><h1>Settings</h1></div></div>
+<div class="page-head">
+    <div>
+        <h1>Settings</h1>
+        <p>Every workstation that can issue a folio is its own ATK POS with its own certificate. Signing: <strong>@SigningModes.Label(Model.DefaultMode)</strong> (<a href="/Settings">change</a>).</p>
+    </div>
+</div>
 <partial name="_SettingsNav" />
 
-<section class="card">
-    <h2>Workstations (ATK POS)</h2>
-    <p class="small muted" style="margin: 0 0 12px">Every workstation that can generate a folio is its own ATK POS with its own POS ID and certificate. The OPERA Fiscal Terminal ID must match the terminal configured in OPERA.
-        Signing for this property: <strong>@SigningModes.Label(Model.DefaultMode)</strong> (<a href="/Settings">change</a>). Workstation client: install the HRS Fiscal Client on that computer and register it there. Central: register it here; nothing is installed on the computer.</p>
-    <div class="table-wrap">
-        <table>
-            <thead><tr><th>POS ID</th><th>OPERA terminal</th><th>Computer</th><th>Signing</th><th>Status</th><th>Certificate</th><th><span class="sr-only">Edit</span></th></tr></thead>
-            <tbody>
-            @foreach (var t in Model.Terminals)
-            {
-                <tr>
-                    <td class="mono">@t.PosId</td>
-                    <td>@t.OperaTerminalId</td>
-                    <td>@t.Hostname<div class="small muted">@t.Description</div></td>
-                    <td>@SigningModes.Label(t.EffectiveMode(Model.DefaultMode))@if (t.SigningMode is not null) {<div class="small muted">workstation setting</div>}
-                        @if (t.EffectiveMode(Model.DefaultMode) == SigningModes.Client && !string.IsNullOrEmpty(t.ClientEndpoint)) {<div class="small muted mono">@t.ClientEndpoint</div>}</td>
-                    <td><span class="badge @StateBadge(t.SigningState(Model.DefaultMode))">@StateText(t.SigningState(Model.DefaultMode))</span><div class="small muted">@t.Status</div></td>
-                    <td>@(t.CertificateExpires is { } e && t.EnrolledMode is not null ? "valid to " + Model.Clock.ToLocal(e).ToString("dd.MM.yyyy") : "—")</td>
-                    <td><a class="btn small" href="/Settings/Workstations?Edit=@t.Id">Edit</a></td>
-                </tr>
-            }
-            @if (Model.Terminals.Count == 0) { <tr><td colspan="7" class="muted">No workstations yet.</td></tr> }
-            </tbody>
-        </table>
-    </div>
-</section>
+<div class="ws-grid">
+    @foreach (var t in Model.Terminals)
+    {
+        var state = t.SigningState(Model.DefaultMode);
+        var mode = t.EffectiveMode(Model.DefaultMode);
+        <section class="card ws @(t.Id == Model.Input.Id ? "current" : "")" aria-label="Workstation POS @t.PosId">
+            <div class="ws-head">
+                <div class="pos"><small>POS ID</small>@t.PosId</div>
+                <span class="badge @StateBadge(state)">@StateText(state)</span>
+            </div>
+            <dl>
+                <dt>OPERA terminal</dt><dd class="mono">@t.OperaTerminalId</dd>
+                <dt>Computer</dt><dd>@t.Hostname</dd>
+                <dt>Signing</dt><dd>@SigningModes.Label(mode)@(t.SigningMode is null ? "" : " (this workstation)")</dd>
+                <dt>Certificate</dt><dd>@(t.CertificateExpires is { } e && t.EnrolledMode is not null ? "valid to " + Model.Clock.ToLocal(e).ToString("dd.MM.yyyy") : "none")</dd>
+                @if (!string.IsNullOrEmpty(t.Description)) { <dt>Note</dt><dd>@t.Description</dd> }
+            </dl>
+            <div class="actions">
+                @if (mode == SigningModes.Server && state is TerminalSigningState.NotRegistered or TerminalSigningState.RegisterAgain or TerminalSigningState.Expired)
+                {
+                    <form method="post" asp-page-handler="Register" asp-route-id="@t.Id"><button type="submit" class="btn primary small">Register with ATK</button></form>
+                }
+                <a class="btn small" href="/Settings/Workstations?Edit=@t.Id">Edit</a>
+            </div>
+        </section>
+    }
+    @if (!Model.FormOpen)
+    {
+        <a class="card ws add" href="/Settings/Workstations?Add=true"><span class="plus" aria-hidden="true">+</span><strong>Add workstation</strong><span class="small muted">@(central ? "Added and registered with ATK in one step" : "Then install the HRS Fiscal Client on it")</span></a>
+    }
+</div>
 
-<form method="post" class="card" style="display: flex; flex-direction: column; gap: 12px; max-width: 900px">
-    <h2 style="margin: 0">@(editing ? $"Edit workstation (POS {Model.Input.PosId})" : "Add workstation")</h2>
-    <div asp-validation-summary="All" class="validation"></div>
-    <input type="hidden" asp-for="Input.Id">
-    <div class="form-grid">
-        <label class="field">POS ID
-            <input type="number" asp-for="Input.PosId" readonly="@editing" min="1">
-        </label>
-        <label class="field">OPERA Fiscal Terminal ID <input type="text" asp-for="Input.OperaTerminalId" placeholder="FO1"></label>
-        <label class="field">Computer name <input type="text" asp-for="Input.Hostname" placeholder="FRONTDESK-01"></label>
-        <label class="field">Signing
-            <select asp-for="Input.SigningMode">
-                <option value="">Property default (@SigningModes.Label(Model.DefaultMode))</option>
-                <option value="client">Workstation client</option>
-                <option value="server">Server (central)</option>
-            </select>
-        </label>
-        <label class="field">Client address (LAN, client mode) <input type="text" asp-for="Input.ClientEndpoint" placeholder="https://192.168.1.21:5100"></label>
-        <label class="field wide">Description <input type="text" asp-for="Input.Description" placeholder="Front desk, left"></label>
-        <label class="field">Status
-            <select asp-for="Input.Status">
-                <option value="pending">pending (not enrolled)</option>
-                <option value="active">active (after ATK registration)</option>
-                <option value="disabled">disabled</option>
-            </select>
-        </label>
-    </div>
-    @if (editing) { <p class="small muted" style="margin: 0">The POS ID cannot be changed: it is part of the ATK certificate and of every receipt issued here. Disable the workstation and add a new one instead.</p> }
-    <div class="actions">
-        <button type="submit" class="btn primary">@(editing ? "Save changes" : "Add workstation")</button>
-        @if (editing) { <a class="btn" href="/Settings/Workstations">Cancel</a> }
-    </div>
-</form>
+@if (Model.FormOpen)
+{
+    <form method="post" enctype="multipart/form-data" class="card" style="display: flex; flex-direction: column; gap: 14px; max-width: 980px" id="ws-form">
+        <h2 style="margin: 0">@(editing ? $"Edit workstation POS {Model.Input.PosId}" : "Add workstation")</h2>
+        <div asp-validation-summary="All" class="validation"></div>
+        <input type="hidden" asp-for="Input.Id">
+        <div class="form-grid">
+            <label class="field">POS ID
+                <input type="number" asp-for="Input.PosId" readonly="@editing" min="1">
+            </label>
+            <label class="field">OPERA Fiscal Terminal ID <input type="text" asp-for="Input.OperaTerminalId" placeholder="OPERA9TERMINAL" autocomplete="off"></label>
+            <label class="field">Computer name <input type="text" asp-for="Input.Hostname" placeholder="FRONTDESK-01" autocomplete="off"></label>
+            <label class="field">Signing
+                <select asp-for="Input.SigningMode">
+                    <option value="">Property default (@SigningModes.Label(Model.DefaultMode))</option>
+                    <option value="client">Workstation client</option>
+                    <option value="server">Server (central)</option>
+                </select>
+            </label>
+            <label class="field">Client address (client mode only) <input type="text" asp-for="Input.ClientEndpoint" placeholder="https://192.168.1.21:5100"></label>
+            <label class="field">Note <input type="text" asp-for="Input.Description" placeholder="Front desk, left"></label>
+            @if (editing)
+            {
+                <label class="field">Status
+                    <select asp-for="Input.Status">
+                        <option value="pending">pending (not registered)</option>
+                        <option value="active">active (after ATK registration)</option>
+                        <option value="disabled">disabled</option>
+                    </select>
+                </label>
+            }
+        </div>
+
+        @if (!editing)
+        {
+            <fieldset style="border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px">
+                <legend class="small muted" style="padding: 0; margin-bottom: 8px">ATK registration (central signing; ignored for workstation-client signing)</legend>
+                <div class="choice">
+                    <label><input type="radio" asp-for="Input.Register" value="atk"> <span><strong>Register with ATK now</strong>A new key is created on this server; ATK issues the certificate. Environment: @Model.AtkEnvironment.</span></label>
+                    <label><input type="radio" asp-for="Input.Register" value="import"> <span><strong>Import from ATK's onboarder</strong>Use the key and certificate exported from ATK's onboarder tool for this POS ID.</span></label>
+                    <label><input type="radio" asp-for="Input.Register" value="later"> <span><strong>Register later</strong>Only add it now.</span></label>
+                </div>
+                <div class="form-grid import-files">
+                    <label class="field">Private key (private-key.pem) <input type="file" name="key" accept=".pem,.key,.txt"></label>
+                    <label class="field">Certificate (signed-certificate.pem) <input type="file" name="cert" accept=".pem,.crt,.cer,.txt"></label>
+                </div>
+            </fieldset>
+        }
+        else
+        {
+            <p class="small muted" style="margin: 0">The POS ID cannot be changed: it is part of the ATK certificate and of every receipt issued here. Disable the workstation and add a new one instead.</p>
+        }
+        <div class="actions">
+            <button type="submit" class="btn primary">@(editing ? "Save changes" : "Add workstation")</button>
+            <a class="btn" href="/Settings/Workstations">Cancel</a>
+        </div>
+    </form>
+}
 
 @if (Model.Current is { } cur)
 {
     var mode = cur.EffectiveMode(Model.DefaultMode);
     var state = cur.SigningState(Model.DefaultMode);
-    <section class="card" style="display: flex; flex-direction: column; gap: 10px; max-width: 900px">
-        <h2 style="margin: 0">ATK registration (POS @cur.PosId)</h2>
-        <p style="margin: 0">Signing: <strong>@SigningModes.Label(mode)</strong> · <span class="badge @StateBadge(state)">@StateText(state)</span>
-            @if (cur.CertificateExpires is { } exp && cur.EnrolledMode is not null) { <span class="small muted"> · registered for @SigningModes.Label(cur.EnrolledMode).ToLowerInvariant(), certificate valid to @Model.Clock.ToLocal(exp).ToString("dd.MM.yyyy")</span> }</p>
+    <section class="card" style="display: flex; flex-direction: column; gap: 10px; max-width: 980px">
+        <h2 style="margin: 0">ATK registration, POS @cur.PosId</h2>
+        <p style="margin: 0">@SigningModes.Label(mode) · <span class="badge @StateBadge(state)">@StateText(state)</span>
+            @if (cur.CertificateExpires is { } exp && cur.EnrolledMode is not null) { <span class="small muted"> · certificate valid to @Model.Clock.ToLocal(exp).ToString("dd.MM.yyyy")</span> }</p>
         @if (mode == SigningModes.Server)
         {
-            <p class="small muted" style="margin: 0">Creates a new key for this workstation on this server (@(Model.KeyStoreKind == "cng" ? "Windows key store, non-exportable, TPM when available" : "file key store: development and test only")), sends ATK only the certificate request, and stores the certificate ATK returns. ATK environment: <strong>@Model.AtkEnvironment</strong>. Uses the business, unit and Application ID from Settings. Logged in the audit log.</p>
+            <p class="small muted" style="margin: 0">Creates a new key on this server (@(Model.KeyStoreKind == "cng" ? "Windows key store, non-exportable, TPM when available" : "file key store: development and test only")), sends ATK only the certificate request and stores the certificate. ATK environment: <strong>@Model.AtkEnvironment</strong>. Logged in the audit log.</p>
             <form method="post" asp-page-handler="Register" asp-route-id="@cur.Id">
                 <button type="submit" class="btn primary" disabled="@(cur.Status == "disabled")">@(state == TerminalSigningState.Ready ? "Renew certificate" : "Register with ATK")</button>
             </form>
             <details>
-                <summary class="small" style="cursor: pointer">Or import a key and certificate made with ATK's onboarder tool</summary>
+                <summary class="small">Or import a key and certificate made with ATK's onboarder tool</summary>
                 <form method="post" asp-page-handler="Import" asp-route-id="@cur.Id" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px">
                     <div class="form-grid">
                         <label class="field">Private key (private-key.pem) <input type="file" name="key" accept=".pem,.key,.txt"></label>

@@ -100,13 +100,13 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
             ["Input.Status"] = "active", ["Input.SigningMode"] = "server", ["__RequestVerificationToken"] = token,
         }));
         Assert.True(save.StatusCode == HttpStatusCode.Redirect, System.Text.RegularExpressions.Regex.Match(await save.Content.ReadAsStringAsync(), "validation[^>]*>(.{0,400})", System.Text.RegularExpressions.RegexOptions.Singleline).Groups[1].Value);
-        Assert.Contains("register again", await client.GetStringAsync("/Settings/Workstations")); // was registered on the client
+        Assert.Contains("Register again", await client.GetStringAsync("/Settings/Workstations")); // was registered on the client
 
         token = await ServerFixture.AntiforgeryTokenAsync(client, $"/Settings/Workstations?Edit={id}");
         var register = await client.PostAsync($"/Settings/Workstations?handler=Register&id={id}",
             new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token }));
         Assert.Equal(HttpStatusCode.Redirect, register.StatusCode);
-        Assert.Contains("Registered with ATK (Test)", await client.GetStringAsync($"/Settings/Workstations?Edit={id}"));
+        Assert.Contains("registered with ATK (Test)", await client.GetStringAsync("/Settings/Workstations"));
 
         Assert.Equal("server", await app.ScalarAsync<string>($"SELECT enrolled_mode FROM fiscal.terminal WHERE id = {id}"));
         Assert.StartsWith("file:HRS-Fiscal-", await app.ScalarAsync<string>($"SELECT key_reference FROM fiscal.terminal WHERE id = {id}"));
@@ -123,6 +123,26 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
         using var certKey = X509Certificate2.CreateFromPem(pem!).GetECDsaPublicKey()!;
         Assert.True(certKey.VerifyData(data, key.SignData(data), HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence));
         Assert.Contains("OU=12", X509Certificate2.CreateFromPem(pem!).Subject);
+    }
+
+    [PgFact]
+    public async Task New_workstation_is_added_and_registered_in_one_step()
+    {
+        await SetAsync(new() { ["atk_application_id"] = 123456789L });
+        var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
+        var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings/Workstations?Add=true");
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent("0"), "Input.Id" }, { new StringContent("41"), "Input.PosId" }, { new StringContent("FO41"), "Input.OperaTerminalId" },
+            { new StringContent("FRONTDESK-41"), "Input.Hostname" }, { new StringContent("server"), "Input.SigningMode" },
+            { new StringContent("atk"), "Input.Register" }, { new StringContent(token), "__RequestVerificationToken" },
+        };
+        var response = await client.PostAsync("/Settings/Workstations", form);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.DoesNotContain("Edit=", response.Headers.Location!.ToString()); // straight back to the tiles
+        Assert.Contains("added and registered with ATK", await client.GetStringAsync("/Settings/Workstations"));
+        Assert.Equal("active", await app.ScalarAsync<string>("SELECT status FROM fiscal.terminal WHERE pos_id = 41"));
+        Assert.Equal("server", await app.ScalarAsync<string>("SELECT enrolled_mode FROM fiscal.terminal WHERE pos_id = 41"));
     }
 
     [PgFact]

@@ -22,10 +22,15 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
         [RegularExpression("pending|active|disabled")] public string Status { get; set; } = "pending";
         /// <summary>"" = property default, "client" or "server".</summary>
         [RegularExpression("client|server")] public string? SigningMode { get; set; }
+        /// <summary>New workstation, central mode: what to do right after adding it. atk | import | later.</summary>
+        [RegularExpression("atk|import|later")] public string Register { get; set; } = "atk";
     }
 
     [BindProperty] public Form Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public long? Edit { get; set; }
+    [BindProperty(SupportsGet = true)] public bool Add { get; set; }
+    /// <summary>The add/edit form is open (adding, editing, or a failed post).</summary>
+    public bool FormOpen => Add || Input.Id != 0 || !ModelState.IsValid;
     public IReadOnlyList<TerminalEdit> Terminals { get; private set; } = [];
     public PropertyClock Clock => clock;
     public string DefaultMode { get; private set; } = SigningModes.Client;
@@ -49,31 +54,69 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
             Input = new Form { PosId = Terminals.Count == 0 ? 1 : Terminals.Max(t => t.PosId) + 1 };
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(IFormFile? key, IFormFile? cert)
     {
         await LoadAsync();
-        if (!ModelState.IsValid) return Page();
+        var isNew = Input.Id == 0;
+        if (isNew) Input.Status = "pending"; // becomes active through ATK registration
+        if (isNew && Input.Register == "import" && (key is null || cert is null))
+            ModelState.AddModelError("", "Choose both files from ATK's onboarder tool (private key and certificate), or pick another option.");
+        if (!ModelState.IsValid) { Add = isNew; return Page(); }
+        var terminal = new TerminalEdit
+        {
+                Id = Input.Id, PosId = Input.PosId, OperaTerminalId = Input.OperaTerminalId?.Trim(), Hostname = Input.Hostname.Trim(),
+            ClientEndpoint = Input.ClientEndpoint?.Trim(), Description = Input.Description?.Trim(), Status = Input.Status,
+                SigningMode = string.IsNullOrEmpty(Input.SigningMode) ? null : Input.SigningMode,
+        };
         try
         {
-            await settings.SaveTerminalAsync(new TerminalEdit
-            {
-                Id = Input.Id, PosId = Input.PosId, OperaTerminalId = Input.OperaTerminalId?.Trim(), Hostname = Input.Hostname.Trim(),
-                ClientEndpoint = Input.ClientEndpoint?.Trim(), Description = Input.Description?.Trim(), Status = Input.Status,
-                SigningMode = string.IsNullOrEmpty(Input.SigningMode) ? null : Input.SigningMode,
-            }, User.Identity!.Name!);
+            await settings.SaveTerminalAsync(terminal, User.Identity!.Name!);
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
         {
             ModelState.AddModelError("", "That POS ID or OPERA terminal ID is already used by another workstation.");
+            Add = isNew;
             return Page();
         }
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError("", ex.Message);
+            Add = isNew;
             return Page();
         }
-        TempData["Message"] = "Workstation saved and logged.";
-        return RedirectToPage(new { Edit = (long?)null });
+
+        // One step: a new workstation in central mode is registered with ATK straight away.
+        var mode = terminal.EffectiveMode(DefaultMode);
+        if (!isNew || mode != SigningModes.Server || Input.Register == "later")
+        {
+            TempData["Message"] = isNew
+                ? (mode == SigningModes.Server
+                    ? $"Workstation POS {terminal.PosId} added. Register it with ATK on its tile when you are ready."
+                    : $"Workstation POS {terminal.PosId} added. Install the HRS Fiscal Client on {terminal.Hostname} and register it there.")
+                : "Workstation saved and logged.";
+            return RedirectToPage(new { Edit = (long?)null, Add = false });
+        }
+        try
+        {
+            TerminalEnrollment.Result r;
+            if (Input.Register == "import")
+            {
+                using var kr = new StreamReader(key!.OpenReadStream());
+                using var cr = new StreamReader(cert!.OpenReadStream());
+                r = await enrollment.ImportAsync(terminal.Id, await kr.ReadToEndAsync(), await cr.ReadToEndAsync(), User.Identity!.Name!);
+            }
+            else r = await enrollment.EnrollAsync(terminal.Id, User.Identity!.Name!);
+            TempData["Message"] = $"Workstation POS {terminal.PosId} added and registered with ATK ({r.Environment}). Certificate valid until {clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}. It is ready to fiscalize.";
+            return RedirectToPage(new { Edit = (long?)null, Add = false });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or AtkApiException or HttpRequestException or TaskCanceledException
+                                       or System.Security.Cryptography.CryptographicException or ArgumentException)
+        {
+            log.LogWarning(ex, "ATK registration failed for new terminal {Id}", terminal.Id);
+            TempData["Error"] = $"Workstation POS {terminal.PosId} was added, but ATK registration failed: " +
+                                (ex is TaskCanceledException ? "ATK did not answer in time." : ex.Message) + " Fix the cause and register it again below.";
+            return RedirectToPage(new { Edit = terminal.Id });
+        }
     }
 
     /// <summary>Central mode: generate a key on this server and get the workstation's certificate from ATK.</summary>
@@ -82,8 +125,9 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
         try
         {
             var r = await enrollment.EnrollAsync(id, User.Identity!.Name!);
-            TempData["Message"] = $"Registered with ATK ({r.Environment}) as {r.BusinessName}. Certificate valid until " +
+            TempData["Message"] = $"POS {(await settings.TerminalsAsync()).Single(t => t.Id == id).PosId} registered with ATK ({r.Environment}) as {r.BusinessName}. Certificate valid until " +
                                   $"{clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}; key kept on this server ({(r.KeyStoreKind == "cng" ? "Windows key store, non-exportable" : "file key store, test only")}).";
+            return RedirectToPage(new { Edit = (long?)null });
         }
         catch (Exception ex) when (ex is InvalidOperationException or AtkApiException or HttpRequestException or TaskCanceledException
                                        or System.Security.Cryptography.CryptographicException)

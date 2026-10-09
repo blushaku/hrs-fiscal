@@ -3,11 +3,14 @@
 @{
     ViewData["Title"] = "Dashboard";
     var s = Model.Stats;
+    var live = Model.FlipMode == "live";
+    var ready = Model.Terminals.Count(t => t.Status == "active");
+    var expiring = Model.Terminals.Where(t => t.CertificateExpires is { } e && (e - Model.UtcNow).TotalDays < 30).ToList();
 }
 <div class="page-head">
     <div>
         <h1>Today</h1>
-        <p>@Model.Clock.LocalNow.ToString("dddd dd.MM.yyyy") · @(Model.Business?.BranchName ?? "property not set up")</p>
+        <p>@Model.Clock.LocalNow.ToString("dddd, dd.MM.yyyy") — @(Model.Business?.BranchName ?? "property not set up")</p>
     </div>
     <a class="btn primary" href="/Receipts">Search receipts</a>
 </div>
@@ -17,6 +20,29 @@
     <div class="notice warn">The property is not set up yet. An administrator must enter the business and unit details under <a href="/Settings/Business">Settings › Business</a>.</div>
 }
 
+<section class="tile-ink" aria-labelledby="flow-title">
+    <h2 id="flow-title" style="margin: 0">How folios reach ATK</h2>
+    <p class="small" style="margin: 4px 0 0">@(live ? "Live: every OPERA folio is fiscalized." : "Capture: FLIP messages are recorded but not fiscalized.") ATK @Model.AtkEnvironment.ToLowerInvariant() environment.</p>
+    <div class="flow">
+        <div class="stage">
+            <div class="name">OPERA</div>
+            <div class="state"><span class="dot @(Model.FlipToday > 0 ? "" : "idle")"></span>@Model.FlipToday folio message(s) today</div>
+        </div>
+        <div class="stage">
+            <div class="name">FLIP</div>
+            <div class="state"><span class="dot @(Model.LastFlipAt is null ? "idle" : Model.LastFlipMode == "rejected" ? "warn" : "")"></span>last call @Model.Ago(Model.LastFlipAt)@(Model.LastFlipMode == "rejected" ? " (refused: token)" : "")</div>
+        </div>
+        <div class="stage">
+            <div class="name">HRS Fiscal</div>
+            <div class="state"><span class="dot @(live && ready > 0 ? "" : live ? "warn" : "idle")"></span>@(live ? "live" : "capture") · @ready of @Model.Terminals.Count workstation(s) ready</div>
+        </div>
+        <div class="stage">
+            <div class="name">ATK</div>
+            <div class="state"><span class="dot @(s.Pending > 0 ? "warn" : Model.LastAcceptedAt is null ? "idle" : "")"></span>@(s.Pending > 0 ? $"{s.Pending} waiting to send" : $"last accepted {Model.Ago(Model.LastAcceptedAt)}")</div>
+        </div>
+    </div>
+</section>
+
 <div class="tiles">
     <div class="tile">
         <div class="label">Receipts issued</div>
@@ -25,23 +51,23 @@
     </div>
     <div class="tile">
         <div class="label">Accepted by ATK</div>
-        <div class="value" style="color: var(--accent)">@s.AcceptedToday</div>
+        <div class="value">@s.AcceptedToday</div>
         <div class="sub">today</div>
     </div>
-    <div class="tile @(s.Pending > 0 ? "warn" : "")">
+    <a class="tile @(s.Pending > 0 ? "warn" : "")" href="/Receipts?Status=pending" style="text-decoration: none">
         <div class="label">Waiting to send</div>
         <div class="value">@s.Pending</div>
         <div class="sub">
             @if (s.OldestPendingIssuedAt is { } oldest)
             {
-                <text>oldest @Model.Clock.FormatShort(oldest) · 48 h deadline @Model.Clock.FormatShort(oldest.AddHours(48))</text>
+                <text>oldest @Model.Clock.FormatShort(oldest), deadline @Model.Clock.FormatShort(oldest.AddHours(48))</text>
             }
             else
             {
                 <text>nothing pending</text>
             }
         </div>
-    </div>
+    </a>
     <div class="tile">
         <div class="label">Rejected</div>
         <div class="value">@s.RejectedToday</div>
@@ -50,37 +76,35 @@
 </div>
 
 <div class="grid">
-    <section class="card">
-        <h2>Workstations</h2>
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>Terminal</th><th>POS ID</th><th>Status</th><th>Last receipt</th><th>Certificate</th></tr></thead>
-                <tbody>
-                @foreach (var t in Model.Terminals)
-                {
-                    var days = t.CertificateExpires is { } exp ? (int)(exp - Model.UtcNow).TotalDays : (int?)null;
-                    <tr>
-                        <td>@t.Label</td>
-                        <td class="mono">@t.PosId</td>
-                        <td>
-                            @if (t.Status != "active") { <span class="badge neutral">@t.Status</span> }
-                            else if (t.PendingCount > 0) { <span class="badge pending">@t.PendingCount waiting</span> }
-                            else { <span class="badge accepted">OK</span> }
-                        </td>
-                        <td>@(t.LastReceiptAt is { } l ? Model.Clock.FormatShort(l) : "—")</td>
-                        <td>
-                            @if (days is null) { <span class="muted">not enrolled</span> }
-                            else if (days < 30) { <strong style="color: var(--pending-ink)">expires in @days days</strong> }
-                            else { <text>valid to @Model.Clock.ToLocal(t.CertificateExpires!.Value).ToString("MM.yyyy")</text> }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Terminals.Count == 0)
-                {
-                    <tr><td colspan="5" class="muted">No workstations registered.</td></tr>
-                }
-                </tbody>
-            </table>
+    <section class="card span-2">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+            <h2>Workstations</h2>
+            <a class="small" href="/Settings/Workstations">Manage</a>
+        </div>
+        <div class="ws-grid" style="grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 12px">
+            @foreach (var t in Model.Terminals)
+            {
+                var days = t.CertificateExpires is { } exp ? (int)(exp - Model.UtcNow).TotalDays : (int?)null;
+                <div class="notice" style="display: flex; flex-direction: column; gap: 4px">
+                    <div style="display: flex; justify-content: space-between; gap: 8px; align-items: center">
+                        <strong>@(t.OperaTerminalId ?? t.Hostname)</strong>
+                        @if (t.Status != "active") { <span class="badge neutral">@t.Status</span> }
+                        else if (t.PendingCount > 0) { <span class="badge pending">@t.PendingCount waiting</span> }
+                        else { <span class="badge accepted">OK</span> }
+                    </div>
+                    <span class="small muted">POS @t.PosId, @t.Hostname</span>
+                    <span class="small">Last receipt @(t.LastReceiptAt is { } l ? Model.Clock.FormatShort(l) : "none yet")</span>
+                    <span class="small">
+                        @if (days is null) { <span class="muted">Not registered with ATK</span> }
+                        else if (days < 30) { <strong style="color: var(--pending-ink)">Certificate expires in @days days</strong> }
+                        else { <text>Certificate valid to @Model.Clock.ToLocal(t.CertificateExpires!.Value).ToString("MM.yyyy")</text> }
+                    </span>
+                </div>
+            }
+            @if (Model.Terminals.Count == 0)
+            {
+                <a class="ws add card" href="/Settings/Workstations?Add=1" style="min-height: 120px"><span class="plus" aria-hidden="true">+</span>Add the first workstation</a>
+            }
         </div>
     </section>
     <section class="card" style="display: flex; flex-direction: column; gap: 12px">
@@ -91,13 +115,13 @@
         }
         @if (s.Pending > 0)
         {
-            <div class="notice warn"><strong>@s.Pending receipt(s) not yet sent to ATK.</strong> They were issued marked OFFLINE and are sent automatically when the connection returns. <a href="/Receipts?Status=pending">Show them</a>.</div>
+            <div class="notice warn"><strong>@s.Pending receipt(s) not yet sent to ATK.</strong> They are sent automatically when the connection returns. <a href="/Receipts?Status=pending">Show them</a>.</div>
         }
-        @foreach (var t in Model.Terminals.Where(t => t.CertificateExpires is { } e && (e - Model.UtcNow).TotalDays < 30))
+        @foreach (var t in expiring)
         {
             <div class="notice neutral"><strong>Certificate renewal</strong> needed for @t.Label within @((int)(t.CertificateExpires!.Value - Model.UtcNow).TotalDays) days.</div>
         }
-        @if (s.Pending == 0 && s.Overdue48h == 0 && !Model.Terminals.Any(t => t.CertificateExpires is { } e && (e - Model.UtcNow).TotalDays < 30))
+        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0)
         {
             <div class="notice ok">No alerts. All receipts are fiscalized.</div>
         }
