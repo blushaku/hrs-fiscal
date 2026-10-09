@@ -106,7 +106,7 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
                 r = await enrollment.ImportAsync(terminal.Id, await kr.ReadToEndAsync(), await cr.ReadToEndAsync(), User.Identity!.Name!);
             }
             else r = await enrollment.EnrollAsync(terminal.Id, User.Identity!.Name!);
-            TempData["Message"] = $"Workstation POS {terminal.PosId} added and registered with ATK ({r.Environment}). Certificate valid until {clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}. It is ready to fiscalize.";
+            TempData["Message"] = $"Workstation POS {terminal.PosId} added and registered with ATK ({r.Environment}). Certificate valid until {clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}. It is ready to fiscalize." + NameNote(r);
             return RedirectToPage(new { Edit = (long?)null, Add = false });
         }
         catch (Exception ex) when (ex is InvalidOperationException or AtkApiException or HttpRequestException or TaskCanceledException
@@ -119,6 +119,10 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
         }
     }
 
+    /// <summary>Points out when ATK knows the business under another name than Settings › Business.</summary>
+    private static string NameNote(TerminalEnrollment.Result r) => r.NameInSettings is null ? "" :
+        $" Note: ATK has the business as \u201c{r.BusinessName}\u201d, but Settings › Business has \u201c{r.NameInSettings}\u201d. Review it under Business & unit.";
+
     /// <summary>Central mode: generate a key on this server and get the workstation's certificate from ATK.</summary>
     public async Task<IActionResult> OnPostRegisterAsync(long id)
     {
@@ -126,7 +130,7 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
         {
             var r = await enrollment.EnrollAsync(id, User.Identity!.Name!);
             TempData["Message"] = $"POS {(await settings.TerminalsAsync()).Single(t => t.Id == id).PosId} registered with ATK ({r.Environment}) as {r.BusinessName}. Certificate valid until " +
-                                  $"{clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}; key kept on this server ({(r.KeyStoreKind == "cng" ? "Windows key store, non-exportable" : "file key store, test only")}).";
+                                  $"{clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}; key kept on this server ({(r.KeyStoreKind == "cng" ? "Windows key store, non-exportable" : "file key store, test only")})." + NameNote(r);
             return RedirectToPage(new { Edit = (long?)null });
         }
         catch (Exception ex) when (ex is InvalidOperationException or AtkApiException or HttpRequestException or TaskCanceledException
@@ -148,7 +152,7 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
             using var kr = new StreamReader(key.OpenReadStream());
             using var cr = new StreamReader(cert.OpenReadStream());
             var r = await enrollment.ImportAsync(id, await kr.ReadToEndAsync(), await cr.ReadToEndAsync(), User.Identity!.Name!);
-            TempData["Message"] = $"Certificate imported for {r.BusinessName}, valid until {clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}. Delete the exported key file from your computer.";
+            TempData["Message"] = $"Certificate imported for {r.BusinessName}, valid until {clock.ToLocal(r.CertificateExpiresUtc):dd.MM.yyyy}. Delete the exported key file from your computer." + NameNote(r);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Security.Cryptography.CryptographicException or ArgumentException)
         {

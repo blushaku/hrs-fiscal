@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Hrs.Fiscal.Server.Data;
+using Hrs.Fiscal.Server.Signing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -24,12 +25,24 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
     [BindProperty(SupportsGet = true)] public bool Edit { get; set; }
     public bool Locked { get; private set; }
     public BusinessInfo? Current { get; private set; }
+    /// <summary>Business name ATK returned at the last workstation registration (or in an imported ATK certificate).</summary>
+    public string? AtkName { get; private set; }
+    public string? AtkNameSource { get; private set; }
+    public bool NameMatchesAtk => AtkName is null || Current is null || TerminalEnrollment.SameName(AtkName, Current.Name);
+
+    private async Task LoadAtkNameAsync()
+    {
+        AtkName = await settings.GetAsync<string>("atk_business_name", null);
+        if (string.IsNullOrWhiteSpace(AtkName)) AtkName = null;
+        AtkNameSource = await settings.GetAsync<string>("atk_business_name_source", null);
+    }
     /// <summary>The editor opens by itself when requested (?Edit=true) or after a failed save.</summary>
     public bool Editing => Edit || !ModelState.IsValid;
 
     public async Task OnGetAsync()
     {
         var b = Current = await settings.BusinessAsync();
+        await LoadAtkNameAsync();
         Locked = b is not null;
         if (b is not null)
             Input = new Form
@@ -42,6 +55,7 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
     public async Task<IActionResult> OnPostAsync()
     {
         Current = await settings.BusinessAsync();
+        await LoadAtkNameAsync();
         Locked = Current is not null;
         Edit = true;
         if (!ModelState.IsValid) return Page();
@@ -61,5 +75,21 @@ public sealed class BusinessModel(SettingsStore settings) : PageModel
         }
         TempData["Message"] = "Business details saved and logged.";
         return RedirectToPage(new { Edit = false });
+    }
+
+    /// <summary>Takes over the business name exactly as ATK has it (from the last registration or certificate).</summary>
+    public async Task<IActionResult> OnPostUseAtkNameAsync()
+    {
+        var b = await settings.BusinessAsync();
+        await LoadAtkNameAsync();
+        if (b is null || AtkName is null)
+        {
+            TempData["Error"] = "There is no name from ATK yet. Register a workstation with ATK first.";
+            return RedirectToPage();
+        }
+        b.Name = AtkName;
+        await settings.SaveBusinessAsync(b, User.Identity!.Name!);
+        TempData["Message"] = $"Business name changed to \u201c{AtkName}\u201d, as registered with ATK. The change is logged.";
+        return RedirectToPage();
     }
 }

@@ -2,13 +2,8 @@
 @model Hrs.Fiscal.Server.Pages.Settings.RolesModel
 @{
     ViewData["Title"] = "Roles & permissions";
+    ViewData["SettingsIntro"] = "What each role may see and do. The menu, dashboard and buttons follow these permissions.";
 }
-<div class="page-head">
-    <div>
-        <h1>Settings</h1>
-        <p>What each role may see and do. The menu, dashboard and buttons follow these permissions.</p>
-    </div>
-</div>
 <partial name="_SettingsNav" />
 
 <form method="post" class="card" style="display: flex; flex-direction: column; gap: 14px" data-confirm="Save these permission changes?">

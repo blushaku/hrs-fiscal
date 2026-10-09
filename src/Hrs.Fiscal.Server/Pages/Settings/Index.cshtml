@@ -6,7 +6,6 @@
     string Title(string s) => Hrs.Fiscal.Server.Pages.Settings.IndexModel.Sections[s].Title;
     string OrNone(string? v) => string.IsNullOrWhiteSpace(v) ? "not set" : v;
 }
-<div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 
 @* Tiles show the essentials. Edit opens the full editor in a pop-up; Save asks for confirmation and lists the changes. *@

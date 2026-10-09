@@ -243,6 +243,15 @@ input[type=checkbox], input[type=radio] { accent-color: var(--hrs-navy); }
 .pill { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: var(--r-chip); border: 1px solid var(--glass-edge); background: var(--glass); color: var(--hrs-navy); text-decoration: none; font-size: 13px; font-weight: 400; box-shadow: var(--glass-shadow); }
 .pill:hover { background: #FFFFFF; color: var(--hrs-navy); }
 .pill.on { background: var(--hrs-navy); border-color: var(--hrs-navy); color: #FFFFFF; }
+/* Settings tab bar: one glass strip, always one line; scrolls sideways on narrow screens instead of wrapping. */
+.settings-tabs { display: flex; flex-wrap: nowrap; gap: 4px; padding: 4px; overflow-x: auto; scrollbar-width: thin; align-self: flex-start; max-width: 100%;
+  background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-edge); border-radius: var(--r-chip); box-shadow: var(--glass-shadow); }
+.settings-tabs a { flex: none; display: inline-flex; align-items: center; min-height: 38px; padding: 0 16px; border-radius: var(--r-chip);
+  color: var(--hrs-navy); text-decoration: none; font-size: 13px; font-weight: 400; white-space: nowrap; }
+.settings-tabs a:hover { background: rgba(0, 2, 84, .06); color: var(--hrs-navy); }
+.settings-tabs a.on { background: var(--hrs-navy); color: #FFFFFF; }
+.settings-intro { margin: -6px 4px 0; }
 .kv { display: grid; grid-template-columns: 160px 1fr; gap: 8px 12px; font-size: 14px; margin: 0; }
 .kv dd { margin: 0; overflow-wrap: anywhere; }
 .kv > :nth-child(odd) { color: var(--muted); }
@@ -264,5 +273,6 @@ details > summary { cursor: pointer; }
 .login-card label.field { flex: none; }
 
 @media (prefers-reduced-transparency: reduce) {
-  .card, .tile, .table-wrap, .sidebar, .notice, .login-card, .pill { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .card, .tile, .table-wrap, .sidebar, .notice, .login-card, .pill, .settings-tabs { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+.atk-name { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }

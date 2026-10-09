@@ -5,7 +5,6 @@
     var b = Model.Current;
     var firstSetup = b is null;
 }
-<div class="page-head"><div><h1>Settings</h1></div></div>
 <partial name="_SettingsNav" />
 
 @if (b is not null)
@@ -17,7 +16,21 @@
                 <dt>Name</dt><dd>@b.Name</dd>
                 <dt>NUI</dt><dd class="mono">@b.Nui</dd>
                 <dt>Fiscalization no.</dt><dd class="mono">@b.FiscalizationNo</dd>
+                <dt>Name at ATK</dt>
+                <dd>
+                    @if (Model.AtkName is null) { <span class="muted">known after the first ATK registration</span> }
+                    else if (Model.NameMatchesAtk) { <span class="badge accepted">matches</span> }
+                    else { <span>@Model.AtkName</span> <span class="badge rejected">differs</span> }
+                </dd>
             </dl>
+            @if (!Model.NameMatchesAtk)
+            {
+                <form method="post" asp-page-handler="UseAtkName" class="atk-name" data-new="1" data-confirm="Change the business name to “@Model.AtkName”? It is printed on every receipt from now on.">
+                    <p class="small muted" style="margin: 0">ATK has a different name (@Model.AtkNameSource). Receipts should carry the name ATK has registered.</p>
+                    <partial name="_ConfirmBox" model="@("Yes, use ATK's name")" />
+                    <div class="actions" data-hide-on-confirm><button type="submit" class="btn small">Use ATK's name</button></div>
+                </form>
+            }
             <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a></div>
         </section>
         <section class="card">

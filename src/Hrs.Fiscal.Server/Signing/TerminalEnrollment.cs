@@ -37,7 +37,28 @@ public sealed class AtkClientFactory : IAtkClientFactory
 public sealed class TerminalEnrollment(
     NpgsqlDataSource db, SettingsStore settings, AuditLog audit, IServerKeyStore keys, IAtkClientFactory atkFactory)
 {
-    public sealed record Result(DateTime CertificateExpiresUtc, string BusinessName, string KeyStoreKind, AtkEnvironment Environment);
+    /// <param name="NameInSettings">Set when ATK's business name differs from Settings › Business (null when they match).</param>
+    public sealed record Result(DateTime CertificateExpiresUtc, string BusinessName, string KeyStoreKind, AtkEnvironment Environment, string? NameInSettings = null);
+
+    /// <summary>Same name, ignoring case and extra spaces.</summary>
+    public static bool SameName(string? a, string? b) =>
+        string.Equals(Normalize(a), Normalize(b), StringComparison.OrdinalIgnoreCase);
+    private static string Normalize(string? s) => string.Join(' ', (s ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    /// <summary>
+    /// Keeps the business name ATK returned (registration) or that is in ATK's certificate (import), so Settings › Business
+    /// can show whether the name on receipts matches ATK's records.
+    /// </summary>
+    private async Task<string?> RecordAtkNameAsync(string atkName, BusinessInfo business, string source, string actor, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(atkName)) return null;
+        await settings.SetManyAsync(new Dictionary<string, object?>
+        {
+            ["atk_business_name"] = atkName.Trim(),
+            ["atk_business_name_source"] = source,
+        }, actor, ct);
+        return SameName(atkName, business.Name) ? null : business.Name;
+    }
 
     public async Task<Result> EnrollAsync(long terminalId, string actor, CancellationToken ct = default)
     {
@@ -95,7 +116,8 @@ public sealed class TerminalEnrollment(
             keyReference = reference, certificateSerial = certificate.SerialNumber, certificateThumbprint = certificate.Thumbprint,
             certificateExpires = expires, previousCertificateExpires = terminal.CertificateExpires, previousMode = terminal.EnrolledMode,
         }, terminalId, ct);
-        return new Result(expires, verify.BusinessName, keys.Kind, environment);
+        var differs = await RecordAtkNameAsync(verify.BusinessName, business, $"ATK registration of POS {terminal.PosId} ({environment})", actor, ct);
+        return new Result(expires, verify.BusinessName, keys.Kind, environment, differs);
     }
 
     /// <summary>
@@ -140,7 +162,9 @@ public sealed class TerminalEnrollment(
             mode = SigningModes.Server, method = "import (ATK onboarder)", posId = terminal.PosId, keyStore = keys.Kind,
             keyReference = reference, certificateSerial = certificate.SerialNumber, certificateThumbprint = certificate.Thumbprint, certificateExpires = expires,
         }, terminalId, ct);
-        return new Result(expires, Part("2.5.4.3"), keys.Kind, Enum.Parse<AtkEnvironment>(await settings.GetAsync("atk_environment", "Test", ct) ?? "Test"));
+        var env = Enum.Parse<AtkEnvironment>(await settings.GetAsync("atk_environment", "Test", ct) ?? "Test");
+        var differs = await RecordAtkNameAsync(Part("2.5.4.3"), business, $"ATK certificate of POS {terminal.PosId} (import)", actor, ct);
+        return new Result(expires, Part("2.5.4.3"), keys.Kind, env, differs);
     }
 
     /// <summary>The key to sign with for a workstation in central mode. Fails if it must be registered (again) first.</summary>

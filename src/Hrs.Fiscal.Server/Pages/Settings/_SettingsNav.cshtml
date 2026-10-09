@@ -1,15 +1,30 @@
 @inject RolePermissions RolePerms
+@using Microsoft.AspNetCore.Html
 @{
+    // Same header on every settings page: title, one-line tab bar, then the page's own intro (ViewData["SettingsIntro"]),
+    // so the tabs never move when switching pages.
     var path = Context.Request.Path.Value ?? "";
-    string Cls(string p) => string.Equals(path, p, StringComparison.OrdinalIgnoreCase) || (p == "/Settings" && path.Equals("/Settings/Index", StringComparison.OrdinalIgnoreCase)) ? "pill on" : "pill";
+    bool On(string p) => string.Equals(path, p, StringComparison.OrdinalIgnoreCase) || (p == "/Settings" && path.Equals("/Settings/Index", StringComparison.OrdinalIgnoreCase));
     var perms = await RolePerms.ForUserAsync(User);
+    var tabs = new (string Href, string Label, string Perm)[]
+    {
+        ("/Settings", "General", Permissions.SettingsManage),
+        ("/Settings/Business", "Business & unit", Permissions.SettingsManage),
+        ("/Settings/Workstations", "Workstations", Permissions.WorkstationsManage),
+        ("/Settings/Mapping", "OPERA overrides & VAT", Permissions.SettingsManage),
+        ("/Settings/Users", "Users", Permissions.UsersManage),
+        ("/Settings/Roles", "Roles & permissions", Permissions.UsersManage),
+    };
+    var intro = ViewData["SettingsIntro"];
 }
-<nav class="subnav" aria-label="Settings sections">
-    @if (perms.Contains(Permissions.SettingsManage)) { <a class="@Cls("/Settings")" href="/Settings">General</a> }
-    @if (perms.Contains(Permissions.SettingsManage)) { <a class="@Cls("/Settings/Business")" href="/Settings/Business">Business &amp; unit</a> }
-    @if (perms.Contains(Permissions.WorkstationsManage)) { <a class="@Cls("/Settings/Workstations")" href="/Settings/Workstations">Workstations</a> }
-    @if (perms.Contains(Permissions.SettingsManage)) { <a class="@Cls("/Settings/Mapping")" href="/Settings/Mapping">OPERA overrides &amp; VAT</a> }
-    @if (perms.Contains(Permissions.UsersManage)) { <a class="@Cls("/Settings/Users")" href="/Settings/Users">Users</a> }
-    @if (perms.Contains(Permissions.UsersManage)) { <a class="@Cls("/Settings/Roles")" href="/Settings/Roles">Roles &amp; permissions</a> }
+<div class="page-head"><div><h1>Settings</h1></div></div>
+<nav class="settings-tabs" aria-label="Settings sections">
+    @foreach (var t in tabs.Where(t => perms.Contains(t.Perm)))
+    {
+        <a href="@t.Href" class="@(On(t.Href) ? "on" : null)" aria-current="@(On(t.Href) ? "page" : null)">@t.Label</a>
+    }
 </nav>
-<p class="small muted" style="margin: 0">Every change is recorded in the audit log with its old and new value.</p>
+<p class="small muted settings-intro">
+    @if (intro is IHtmlContent html) { @html } else if (intro is string s && s.Length > 0) { @s }
+    @(intro is null ? "" : " ")Every change is recorded in the audit log with its old and new value.
+</p>

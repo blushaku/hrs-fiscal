@@ -15,13 +15,10 @@
     };
     string StateBadge(TerminalSigningState s) => s == TerminalSigningState.Ready ? "accepted" : s == TerminalSigningState.Disabled ? "neutral" : s == TerminalSigningState.NotRegistered ? "pending" : "rejected";
     var central = Model.DefaultMode == SigningModes.Server;
+    ViewData["SettingsIntro"] = new Microsoft.AspNetCore.Html.HtmlString(
+        "Every workstation that can issue a folio is its own ATK POS with its own certificate. Signing: <strong>"
+        + System.Net.WebUtility.HtmlEncode(SigningModes.Label(Model.DefaultMode)) + "</strong> (<a href=\"/Settings\">change</a>).");
 }
-<div class="page-head">
-    <div>
-        <h1>Settings</h1>
-        <p>Every workstation that can issue a folio is its own ATK POS with its own certificate. Signing: <strong>@SigningModes.Label(Model.DefaultMode)</strong> (<a href="/Settings">change</a>).</p>
-    </div>
-</div>
 <partial name="_SettingsNav" />
 
 <div class="ws-grid">

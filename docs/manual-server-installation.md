@@ -145,6 +145,12 @@ address and the OPERA property code. **The OPERA property code is required for l
 property are refused. **NUI and unit number cannot be changed** after saving, because every receipt
 refers to them — check them against the ATK registration before saving.
 
+When a workstation is registered with ATK (or an ATK certificate is imported), HRS keeps the business name ATK
+returns and shows it on the Business tile as **Name at ATK** — *matches* or *differs*. If it differs, the
+registration message says so and **Use ATK's name** (with confirmation, logged) takes it over, so receipts carry
+the name ATK has on record. Address and VAT details cannot be looked up automatically: ATK's API returns only the
+name, and ARBK has no public API.
+
 ### 5.3 Settings › Workstations
 
 One line per workstation that can issue a folio. Each one is a separate ATK POS with its own POS ID and certificate.
