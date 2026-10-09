@@ -170,6 +170,14 @@ public sealed class ScenarioRunner(Profile profile, PemSigningKey key, AtkClient
         using var response = await http.PostAsJsonAsync("citizen/coupon", new { citizen_id = citizenId, qr_code = qr }); // citizen_id must be a number: ATK rejects a string although Swagger says string
         var body = await response.Content.ReadAsStringAsync();
         var ok = response.IsSuccessStatusCode;
+        if (ok)
+            try
+            {
+                using var d = JsonDocument.Parse(body);
+                body = $"Verified: {d.RootElement.GetProperty("BusinessName").GetString()}, receipt {d.RootElement.GetProperty("CouponID")}, " +
+                       $"total € {d.RootElement.GetProperty("Total").GetInt64() / 100m:0.00}, VAT € {d.RootElement.GetProperty("TotalTax").GetInt64() / 100m:0.00}";
+            }
+            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException) { }
         Console.WriteLine($"[{(ok ? "Accepted" : "Rejected"),-9}] {name} · HTTP {(int)response.StatusCode} · {Trim(body)}");
         return new ScenarioResult(name, "accepted", ok ? AtkOutcome.Accepted : AtkOutcome.Rejected, (int)response.StatusCode, null, Trim(body), couponId);
     }
