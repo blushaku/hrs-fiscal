@@ -133,12 +133,12 @@ message FLIP sends (any path under `/flip`, or raw TCP via `Flip:TcpPort`) and a
 That lets the real OFIS/FLIP payload be recorded on a demo before Oracle's specification arrives. Windows install:
 `deploy/install-server.ps1`.
 
-## Testing against ATK (hrs-fiscal-cli)
+## Testing against ATK (atk-test-console)
 
 `src/Hrs.Fiscal.Cli` talks to ATK's **TEST** environment (`fiskalizimi-test.atk-ks.org`). It refuses production unless
 explicitly forced, because ATK forbids testing in production (technical requirements Art 26).
 
-**GUI:** start `hrs-fiscal-cli` without arguments (or double-click `hrs-fiscal-cli.exe`) to open the **ATK Test Console** in the
+**GUI:** start `atk-test-console` without arguments (or double-click `atk-test-console.exe`) to open the **ATK Test Console** in the
 browser: workstation setup (import from ATK's onboarder or register), receipt editor with examples, send and see ATK's
 answer with the QR, QR verification, one-click returns, the full test set and a history of everything sent. It listens on
 127.0.0.1 only and requires a per-session token, so other websites cannot use it.

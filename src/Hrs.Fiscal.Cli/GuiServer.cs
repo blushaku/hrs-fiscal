@@ -31,7 +31,7 @@ public static class GuiServer
 
         var html = Resource("index.html").Replace("__TOKEN__", token).Replace("__DIR__", JsonEncodedText.Encode(Path.GetFullPath(dir)).ToString());
         app.MapGet("/", () => Results.Content(html, "text/html; charset=utf-8"));
-        app.MapGet("/logo.svg", () => Results.Content(Resource("hrs-logo.svg"), "image/svg+xml"));
+        app.MapGet("/logo.svg", () => Results.Content(Resource("mark.svg"), "image/svg+xml"));
 
         var api = app.MapGroup("/api").AddEndpointFilter(async (ctx, next) =>
         {
@@ -83,7 +83,7 @@ public static class GuiServer
                 }).ToList();
                 var payments = i.Payments.Select(p => new ReceiptPayment(p.Type, p.Amount)).ToList();
                 var sent = await runner.SendCustomAsync(lines, payments, i.Type == "return" ? CouponType.Return : CouponType.Sale,
-                    i.Reference, string.IsNullOrWhiteSpace(i.Operator) ? "HRS test" : i.Operator);
+                    i.Reference, string.IsNullOrWhiteSpace(i.Operator) ? "Test operator" : i.Operator);
                 return Results.Ok(View(sent.Coupon, sent.Payload.Details, sent.Payload.Signature, sent.Qr,
                     new { sent.Outcome, sent.HttpStatus, transactionId = sent.TransactionId?.ToString(), sent.Message, sentAt = sent.SentAt }));
             }
@@ -156,7 +156,7 @@ public static class GuiServer
 
         await app.StartAsync();
         var url = $"http://127.0.0.1:{port}/";
-        Console.WriteLine($"HRS Fiscal ATK Test Console: {url}   (profile folder: {Path.GetFullPath(dir)})");
+        Console.WriteLine($"Opera Cloud Fiscal Solution - ATK Test Console: {url}   (profile folder: {Path.GetFullPath(dir)})");
         Console.WriteLine("Keep this window open while you use the console. Press Ctrl+C to stop.");
         if (openBrowser)
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { /* no browser available */ }

@@ -10,7 +10,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <AssemblyName>hrs-fiscal-cli</AssemblyName>
+    <AssemblyName>atk-test-console</AssemblyName>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Gui\index.html" LogicalName="Hrs.Fiscal.Cli.Gui.index.html" />
-    <EmbeddedResource Include="Gui\hrs-logo.svg" LogicalName="Hrs.Fiscal.Cli.Gui.hrs-logo.svg" />
+    <EmbeddedResource Include="Gui\mark.svg" LogicalName="Hrs.Fiscal.Cli.Gui.mark.svg" />
     <Content Remove="Gui\**" />
   </ItemGroup>
 

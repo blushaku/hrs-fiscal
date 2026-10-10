@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ATK Test Console · HRS Fiscal</title>
+<title>ATK Test Console · Opera Cloud Fiscal Solution</title>
 <link rel="icon" href="/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* HRS brand: navy, logo slate, orange call-to-action, 5px radius. Single light theme like the HRS Fiscal admin. */
+/* Navy and orange, 5px radius. Same design as the Opera Cloud Fiscal Solution admin. */
 :root {
   --navy: #000254; --navy-2: #16254C; --slate: #6F8695; --orange: #D6470F; --orange-hover: #B93B0B; --teal: #00738C;
   --bg: #F5F5F7; --surface: #FFFFFF; --ink: #12142B; --muted: #4F5D69; --line: #E2E4E8; --field: #B7BFC7; --code: #F0F1F5;
@@ -31,7 +31,7 @@ h3 { font-size: 14px; font-weight: 600; }
 header.bar { background: var(--surface); border-bottom: 1px solid var(--line); }
 .bar-inner { max-width: 1180px; margin: 0 auto; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 14px; }
-.brand img { height: 44px; width: auto; }
+.brand img { height: 44px; width: 44px; }
 .brand .name { font-weight: 600; color: var(--navy); font-size: 16px; }
 .brand .sub { font-size: 12px; color: var(--muted); }
 .ws { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; }
@@ -101,8 +101,8 @@ details summary { cursor: pointer; font-weight: 500; color: var(--navy); min-hei
 <header class="bar">
   <div class="bar-inner">
     <div class="brand">
-      <img src="/logo.svg" alt="HRS Hospitality &amp; Retail Systems">
-      <div><div class="name">ATK Test Console</div><div class="sub">HRS Fiscal · Kosovo SEF</div></div>
+      <img src="/logo.svg" alt="Opera Cloud Fiscal Solution">
+      <div><div class="name">ATK Test Console</div><div class="sub">Opera Cloud Fiscal Solution · Kosovo SEF</div></div>
     </div>
     <div class="ws" id="ws"></div>
   </div>
@@ -136,7 +136,7 @@ details summary { cursor: pointer; font-weight: 500; color: var(--navy); min-hei
           <select id="r-type"><option value="sale">Sale</option><option value="return">Return</option></select></label>
         <label class="f" style="flex: 0 1 240px" id="r-ref-wrap" hidden>Original receipt no. (for a return)
           <input id="r-ref" inputmode="numeric" placeholder="e.g. 19050026301"></label>
-        <label class="f" style="flex: 0 1 200px">Cashier / operator <input id="r-op" value="HRS test"></label>
+        <label class="f" style="flex: 0 1 200px">Cashier / operator <input id="r-op" value="Test operator"></label>
       </div>
       <div class="tablebox">
         <table class="lines">

@@ -8,20 +8,8 @@
     // Settings opens on the first section this user may manage.
     var settingsHref = Can(Permissions.SettingsManage) ? "/Settings" : Can(Permissions.WorkstationsManage) ? "/Settings/Workstations" : Can(Permissions.UsersManage) ? "/Settings/Users" : null;
     var business = signedIn ? await Settings.BusinessAsync() : null;
-    static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
-    // Line icons (20 px, 1.5 px stroke) in the style of Fluent UI.
-    static Microsoft.AspNetCore.Html.HtmlString Icon(string name) => new(
-        "<svg class=\"nav-icon\" viewBox=\"0 0 20 20\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" + name switch
-        {
-            "home" => "<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\"/>",
-            "receipt" => "<path d=\"M5 2.5h10v15l-2-1.3-1.7 1.3-1.3-1.3-1.3 1.3L7 16.2l-2 1.3z\"/><path d=\"M7.5 6.5h5M7.5 9.5h5M7.5 12.5h3\"/>",
-            "flip" => "<path d=\"M3 7h12l-3-3M17 13H5l3 3\"/>",
-            "audit" => "<rect x=\"4\" y=\"3.5\" width=\"12\" height=\"14\"/><path d=\"M7.5 2.5h5v2h-5zM7 9.5l1.6 1.6L13 7M7 14h6\"/>",
-            "export" => "<path d=\"M10 3v9M6.5 6.5 10 3l3.5 3.5M4 12v4.5h12V12\"/>",
-            "settings" => "<path d=\"M4 5.5h7M14 5.5h2M4 10h2M9 10h7M4 14.5h8M15 14.5h1\"/><circle cx=\"12.5\" cy=\"5.5\" r=\"1.5\"/><circle cx=\"7.5\" cy=\"10\" r=\"1.5\"/><circle cx=\"13.5\" cy=\"14.5\" r=\"1.5\"/>",
-            _ => "",
-        } + "</svg>");
-    string Active(string prefix) => (prefix == "/" ? path == "/" : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ? "nav-link active" : "nav-link";
+    bool On(string prefix) => prefix == "/" ? path == "/" : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    var environment = signedIn ? await Settings.GetAsync("atk_environment", "Test") ?? "Test" : "Test";
 }
 <!doctype html>
 <html lang="en">
@@ -40,39 +28,33 @@
 }
 else
 {
-    <header class="suitebar">
-        <a class="suite-app" href="/" aria-label="@AppVersion.ProductName — dashboard"><img class="suite-logo" src="~/img/mark-white.svg" alt="" aria-hidden="true">Opera Cloud Fiscal Solution <span class="suite-sub">Kosovo</span></a>
-        <span class="suite-property">@(business is null ? "Property not set up" : $"{business.BranchName} · Unit {business.BranchId}")</span>
-        <div class="suite-right">
-            <span class="suite-user" title="@User.Role()"><span class="suite-avatar" aria-hidden="true">@Initials(User.Display())</span><span class="who">@User.Display()</span></span>
-            <form method="post" action="/logout">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="link-button">Sign out</button>
-            </form>
+    <header class="bar">
+        <div class="bar-inner">
+            <a class="brand" href="/" aria-label="@AppVersion.ProductName — dashboard">
+                <img src="~/img/mark.svg" alt="">
+                <div><div class="name">Opera Cloud Fiscal Solution</div><div class="sub">Kosovo SEF · @(business is null ? "property not set up" : $"{business.BranchName}, unit {business.BranchId}")</div></div>
+            </a>
+            <div class="who">
+                <span class="env @(environment == "Production" ? "prod" : "")">@(environment == "Production" ? "PRODUCTION" : "TEST")</span>
+                <span><b>@User.Display()</b> · @User.Role()</span>
+                <form method="post" action="/logout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn sm">Sign out</button>
+                </form>
+            </div>
         </div>
     </header>
-    <div class="shell">
-        <nav class="sidebar" aria-label="Main">
-            <div class="nav">
-                <div class="nav-group">Fiscal</div>
-                <a class="@Active("/")" href="/">@Icon("home")<span>Dashboard</span></a>
-                @if (Can(Permissions.ReceiptsView)) { <a class="@Active("/Receipts")" href="/Receipts">@Icon("receipt")<span>Receipts</span></a> }
-                @if (Can(Permissions.FlipView)) { <a class="@Active("/FlipMessages")" href="/FlipMessages">@Icon("flip")<span>FLIP messages</span></a> }
-                @if (Can(Permissions.AuditView) || Can(Permissions.Export)) { <div class="nav-group">Records</div> }
-                @if (Can(Permissions.AuditView)) { <a class="@Active("/Audit")" href="/Audit">@Icon("audit")<span>Audit log</span></a> }
-                @if (Can(Permissions.Export)) { <a class="@Active("/Export")" href="/Export">@Icon("export")<span>Export</span></a> }
-                @if (settingsHref is not null)
-                {
-                    <div class="nav-group">Administration</div>
-                    <a class="@Active("/Settings")" href="@settingsHref">@Icon("settings")<span>Settings</span></a>
-                }
-            </div>
-            <div class="sidebar-foot">
-                <img class="brand-logo" src="~/img/logo.svg" alt="@AppVersion.ProductName">
-                <div class="version" title="Build @AppVersion.Commit">@AppVersion.ProductName @AppVersion.Version · @User.Role()</div>
-                <div class="version">Developer: @AppVersion.Developer</div>
-            </div>
+    <div class="stripe">
+        <nav class="tabs" aria-label="Main">
+            <a href="/" aria-current="@(On("/") ? "page" : null)">Dashboard</a>
+            @if (Can(Permissions.ReceiptsView)) { <a href="/Receipts" aria-current="@(On("/Receipts") ? "page" : null)">Receipts</a> }
+            @if (Can(Permissions.FlipView)) { <a href="/FlipMessages" aria-current="@(On("/FlipMessages") ? "page" : null)">FLIP messages</a> }
+            @if (Can(Permissions.AuditView)) { <a href="/Audit" aria-current="@(On("/Audit") ? "page" : null)">Audit log</a> }
+            @if (Can(Permissions.Export)) { <a href="/Export" aria-current="@(On("/Export") ? "page" : null)">Export</a> }
+            @if (settingsHref is not null) { <a href="@settingsHref" aria-current="@(On("/Settings") ? "page" : null)">Settings</a> }
         </nav>
+    </div>
+    <div class="shell">
         <main class="content">
             @if (TempData["Message"] is string msg)
             {
@@ -84,6 +66,10 @@ else
             }
             @RenderBody()
         </main>
+        <footer class="foot">
+            <img src="~/img/logo.svg" alt="@AppVersion.ProductName">
+            <span title="Build @AppVersion.Commit">@AppVersion.ProductName @AppVersion.Version · Developer: @AppVersion.Developer</span>
+        </footer>
     </div>
 }
 </body>

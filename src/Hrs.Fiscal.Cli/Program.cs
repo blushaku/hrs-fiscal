@@ -1,10 +1,10 @@
-// hrs-fiscal-cli — test tool for ATK's fiscalization API (TEST environment by default).
+// atk-test-console — test tool for ATK's fiscalization API (TEST environment by default).
 //
-//   hrs-fiscal-cli onboard   --nui <NUI> --fiscal-no <EDI fiscalization no> --branch <unit no> --pos <POS id> --app <ApplicationId>
+//   atk-test-console onboard   --nui <NUI> --fiscal-no <EDI fiscalization no> --branch <unit no> --pos <POS id> --app <ApplicationId>
 //                            [--env test|prod] [--dir <profile folder>] [--location <city>]
-//   hrs-fiscal-cli send      [--dir <profile folder>]                 one hotel test receipt
-//   hrs-fiscal-cli scenarios [--dir <profile folder>]                 the full test set, writes report.md
-//   hrs-fiscal-cli gui       [--dir <profile folder>] [--port 5299]  browser GUI (default when started without arguments)
+//   atk-test-console send      [--dir <profile folder>]                 one hotel test receipt
+//   atk-test-console scenarios [--dir <profile folder>]                 the full test set, writes report.md
+//   atk-test-console gui       [--dir <profile folder>] [--port 5299]  browser GUI (default when started without arguments)
 //
 // The profile folder holds this test workstation's identity: profile.json, private-key.pem, certificate.pem.
 // TEST ONLY: here the key is kept as a PEM file. The HRS Fiscal Client keeps production keys non-exportable (CNG/TPM).
@@ -42,7 +42,7 @@ catch (Exception ex) when (ex is AtkApiException or ArgumentException or FileNot
 int Help()
 {
     Console.WriteLine("""
-        hrs-fiscal-cli — ATK fiscalization test tool
+        atk-test-console — ATK fiscalization test tool
 
           onboard   --nui <NUI> --fiscal-no <EDI no> --branch <unit no> --pos <POS id> --app <ApplicationId>
                     [--env test|prod] [--dir <folder>] [--location <city>]
@@ -78,7 +78,7 @@ async Task<int> ImportAsync()
         await File.ReadAllTextAsync(opts.Require<string>("cert")), opts.Require<ulong>("app"), env, opts.Get("fiscal-no"), opts.Get("location"));
     Console.WriteLine($"Imported: {profile.BusinessName} · NUI {profile.Nui} · branch {profile.BranchId} · POS {profile.PosId} · " +
                       $"certificate valid until {profile.CertificateExpiresUtc:yyyy-MM-dd} · {profile.Environment}");
-    Console.WriteLine($"Profile saved in {dir}. Next: hrs-fiscal-cli scenarios --dir \"{dir}\"");
+    Console.WriteLine($"Profile saved in {dir}. Next: atk-test-console scenarios --dir \"{dir}\"");
     return 0;
 }
 
