@@ -33,7 +33,7 @@
                     <div class="actions" data-hide-on-confirm><button type="submit" class="btn small">Use ATK's name</button></div>
                 </form>
             }
-            <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a><a class="btn small" href="/Settings/Business?Check=true" data-dialog-open="dlg-check">Check with ATK</a></div>
+            <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a></div>
         </section>
         <section class="card">
             <h2>Unit (business premises)</h2>
@@ -50,36 +50,74 @@ else
 {
     <section class="card" style="max-width: 640px; display: flex; flex-direction: column; gap: 12px">
         <h2 style="margin: 0">The property is not set up yet</h2>
-        <p style="margin: 0">Enter the business and unit exactly as registered with ATK. NUI and unit number cannot be changed afterwards.</p>
+        <p style="margin: 0">This is the first step. Enter NUI, fiscalization number, unit number and Application ID as ATK issued them and validate them with ATK; the rest of the form then opens, with the registered name taken from ATK's answer.</p>
         <div><a class="btn primary" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Set up the business</a></div>
     </section>
 }
 
 <dialog class="modal wide" id="dlg-business" aria-labelledby="dlg-business-title" data-autoopen="@(Model.Editing ? "1" : null)" open="@Model.Editing">
     <div class="modal-head"><h2 id="dlg-business-title">@(firstSetup ? "Set up the business" : "Edit business and unit")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
-    <form method="post" class="modal-body" data-confirm="@(firstSetup ? "Save the business and unit?" : "Save the business and unit? If NUI or unit number change, every workstation must be registered with ATK again.")" data-new="@(firstSetup ? "1" : null)">
+    <form method="post" class="modal-body" id="business-form" data-confirm="@(firstSetup ? "Save the business and unit?" : "Save the business and unit? If NUI or unit number change, every workstation must be registered with ATK again.")" data-new="@(firstSetup ? "1" : null)">
         <div asp-validation-summary="All" class="validation"></div>
-        <h3 style="margin: 0; font-size: 15px; font-weight: 500">Business (taxpayer)</h3>
+        <input type="hidden" asp-for="Validation">
+
+        <h3 class="step-title"><span class="step-no">1</span> Issued by ATK</h3>
         <div class="form-grid">
-            <label class="field">NUI (fiscal number) <input type="number" asp-for="Input.Nui"></label>
-            <label class="field">Registered name <input type="text" asp-for="Input.Name"></label>
-            <label class="field">VAT number <input type="text" asp-for="Input.VatNo"></label>
-            <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo"></label>
-            <label class="field">Application ID (from ATK) <input type="number" asp-for="Input.ApplicationId" min="0"></label>
+            <label class="field">NUI (fiscal number) <input type="number" asp-for="Input.Nui" data-step1 data-before="@b?.Nui"></label>
+            <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo" data-step1 data-before="@b?.FiscalizationNo"></label>
+            <label class="field">Unit number registered with ATK <input type="number" asp-for="Input.BranchId" data-step1 data-before="@b?.BranchId"></label>
+            <label class="field">Application ID (from ATK) <input type="number" asp-for="Input.ApplicationId" min="1" value="@(Model.Input.ApplicationId > 0 ? Model.Input.ApplicationId.ToString() : "")" data-step1 data-before="@(b is null ? null : Model.ApplicationId.ToString())"></label>
         </div>
-        <h3 style="margin: 0; font-size: 15px; font-weight: 500">Unit (business premises)</h3>
-        <div class="form-grid">
-            <label class="field">Unit number registered with ATK <input type="number" asp-for="Input.BranchId"></label>
-            <label class="field">Unit name <input type="text" asp-for="Input.BranchName"></label>
-            <label class="field">City / location (printed) <input type="text" asp-for="Input.Location"></label>
-            <label class="field">Address <input type="text" asp-for="Input.Address"></label>
-            <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode"></label>
+        <div class="validate-row">
+            <label class="field pos">POS number for the check <input type="number" name="PosId" value="@(Model.PosId > 0 ? Model.PosId : Model.SuggestedPos)" min="1" aria-label="POS number for the check"></label>
+            <button type="submit" class="btn" asp-page-handler="Validate" formnovalidate data-no-confirm>Validate with ATK (@(Model.AtkEnvironment == "Production" ? "Production" : "Test"))</button>
         </div>
-        <p class="small muted">@(Model.Locked ? "Changing NUI or unit number: receipts already issued stay under the previous taxpayer, and every workstation must be registered with ATK again (their certificates name the NUI and unit)." : "Enter NUI, unit number, fiscalization number and Application ID exactly as ATK issued them.")</p>
-        <partial name="_ConfirmBox" model="@("Yes, save")" />
-        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
+        <p class="small muted" style="margin: 0">ATK's check needs a POS number that is not registered yet (the first free one is suggested). Nothing is registered: no key and no certificate are created.@(Model.AtkEnvironment == "Production" ? " In Production, use the POS number of the first workstation you will register." : "")</p>
+        @if (Model.ValidationMessage is not null)
+        {
+            <div class="notice @(Model.ValidationFailed ? "bad" : "ok")" data-validation-msg>@Model.ValidationMessage</div>
+        }
+
+        <div id="step2" hidden="@(!Model.Step2Open)">
+            <h3 class="step-title"><span class="step-no">2</span> Business and unit details</h3>
+            <div class="form-grid">
+                <label class="field">Registered name@(Model.Step1Validated ? " (from ATK)" : "") <input type="text" asp-for="Input.Name" data-before="@b?.Name"></label>
+                <label class="field">VAT number <input type="text" asp-for="Input.VatNo" data-before="@b?.VatNo"></label>
+                <label class="field">Unit name <input type="text" asp-for="Input.BranchName" data-before="@b?.BranchName"></label>
+                <label class="field">City / location (printed) <input type="text" asp-for="Input.Location" data-before="@b?.Location"></label>
+                <label class="field">Address <input type="text" asp-for="Input.Address" data-before="@b?.Address"></label>
+                <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode" data-before="@b?.OperaHotelCode"></label>
+            </div>
+            @if (b is not null)
+            {
+                <p class="small muted">Changing NUI or unit number: receipts already issued stay under the previous taxpayer, and every workstation must be registered with ATK again (their certificates name the NUI and unit).</p>
+            }
+            <partial name="_ConfirmBox" model="@("Yes, save")" />
+            <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
+        </div>
+        <div id="step2-locked" class="step-locked" hidden="@Model.Step2Open">
+            <p style="margin: 0"><span class="step-no muted-no">2</span> Business and unit details open after ATK confirms the values above.</p>
+            <div class="actions"><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
+        </div>
     </form>
 </dialog>
+<script>
+    // Step 1 changed after validation: the confirmation no longer applies, so step 2 closes until validated again.
+    (function () {
+        var form = document.getElementById('business-form');
+        if (!form) return;
+        var step1 = form.querySelectorAll('[data-step1]');
+        var open = !document.getElementById('step2').hidden;
+        function update() {
+            var dirty = Array.prototype.some.call(step1, function (el) { return el.value !== el.defaultValue; });
+            document.getElementById('step2').hidden = !open || dirty;
+            document.getElementById('step2-locked').hidden = open && !dirty;
+            var msg = form.querySelector('[data-validation-msg]');
+            if (msg) msg.hidden = dirty;
+        }
+        step1.forEach(function (el) { el.addEventListener('input', update); });
+    })();
+</script>
 
 @if (b is not null)
 {
@@ -110,23 +148,3 @@ else
         </dialog>
     }
 }
-
-@if (b is not null)
-{
-    <dialog class="modal" id="dlg-check" aria-labelledby="dlg-check-title" data-autoopen="@(Model.Check ? "1" : null)" open="@Model.Check">
-        <div class="modal-head"><h2 id="dlg-check-title">Check with ATK</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
-        <form method="post" asp-page-handler="CheckAtk" class="modal-body">
-            <p>Asks ATK (<strong>@(Model.AtkEnvironment == "Production" ? "Production" : "Test")</strong>) whether these values belong together. ATK answers with the business name it has on record. Nothing is registered: no key and no certificate are created.</p>
-            <dl class="kv">
-                <dt>NUI</dt><dd class="mono">@b.Nui</dd>
-                <dt>Fiscalization no.</dt><dd class="mono">@b.FiscalizationNo</dd>
-                <dt>Unit</dt><dd class="mono">@b.BranchId</dd>
-                <dt>Application ID</dt><dd class="mono">@(Model.ApplicationId > 0 ? Model.ApplicationId.ToString() : "not set")</dd>
-            </dl>
-            <label class="field" style="max-width: 220px">POS number for the check <input type="number" name="posId" value="@Model.SuggestedPos" min="1"></label>
-            <p class="small muted">ATK's check needs a POS number that is not registered yet; the first number not used by a workstation is suggested. A POS number that is already registered is refused by ATK.@(Model.AtkEnvironment == "Production" ? " In Production, ATK has not documented whether the check reserves anything; use the POS number of the first workstation you will register." : "")</p>
-            <div class="actions"><button type="submit" class="btn primary" disabled="@(Model.ApplicationId <= 0)">Check now</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
-        </form>
-    </dialog>
-}
-

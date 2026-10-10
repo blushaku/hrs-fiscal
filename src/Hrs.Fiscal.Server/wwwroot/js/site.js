@@ -57,7 +57,8 @@
             for (var i = 0; i < el.options.length; i++) if (el.options[i].defaultSelected) return el.options[i].text;
             return el.options[0] ? el.options[0].text : '';
         }
-        return el.defaultValue === '' ? '(empty)' : el.defaultValue;
+        var d = el.hasAttribute('data-before') ? el.getAttribute('data-before') : el.defaultValue;
+        return d === '' ? '(empty)' : d;
     }
 
     function changed(el) {
@@ -68,6 +69,7 @@
         }
         if (el.type === 'file') return el.files.length > 0;
         if (el.type === 'password') return el.value !== '';
+        if (el.hasAttribute('data-before')) return el.value !== el.getAttribute('data-before');
         return el.value !== el.defaultValue;
     }
 
@@ -82,6 +84,7 @@
     document.addEventListener('submit', function (e) {
         var form = e.target;
         if (!form.matches('form[data-confirm]') || form.dataset.confirmed === '1') return;
+        if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;   // e.g. Validate with ATK
         e.preventDefault();
         var fields = Array.prototype.filter.call(form.elements, function (el) {
             return el.name && !el.disabled && el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button' && changed(el);

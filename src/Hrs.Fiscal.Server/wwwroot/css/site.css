@@ -263,3 +263,13 @@ details.msg > summary > .badge { justify-self: start; }
 .btn.danger { border-color: var(--bad-ink); color: var(--bad-ink); }
 .btn.danger:hover { background: var(--bad-bg); color: var(--bad-ink); }
 dialog .btn.danger[type=submit] { background: var(--bad-ink); color: #fff; }
+
+/* ---- Business setup: two steps ---------------------------------------------------------------- */
+.step-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--navy, #1f2a44); display: flex; align-items: center; gap: 8px; }
+.step-no { display: inline-grid; place-items: center; width: 22px; height: 22px; background: var(--navy, #1f2a44); color: #fff; font-size: 12px; font-weight: 600; border-radius: 50%; }
+.step-no.muted-no { background: #b8bfcc; }
+.validate-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.validate-row .field.pos { max-width: 200px; }
+#step2 { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+#step2[hidden], .step-locked[hidden] { display: none; }
+.step-locked { border: 1px dashed var(--field); padding: 12px; display: flex; flex-direction: column; gap: 10px; color: var(--muted, #5b6475); }

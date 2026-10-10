@@ -140,18 +140,25 @@ All settings below are stored in the database and every change is written to the
 
 ### 5.2 Settings › Business
 
-**The first step after installation**: until the business exists, the dashboard opens this page. Enter what ATK issued:
-NUI, business name, VAT number, **fiscalization number** (EDI) and **Application ID**, then the unit (branch) number,
-unit name, city (printed as location), address and the OPERA property code. **The OPERA property code is required for
-live mode**: folios from any other property are refused.
+**The first step after installation**: until the business exists, the dashboard opens this page. Setup runs in two
+steps:
 
-**Check with ATK** (on the Business tile) asks ATK, in the selected environment, whether NUI, fiscalization number, unit
-and Application ID belong together. It uses ATK's registration check with a POS number that is not registered yet (the
-first free number is suggested); nothing is registered and no certificate is created. ATK answers with the business
-name on record (shown as *Name at ATK*) or refuses: then a value does not match, the fiscalization number has expired,
-or that POS number is already registered. Every check is in the audit log (`ATK_CHECK`).
+1. **Issued by ATK.** Enter the **NUI**, the **fiscalization number** (EDI), the **unit number** registered with ATK and
+   the **Application ID**, then press **Validate with ATK**. The fiscal server asks ATK, in the selected environment
+   (Test or Production), whether these values belong together. It uses ATK's registration check with a POS number that
+   is not registered yet (the first free number is suggested); nothing is registered and no certificate is created.
+   If ATK refuses, the dialog says why: a value does not match, the fiscalization number has expired, or that POS number
+   is already registered (try another one). Every validation is in the audit log (`ATK_CHECK`).
+2. **Business and unit details.** Only after ATK confirms do the other fields open. The **registered name** is filled in
+   from ATK's answer; complete the VAT number, unit name, city (printed as location), address and the OPERA property
+   code, then **Save**. **The OPERA property code is required for live mode**: folios from any other property are
+   refused.
 
-Everything can be edited later with **Edit**. Changing **NUI or unit number** switches the taxpayer: receipts already
+Saving needs a validation of exactly the values being saved: if NUI, fiscalization number, unit number or Application ID
+is changed after validating, the details close again until they are validated anew (a validation is valid for two
+hours). When these four values stay as saved, the other details can be edited without a new check.
+
+Everything can be edited later with **Edit** (same two steps). Changing **NUI or unit number** switches the taxpayer: receipts already
 issued stay in the archive under the previous taxpayer (receipt pages show the taxpayer they belong to), and every
 workstation moves to the new taxpayer and must be **registered with ATK again** (its certificate names the old NUI and
 unit). This is refused while receipts still wait to be sent to ATK.
@@ -161,8 +168,8 @@ messages, OPERA overrides and settings, so the application starts from zero; use
 the current NUI to confirm. It is only possible while the server has never been switched to ATK **Production**: receipts
 sent to Production are legal records, so a new business then gets a new installation with an empty database.
 
-When a workstation is registered with ATK (or an ATK certificate is imported), the fiscal server keeps the business name ATK
-returns and shows it on the Business tile as **Name at ATK** — *matches* or *differs*. If it differs, the
+The name ATK answered with (at validation, at workstation registration or from an imported ATK certificate) is kept and
+shown on the Business tile as **Name at ATK** — *matches* or *differs*. If it differs, the
 registration message says so and **Use ATK's name** (with confirmation, logged) takes it over, so receipts carry
 the name ATK has on record. Address and VAT details cannot be looked up automatically: ATK's API returns only the
 name, and ARBK has no public API.

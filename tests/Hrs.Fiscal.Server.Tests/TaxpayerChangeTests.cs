@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Npgsql;
 
 namespace Hrs.Fiscal.Server.Tests;
@@ -6,8 +7,9 @@ namespace Hrs.Fiscal.Server.Tests;
 /// <summary>NUI and unit can be edited; the old taxpayer stays in the archive and workstations register again.</summary>
 public class TaxpayerChangeTests(ServerFixture app) : IClassFixture<ServerFixture>
 {
-    private static Dictionary<string, string> Form(string token, long nui, long unit) => new()
+    private static Dictionary<string, string> Form(string token, long nui, long unit, string validation = "") => new()
     {
+        ["Validation"] = validation, ["PosId"] = "1",
         ["Input.Nui"] = nui.ToString(), ["Input.Name"] = "New Hotel SH.P.K.", ["Input.VatNo"] = "330099999",
         ["Input.FiscalizationNo"] = "EDI-NEW-1", ["Input.ApplicationId"] = "987654321", ["Input.BranchId"] = unit.ToString(),
         ["Input.BranchName"] = "New Hotel Prizren", ["Input.Location"] = "Prizren", ["Input.Address"] = "Rr. Shadervan 1",
@@ -24,8 +26,14 @@ public class TaxpayerChangeTests(ServerFixture app) : IClassFixture<ServerFixtur
 
         // The demo data has receipts waiting for ATK: the change is refused until they are sent.
         Assert.True(await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.offline_queue") > 0);
+        // The new taxpayer's values are validated with ATK first (step 1).
         var token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings/Business?Edit=true");
-        var refused = await client.PostAsync("/Settings/Business", new FormUrlEncodedContent(Form(token, 811111111, 7)));
+        var validated = WebUtility.HtmlDecode(await (await client.PostAsync("/Settings/Business?handler=Validate", new FormUrlEncodedContent(Form(token, 811111111, 7)))).Content.ReadAsStringAsync());
+        Assert.Contains("confirms these values", validated);
+        var validation = Regex.Match(Regex.Match(validated, "<input[^>]*name=\"Validation\"[^>]*>").Value, "value=\"([^\"]*)\"").Groups[1].Value;
+
+        token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings/Business?Edit=true");
+        var refused = await client.PostAsync("/Settings/Business", new FormUrlEncodedContent(Form(token, 811111111, 7, validation)));
         Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
         Assert.Contains("still wait to be sent to ATK", WebUtility.HtmlDecode(await refused.Content.ReadAsStringAsync()));
         Assert.Equal(oldNui, await app.ScalarAsync<long>("SELECT business_nui FROM fiscal.branch WHERE active"));
@@ -37,7 +45,7 @@ public class TaxpayerChangeTests(ServerFixture app) : IClassFixture<ServerFixtur
             await new NpgsqlCommand("INSERT INTO fiscal.transmission (receipt_id, sent_by, outcome, http_status, atk_transaction_id) SELECT id, 'server', 'accepted', 200, 1 FROM fiscal.offline_queue", conn).ExecuteNonQueryAsync();
         }
         token = await ServerFixture.AntiforgeryTokenAsync(client, "/Settings/Business?Edit=true");
-        var changed = await client.PostAsync("/Settings/Business", new FormUrlEncodedContent(Form(token, 811111111, 7)));
+        var changed = await client.PostAsync("/Settings/Business", new FormUrlEncodedContent(Form(token, 811111111, 7, validation)));
         Assert.Equal(HttpStatusCode.Redirect, changed.StatusCode);
 
         Assert.Equal(811111111L, await app.ScalarAsync<long>("SELECT business_nui FROM fiscal.branch WHERE active"));
@@ -50,6 +58,8 @@ public class TaxpayerChangeTests(ServerFixture app) : IClassFixture<ServerFixtur
         Assert.Equal(0L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.terminal WHERE certificate_pem IS NOT NULL OR status = 'active'"));
         Assert.Equal("987654321", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'atk_application_id'"));
         Assert.Equal(1L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'TAXPAYER_CHANGED'"));
+        // ATK's name is what ATK answered, not what was typed: the page flags the difference.
+        Assert.Equal("\"Hotel Demo Prishtina\"", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'atk_business_name'"));
 
         var page = WebUtility.HtmlDecode(await client.GetStringAsync("/Settings/Business"));
         Assert.Contains("New Hotel SH.P.K.", page);
