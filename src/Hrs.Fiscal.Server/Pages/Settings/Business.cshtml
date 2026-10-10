@@ -33,7 +33,7 @@
                     <div class="actions" data-hide-on-confirm><button type="submit" class="btn small">Use ATK's name</button></div>
                 </form>
             }
-            <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a></div>
+            <div class="tile-foot"><a class="btn small" href="/Settings/Business?Edit=true" data-dialog-open="dlg-business">Edit</a><a class="btn small" href="/Settings/Business?Check=true" data-dialog-open="dlg-check">Check with ATK</a></div>
         </section>
         <section class="card">
             <h2>Unit (business premises)</h2>
@@ -110,3 +110,23 @@ else
         </dialog>
     }
 }
+
+@if (b is not null)
+{
+    <dialog class="modal" id="dlg-check" aria-labelledby="dlg-check-title" data-autoopen="@(Model.Check ? "1" : null)" open="@Model.Check">
+        <div class="modal-head"><h2 id="dlg-check-title">Check with ATK</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
+        <form method="post" asp-page-handler="CheckAtk" class="modal-body">
+            <p>Asks ATK (<strong>@(Model.AtkEnvironment == "Production" ? "Production" : "Test")</strong>) whether these values belong together. ATK answers with the business name it has on record. Nothing is registered: no key and no certificate are created.</p>
+            <dl class="kv">
+                <dt>NUI</dt><dd class="mono">@b.Nui</dd>
+                <dt>Fiscalization no.</dt><dd class="mono">@b.FiscalizationNo</dd>
+                <dt>Unit</dt><dd class="mono">@b.BranchId</dd>
+                <dt>Application ID</dt><dd class="mono">@(Model.ApplicationId > 0 ? Model.ApplicationId.ToString() : "not set")</dd>
+            </dl>
+            <label class="field" style="max-width: 220px">POS number for the check <input type="number" name="posId" value="@Model.SuggestedPos" min="1"></label>
+            <p class="small muted">ATK's check needs a POS number that is not registered yet; the first number not used by a workstation is suggested. A POS number that is already registered is refused by ATK.@(Model.AtkEnvironment == "Production" ? " In Production, ATK has not documented whether the check reserves anything; use the POS number of the first workstation you will register." : "")</p>
+            <div class="actions"><button type="submit" class="btn primary" disabled="@(Model.ApplicationId <= 0)">Check now</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
+        </form>
+    </dialog>
+}
+

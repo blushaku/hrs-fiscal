@@ -145,6 +145,12 @@ NUI, business name, VAT number, **fiscalization number** (EDI) and **Application
 unit name, city (printed as location), address and the OPERA property code. **The OPERA property code is required for
 live mode**: folios from any other property are refused.
 
+**Check with ATK** (on the Business tile) asks ATK, in the selected environment, whether NUI, fiscalization number, unit
+and Application ID belong together. It uses ATK's registration check with a POS number that is not registered yet (the
+first free number is suggested); nothing is registered and no certificate is created. ATK answers with the business
+name on record (shown as *Name at ATK*) or refuses: then a value does not match, the fiscalization number has expired,
+or that POS number is already registered. Every check is in the audit log (`ATK_CHECK`).
+
 Everything can be edited later with **Edit**. Changing **NUI or unit number** switches the taxpayer: receipts already
 issued stay in the archive under the previous taxpayer (receipt pages show the taxpayer they belong to), and every
 workstation moves to the new taxpayer and must be **registered with ATK again** (its certificate names the old NUI and

@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using Hrs.Fiscal.Server.Data;
 using Hrs.Fiscal.Server.Signing;
+using Hrs.Fiscal.Core.Atk;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Hrs.Fiscal.Server.Pages.Settings;
 
-public sealed class BusinessModel(SettingsStore settings, BusinessReset reset) : PageModel
+public sealed class BusinessModel(SettingsStore settings, BusinessReset reset, IAtkClientFactory atkFactory, AuditLog audit) : PageModel
 {
     public sealed class Form
     {
@@ -26,6 +27,10 @@ public sealed class BusinessModel(SettingsStore settings, BusinessReset reset) :
     [BindProperty] public Form Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public bool Edit { get; set; }
     [BindProperty(SupportsGet = true)] public bool Reset { get; set; }
+    [BindProperty(SupportsGet = true)] public bool Check { get; set; }
+    public string AtkEnvironment { get; private set; } = "Test";
+    /// <summary>A POS number not used by any workstation yet, suggested for the ATK check.</summary>
+    public long SuggestedPos { get; private set; } = 1;
     public long ApplicationId { get; private set; }
     public int Workstations { get; private set; }
     public long WaitingToSend { get; private set; }
@@ -46,13 +51,16 @@ public sealed class BusinessModel(SettingsStore settings, BusinessReset reset) :
         AtkNameSource = await settings.GetAsync<string>("atk_business_name_source", null);
     }
     /// <summary>The editor opens by itself when requested (?Edit=true) or after a failed save.</summary>
-    public bool Editing => (Edit || !ModelState.IsValid) && !Reset;
+    public bool Editing => (Edit || !ModelState.IsValid) && !Reset && !Check;
 
     private async Task LoadExtrasAsync()
     {
         ApplicationId = await settings.GetAsync<long>("atk_application_id", 0);
         Workstations = (await settings.TerminalsAsync()).Count;
         WaitingToSend = await settings.WaitingToSendAsync();
+        AtkEnvironment = await settings.GetAsync("atk_environment", "Test") ?? "Test";
+        var used = (await settings.TerminalsAsync()).Select(t => t.PosId).ToHashSet();
+        SuggestedPos = Enumerable.Range(1, 9999).Select(i => (long)i).First(p => !used.Contains(p));
         (Receipts, ProductionUsed) = await reset.StatusAsync();
     }
 
@@ -145,5 +153,54 @@ public sealed class BusinessModel(SettingsStore settings, BusinessReset reset) :
             TempData["Error"] = ex.Message;
             return RedirectToPage();
         }
+    }
+
+    /// <summary>
+    /// Asks ATK whether NUI, fiscalization number, unit and Application ID belong together (ATK's registration check,
+    /// /ca/verify). Nothing is registered: no key, no certificate. ATK answers with the business name it has on record.
+    /// </summary>
+    public async Task<IActionResult> OnPostCheckAtkAsync(long posId)
+    {
+        var b = await settings.BusinessAsync();
+        if (b is null) return RedirectToPage(new { Edit = true });
+        var applicationId = await settings.GetAsync<long>("atk_application_id", 0);
+        if (applicationId <= 0)
+        {
+            TempData["Error"] = "Enter the Application ID issued by ATK first (Edit).";
+            return RedirectToPage();
+        }
+        if (posId <= 0) posId = 1;
+        var environment = Enum.Parse<AtkEnvironment>(await settings.GetAsync("atk_environment", "Test") ?? "Test");
+        var timeout = TimeSpan.FromSeconds(Math.Max(10, await settings.GetAsync("atk_timeout_seconds", 10)));
+        var request = new VerifyRequest(b.FiscalizationNo, (ulong)posId, (ulong)b.BranchId, (ulong)applicationId);
+        var actor = User.Identity!.Name!;
+        try
+        {
+            var verify = await atkFactory.Create(environment, timeout).VerifyAsync((ulong)b.Nui, request);
+            await settings.SetManyAsync(new Dictionary<string, object?>
+            {
+                ["atk_business_name"] = verify.BusinessName.Trim(),
+                ["atk_business_name_source"] = $"ATK check, POS {posId} ({environment})",
+            }, actor);
+            await audit.WriteAsync(actor, AuditLog.Actions.AtkCheck, "business", b.Nui.ToString(),
+                new { environment = environment.ToString(), b.Nui, b.FiscalizationNo, b.BranchId, applicationId, posId, result = "confirmed", atkName = verify.BusinessName });
+            var same = Hrs.Fiscal.Server.Signing.TerminalEnrollment.SameName(verify.BusinessName, b.Name);
+            TempData["Message"] = $"ATK ({environment}) confirms NUI {b.Nui}, fiscalization no. {b.FiscalizationNo}, unit {b.BranchId} and Application ID {applicationId}: " +
+                                  $"registered to \u201c{verify.BusinessName}\u201d." + (same ? "" : " The name differs from the one entered here; see Name at ATK.");
+        }
+        catch (Exception ex) when (ex is AtkApiException or HttpRequestException or TaskCanceledException)
+        {
+            var reason = ex switch
+            {
+                AtkApiException { Status: 404 } a => $"ATK did not accept this combination ({a.Message}). Either a value does not match ATK's records (NUI, fiscalization number, unit, Application ID), the fiscalization number has expired, or POS {posId} is already registered: try another POS number.",
+                AtkApiException a => $"ATK answered with an error: {a.Message}",
+                TaskCanceledException => "ATK did not answer in time.",
+                _ => $"ATK could not be reached: {ex.Message}",
+            };
+            await audit.WriteAsync(actor, AuditLog.Actions.AtkCheck, "business", b.Nui.ToString(),
+                new { environment = environment.ToString(), b.Nui, b.FiscalizationNo, b.BranchId, applicationId, posId, result = "failed", reason });
+            TempData["Error"] = reason;
+        }
+        return RedirectToPage();
     }
 }

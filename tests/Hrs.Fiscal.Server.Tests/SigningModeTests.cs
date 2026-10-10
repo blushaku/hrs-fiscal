@@ -32,7 +32,12 @@ public sealed class FakeAtk : HttpMessageHandler, IAtkClientFactory
         var path = request.RequestUri!.AbsolutePath.TrimStart('/');
         using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
         if (path.StartsWith("ca/verify/"))
+        {
+            // Like ATK: an unknown combination (here: fiscalization number "WRONG") is answered with 404.
+            if (body.RootElement.GetProperty("fiscalization_no").GetString() == "WRONG")
+                return new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("{\"error\":{\"message\":\"not found\"}}") };
             return Json(new { business_name = "Hotel Demo Prishtina", verification_code = "424242" });
+        }
         if (path == "ca/signcsr")
         {
             Interlocked.Increment(ref CsrCount);

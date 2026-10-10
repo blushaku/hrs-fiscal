@@ -71,7 +71,7 @@ public sealed class TerminalEnrollment(
         if (terminal.Status == "disabled") throw new InvalidOperationException("The workstation is disabled.");
 
         var applicationId = await settings.GetAsync<long>("atk_application_id", 0, ct);
-        if (applicationId <= 0) throw new InvalidOperationException("Enter the ATK Application ID under Settings › General first.");
+        if (applicationId <= 0) throw new InvalidOperationException("Enter the ATK Application ID under Settings › Business & unit first.");
         var environment = Enum.Parse<AtkEnvironment>(await settings.GetAsync("atk_environment", "Test", ct) ?? "Test");
         var timeout = TimeSpan.FromSeconds(Math.Max(10, await settings.GetAsync("atk_timeout_seconds", 10, ct)));
         var atk = atkFactory.Create(environment, timeout);

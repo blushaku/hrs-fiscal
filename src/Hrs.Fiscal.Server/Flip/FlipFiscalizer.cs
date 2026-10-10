@@ -82,7 +82,7 @@ public sealed class FlipFiscalizer(
             if (state != TerminalSigningState.Ready)
                 throw new FiscalValidationException($"Workstation POS {terminal.PosId} cannot sign ({state}). Register it with ATK under Settings › Workstations.");
             var applicationId = await settings.GetAsync<long>("atk_application_id", 0, ct);
-            if (applicationId <= 0) throw new FiscalValidationException("ATK Application ID is not set (Settings › General).");
+            if (applicationId <= 0) throw new FiscalValidationException("ATK Application ID is not set (Settings › Business & unit).");
 
             var request = await BuildRequestAsync(folio, business, terminal, (ulong)applicationId, ct);
             var rates = (await settings.VatRatesAsync(ct)).ToDictionary(v => v.Letter, v => v.Percent);
