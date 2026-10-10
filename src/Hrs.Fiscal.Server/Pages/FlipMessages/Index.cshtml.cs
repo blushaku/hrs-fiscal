@@ -7,6 +7,13 @@ namespace Hrs.Fiscal.Server.Pages.FlipMessages;
 
 public sealed class IndexModel(FlipCapture capture, PropertyClock clock, IConfiguration config) : PageModel
 {
+    /// <summary>JSON shown indented; anything else as it is.</summary>
+    public string Pretty(string text)
+    {
+        try { return System.Text.Json.Nodes.JsonNode.Parse(text)?.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) ?? text; }
+        catch (System.Text.Json.JsonException) { return text; }
+    }
+
     public IReadOnlyList<FlipMessageRow> Messages { get; private set; } = [];
     public FlipMessageRow? Selected { get; private set; }
     public string Mode { get; private set; } = "";

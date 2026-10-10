@@ -68,17 +68,24 @@ else
                 <div>From</div><div class="mono">@s.RemoteAddress</div>
                 <div>Request</div><div class="mono">@(s.Transport == "tcp" ? "raw TCP" : $"{s.Method} {s.Path}")</div>
                 <div>Content type</div><div class="mono">@(s.ContentType ?? "—")</div>
-                <div>Our answer</div><div class="mono">@(s.ResponseStatus?.ToString() ?? "—") @(string.IsNullOrEmpty(s.ResponseBody) ? "" : "· " + s.ResponseBody)</div>
+                <div>Our answer</div><div class="mono">HTTP @(s.ResponseStatus?.ToString() ?? "—")</div>
                 @if (s.ReceiptId is { } rid) { <div>Receipt</div><div><a href="/Receipts/Detail/@rid">Open the fiscal receipt</a></div> }
             </div>
+            @if (!string.IsNullOrEmpty(s.ResponseBody))
+            {
+                <details>
+                    <summary>Our answer to FLIP <span class="muted small">(@s.ResponseBody.Length.ToString("N0") characters)</span></summary>
+                    <pre class="payload">@Model.Pretty(s.ResponseBody)</pre>
+                </details>
+            }
             <details>
-                <summary style="cursor: pointer; font-weight: 500">Headers</summary>
+                <summary>Headers</summary>
                 <pre class="payload">@s.Headers</pre>
             </details>
-            <div>
-                <div class="small muted">Body (@s.Kind, @s.Size.ToString("N0") bytes)</div>
-                <pre class="payload" style="max-height: 560px; overflow: auto">@s.Pretty()</pre>
-            </div>
+            <details>
+                <summary>Body from OPERA <span class="muted small">(@s.Kind, @s.Size.ToString("N0") bytes)</span></summary>
+                <pre class="payload" style="max-height: 560px">@s.Pretty()</pre>
+            </details>
         </section>
     }
 </div>
