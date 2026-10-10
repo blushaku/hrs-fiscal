@@ -28,6 +28,7 @@
             <div><span class="badge @r.Status">@(r.Status switch { "accepted" => "Accepted by ATK", "pending" => "Waiting to send · offline", _ => "Rejected by ATK" })</span></div>
             <div>NUIKF</div><div class="mono">@r.VerificationNo</div>
             <div>ATK transaction</div><div class="mono">@(r.AtkTransactionId?.ToString("0", inv) ?? "—")</div>
+            <div>Taxpayer</div><div>@r.BusinessName · NUI <span class="mono">@r.BusinessNui</span> · unit <span class="mono">@r.BranchId</span></div>
             <div>SEF ID</div><div class="mono">@r.BranchId-@r.BusinessNui-@r.PosId</div>
             <div>Workstation</div><div>@r.TerminalLabel · POS @r.PosId</div>
             <div>Cashier</div><div>@r.OperatorId</div>

@@ -44,7 +44,7 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
     public static readonly IReadOnlyDictionary<string, (string Title, string[] Fields)> Sections = new Dictionary<string, (string, string[])>
     {
         ["retention"] = ("Retention and backup", ["RetentionYears", "BackupTarget"]),
-        ["atk"] = ("ATK connection", ["AtkEnvironment", "AtkApplicationId", "AtkTimeoutSeconds", "AtkRetryMinutes"]),
+        ["atk"] = ("ATK connection", ["AtkEnvironment", "AtkTimeoutSeconds", "AtkRetryMinutes"]),
         ["alerts"] = ("Alerts", ["AlertEmails"]),
         ["vat"] = ("VAT calculation", ["VatRounding"]),
         ["signing"] = ("Signing", ["SigningModeDefault"]),
@@ -139,7 +139,6 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             ["RetentionYears"] = Input.RetentionYears,
             ["BackupTarget"] = Input.BackupTarget?.Trim() ?? "",
             ["AtkEnvironment"] = Input.AtkEnvironment,
-            ["AtkApplicationId"] = Input.AtkApplicationId,
             ["AtkTimeoutSeconds"] = Input.AtkTimeoutSeconds,
             ["AtkRetryMinutes"] = Input.AtkRetryMinutes,
             ["AlertEmails"] = Input.AlertEmails?.Trim() ?? "",

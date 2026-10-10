@@ -33,6 +33,7 @@ builder.Host.UseWindowsService();
 builder.Services.AddSingleton<PropertyClock>();
 builder.Services.AddFiscalDatabase(builder.Configuration);
 builder.Services.AddScoped<Exporter>();
+builder.Services.AddScoped<Hrs.Fiscal.Server.Data.BusinessReset>();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<FlipCapture>();
 builder.Services.AddScoped<FlipAuth>();

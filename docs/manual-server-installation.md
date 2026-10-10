@@ -128,7 +128,7 @@ All settings below are stored in the database and every change is written to the
 | Setting | Value |
 |---|---|
 | ATK environment | **Test** until the hotel goes live, then **Production**. Never send test receipts to production |
-| Application ID | The ID ATK issued for Opera Cloud Fiscal Solution - Kosovo (test or production) |
+| Application ID | Shown here; entered under *Business & unit* together with the fiscalization number |
 | Timeout / retry | 10 s / 2 min (defaults) |
 | **Signing** | *Workstation client* or *Central* — see 5.4 |
 | OPERA overrides | Off (default). Turn on only if OPERA cannot send a field correctly; then set the codes under *OPERA overrides & VAT* |
@@ -140,10 +140,20 @@ All settings below are stored in the database and every change is written to the
 
 ### 5.2 Settings › Business
 
-NUI, business name, fiscalization number, VAT number, unit (branch) number, unit name, city (printed as location),
-address and the OPERA property code. **The OPERA property code is required for live mode**: folios from any other
-property are refused. **NUI and unit number cannot be changed** after saving, because every receipt
-refers to them — check them against the ATK registration before saving.
+**The first step after installation**: until the business exists, the dashboard opens this page. Enter what ATK issued:
+NUI, business name, VAT number, **fiscalization number** (EDI) and **Application ID**, then the unit (branch) number,
+unit name, city (printed as location), address and the OPERA property code. **The OPERA property code is required for
+live mode**: folios from any other property are refused.
+
+Everything can be edited later with **Edit**. Changing **NUI or unit number** switches the taxpayer: receipts already
+issued stay in the archive under the previous taxpayer (receipt pages show the taxpayer they belong to), and every
+workstation moves to the new taxpayer and must be **registered with ATK again** (its certificate names the old NUI and
+unit). This is refused while receipts still wait to be sent to ATK.
+
+**Start over with a new business** (bottom of the page) deletes the business, workstations, receipts, audit log, FLIP
+messages, OPERA overrides and settings, so the application starts from zero; users, roles and VAT rates are kept. Type
+the current NUI to confirm. It is only possible while the server has never been switched to ATK **Production**: receipts
+sent to Production are legal records, so a new business then gets a new installation with an empty database.
 
 When a workstation is registered with ATK (or an ATK certificate is imported), the fiscal server keeps the business name ATK
 returns and shows it on the Business tile as **Name at ATK** — *matches* or *differs*. If it differs, the
@@ -178,7 +188,7 @@ Every workstation is its own ATK POS with its own key and certificate in both mo
 | Status | Matches ATK's statement that every invoicing workstation needs the software | **Pending ATK's confirmation** |
 
 **Central mode — registering a workstation**
-1. Settings › General: ATK environment and Application ID are set; Settings › Business is complete.
+1. Settings › Business is complete (including fiscalization number and Application ID); Settings › General: ATK environment.
 2. Settings › Workstations › **Add workstation** with *Register with ATK now* selected (for an existing workstation: **Register with ATK** on its tile).
 3. The server checks the business with ATK, creates a new non-exportable key for this workstation, sends ATK only the
    certificate request (public key) and stores the certificate. The workstation becomes *active*; the certificate expiry

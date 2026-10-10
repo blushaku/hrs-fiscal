@@ -15,7 +15,9 @@
             <dl class="kv">
                 <dt>Name</dt><dd>@b.Name</dd>
                 <dt>NUI</dt><dd class="mono">@b.Nui</dd>
+                <dt>VAT no.</dt><dd class="mono">@(string.IsNullOrEmpty(b.VatNo) ? "not set" : b.VatNo)</dd>
                 <dt>Fiscalization no.</dt><dd class="mono">@b.FiscalizationNo</dd>
+                <dt>Application ID</dt><dd class="mono">@(Model.ApplicationId > 0 ? Model.ApplicationId.ToString() : "not set")</dd>
                 <dt>Name at ATK</dt>
                 <dd>
                     @if (Model.AtkName is null) { <span class="muted">known after the first ATK registration</span> }
@@ -55,25 +57,56 @@ else
 
 <dialog class="modal wide" id="dlg-business" aria-labelledby="dlg-business-title" data-autoopen="@(Model.Editing ? "1" : null)" open="@Model.Editing">
     <div class="modal-head"><h2 id="dlg-business-title">@(firstSetup ? "Set up the business" : "Edit business and unit")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
-    <form method="post" class="modal-body" data-confirm="@(firstSetup ? "Save the business? NUI and unit number cannot be changed afterwards." : "Save the business and unit details?")" data-new="@(firstSetup ? "1" : null)">
+    <form method="post" class="modal-body" data-confirm="@(firstSetup ? "Save the business and unit?" : "Save the business and unit? If NUI or unit number change, every workstation must be registered with ATK again.")" data-new="@(firstSetup ? "1" : null)">
         <div asp-validation-summary="All" class="validation"></div>
         <h3 style="margin: 0; font-size: 15px; font-weight: 500">Business (taxpayer)</h3>
         <div class="form-grid">
-            <label class="field">NUI (fiscal number) <input type="number" asp-for="Input.Nui" readonly="@Model.Locked"></label>
+            <label class="field">NUI (fiscal number) <input type="number" asp-for="Input.Nui"></label>
             <label class="field">Registered name <input type="text" asp-for="Input.Name"></label>
             <label class="field">VAT number <input type="text" asp-for="Input.VatNo"></label>
             <label class="field">Fiscalization no. (from EDI) <input type="text" asp-for="Input.FiscalizationNo"></label>
+            <label class="field">Application ID (from ATK) <input type="number" asp-for="Input.ApplicationId" min="0"></label>
         </div>
         <h3 style="margin: 0; font-size: 15px; font-weight: 500">Unit (business premises)</h3>
         <div class="form-grid">
-            <label class="field">Unit number registered with ATK <input type="number" asp-for="Input.BranchId" readonly="@Model.Locked"></label>
+            <label class="field">Unit number registered with ATK <input type="number" asp-for="Input.BranchId"></label>
             <label class="field">Unit name <input type="text" asp-for="Input.BranchName"></label>
             <label class="field">City / location (printed) <input type="text" asp-for="Input.Location"></label>
             <label class="field">Address <input type="text" asp-for="Input.Address"></label>
             <label class="field">OPERA property code <input type="text" asp-for="Input.OperaHotelCode"></label>
         </div>
-        <p class="small muted">@(Model.Locked ? "NUI and unit number are locked: they are part of every receipt number, certificate and SEF ID." : "Check NUI and unit number against the ATK registration: they cannot be changed after saving.")</p>
+        <p class="small muted">@(Model.Locked ? "Changing NUI or unit number: receipts already issued stay under the previous taxpayer, and every workstation must be registered with ATK again (their certificates name the NUI and unit)." : "Enter NUI, unit number, fiscalization number and Application ID exactly as ATK issued them.")</p>
         <partial name="_ConfirmBox" model="@("Yes, save")" />
         <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
     </form>
 </dialog>
+
+@if (b is not null)
+{
+    <section class="card danger-zone">
+        <h2>Start over with a new business</h2>
+        <p style="margin: 0">Deletes the business, workstations, receipts, logs, FLIP messages, OPERA overrides and settings, so the application starts from zero for another taxpayer. Users, roles and VAT rates are kept.</p>
+        @if (Model.ProductionUsed)
+        {
+            <div class="notice warn">Not possible here: this server has been connected to ATK <strong>Production</strong>. Receipts sent to Production are legal records that must be kept. For a new business, install the application with a new, empty database (installation manual).</div>
+        }
+        else
+        {
+            <p class="small muted" style="margin: 0">Only test data exists (ATK Test environment). Export what you want to keep first under <a href="/Export">Export</a>.</p>
+            <div><a class="btn small danger" href="/Settings/Business?Reset=true">Start over…</a></div>
+        }
+    </section>
+
+    @if (Model.Reset && !Model.ProductionUsed)
+    {
+        <dialog class="modal" id="dlg-reset" aria-labelledby="dlg-reset-title" data-autoopen="1" open>
+            <div class="modal-head"><h2 id="dlg-reset-title">Start over with a new business</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
+            <form method="post" asp-page-handler="Reset" class="modal-body">
+                <div asp-validation-summary="All" class="validation"></div>
+                <div class="notice warn"><strong>This cannot be undone.</strong> All data of @b.Name (NUI @b.Nui) is deleted: @Model.Receipts receipt(s), @Model.Workstations workstation(s), the audit log, FLIP messages, OPERA overrides and settings. Users, roles and VAT rates stay.</div>
+                <label class="field">Type the NUI <span class="mono">@b.Nui</span> to confirm <input type="text" name="confirmNui" autocomplete="off" inputmode="numeric" required></label>
+                <div class="actions"><button type="submit" class="btn danger">Delete everything and start over</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
+            </form>
+        </dialog>
+    }
+}

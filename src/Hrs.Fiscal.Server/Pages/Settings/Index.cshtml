@@ -22,7 +22,7 @@
         <h2>ATK connection</h2>
         <dl class="kv">
             <dt>Environment</dt><dd>@(c.AtkEnvironment == "Production" ? "Production" : "Test")</dd>
-            <dt>Application ID</dt><dd class="mono">@(c.AtkApplicationId > 0 ? c.AtkApplicationId.ToString() : "not set")</dd>
+            <dt>Application ID</dt><dd><span class="mono">@(c.AtkApplicationId > 0 ? c.AtkApplicationId.ToString() : "not set")</span> · <a href="/Settings/Business">Business &amp; unit</a></dd>
         </dl>
         <div class="tile-foot">@EditButton("atk")</div>
     </section>
@@ -102,7 +102,6 @@
                 <option value="Production">Production (fiskalizimi.atk-ks.org)</option>
             </select>
         </label>
-        <label class="field">Application ID (issued by ATK on certification) <input type="number" asp-for="Input.AtkApplicationId" min="0"></label>
         <div class="form-grid">
             <label class="field">Timeout (seconds) <input type="number" asp-for="Input.AtkTimeoutSeconds" min="2" max="60"></label>
             <label class="field">Retry offline queue every (minutes) <input type="number" asp-for="Input.AtkRetryMinutes" min="1" max="60"></label>

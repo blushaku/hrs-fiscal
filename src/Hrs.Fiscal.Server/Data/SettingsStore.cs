@@ -141,7 +141,7 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
             SELECT b.nui, b.name, b.fiscalization_no, b.vat_no, br.branch_id, br.name AS branch_name, br.location,
                    br.address, br.opera_hotel_code
             FROM fiscal.business b JOIN fiscal.branch br ON br.business_nui = b.nui
-            ORDER BY br.branch_id LIMIT 1
+            WHERE br.active
             """);
     }
 
@@ -174,6 +174,53 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         }
         await tx.CommitAsync(ct);
         await audit.WriteAsync(actor, AuditLog.Actions.SettingChanged, "business", b.Nui.ToString(), new { old = before, @new = b }, ct: ct);
+    }
+
+    /// <summary>
+    /// Switches to another taxpayer (NUI) and/or unit. The previous one stays in the archive with its receipts, inactive.
+    /// Workstations move to the new taxpayer and must be registered with ATK again: their certificates name the old NUI and
+    /// unit. Refused while receipts still wait to be sent to ATK (they need the old certificates).
+    /// </summary>
+    public async Task ChangeTaxpayerAsync(BusinessInfo b, string actor, CancellationToken ct = default)
+    {
+        var before = await BusinessAsync(ct) ?? throw new InvalidOperationException("Set up the business first.");
+        if (before.Nui == b.Nui && before.BranchId == b.BranchId)
+        {
+            await SaveBusinessAsync(b, actor, ct);
+            return;
+        }
+        await using var conn = await db.OpenConnectionAsync(ct);
+        var waiting = await conn.ExecuteScalarAsync<long>("SELECT count(*) FROM fiscal.offline_queue");
+        if (waiting > 0)
+            throw new InvalidOperationException($"{waiting} receipt(s) of the current taxpayer still wait to be sent to ATK. Change the taxpayer once they have been sent.");
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        await conn.ExecuteAsync("UPDATE fiscal.branch SET active = false, opera_hotel_code = NULL WHERE active", transaction: tx);
+        await conn.ExecuteAsync("""
+            INSERT INTO fiscal.business (nui, name, fiscalization_no, vat_no) VALUES (@Nui, @Name, @FiscalizationNo, @VatNo)
+            ON CONFLICT (nui) DO UPDATE SET name = excluded.name, fiscalization_no = excluded.fiscalization_no, vat_no = excluded.vat_no
+            """, b, tx);
+        await conn.ExecuteAsync("""
+            INSERT INTO fiscal.branch (business_nui, branch_id, name, location, address, opera_hotel_code, active)
+            VALUES (@Nui, @BranchId, @BranchName, @Location, @Address, @OperaHotelCode, true)
+            ON CONFLICT (business_nui, branch_id) DO UPDATE SET name = excluded.name, location = excluded.location,
+                address = excluded.address, opera_hotel_code = excluded.opera_hotel_code, active = true
+            """, b, tx);
+        var moved = await conn.ExecuteAsync("""
+            UPDATE fiscal.terminal SET business_nui = @Nui, branch_id = @BranchId, certificate_pem = NULL, certificate_expires = NULL,
+                   enrolled_mode = NULL, key_reference = NULL, status = CASE WHEN status = 'disabled' THEN 'disabled' ELSE 'pending' END
+            WHERE business_nui = @OldNui AND branch_id = @OldBranch
+            """, new { b.Nui, b.BranchId, OldNui = before.Nui, OldBranch = before.BranchId }, tx);
+        await conn.ExecuteAsync("UPDATE fiscal.setting SET value = '\"\"'::jsonb, updated_at = now(), updated_by = @actor WHERE key IN ('atk_business_name', 'atk_business_name_source')", new { actor }, tx);
+        await tx.CommitAsync(ct);
+        await audit.WriteAsync(actor, AuditLog.Actions.TaxpayerChanged, "business", b.Nui.ToString(),
+            new { old = before, @new = b, workstationsToRegisterAgain = moved }, ct: ct);
+    }
+
+    /// <summary>Receipts not yet accepted by ATK (offline queue).</summary>
+    public async Task<long> WaitingToSendAsync(CancellationToken ct = default)
+    {
+        await using var conn = await db.OpenConnectionAsync(ct);
+        return await conn.ExecuteScalarAsync<long>("SELECT count(*) FROM fiscal.offline_queue");
     }
 
     // ---- terminals ------------------------------------------------------------------------

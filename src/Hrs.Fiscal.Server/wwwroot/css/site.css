@@ -258,3 +258,8 @@ details.msg > summary > span { min-width: 0; overflow-wrap: anywhere; }
   details.msg > summary > span:nth-child(6) { text-align: right; }
 }
 details.msg > summary > .badge { justify-self: start; }
+.danger-zone { border-color: var(--bad-line); display: flex; flex-direction: column; gap: 10px; }
+.danger-zone h2 { color: var(--bad-ink); margin: 0; }
+.btn.danger { border-color: var(--bad-ink); color: var(--bad-ink); }
+.btn.danger:hover { background: var(--bad-bg); color: var(--bad-ink); }
+dialog .btn.danger[type=submit] { background: var(--bad-ink); color: #fff; }
