@@ -239,3 +239,22 @@ details[open] > summary { margin-bottom: 4px; }
 .login-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 32px 28px; display: flex; flex-direction: column; gap: 16px; }
 .login-logo { width: 240px; height: auto; display: block; }
 .login-card label.field { flex: none; }
+
+/* FLIP messages: one row per message, expands in place. */
+.msg-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+details.msg { border-bottom: 1px solid var(--line); }
+details.msg > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 8px; min-height: 44px; list-style: none; font-weight: 400; color: var(--ink); font-size: 13.5px; }
+details.msg > summary::-webkit-details-marker { display: none; }
+details.msg > summary::before { content: "\25B8"; color: var(--navy); width: 10px; flex: none; transition: transform .15s; }
+details.msg[open] > summary::before { transform: rotate(90deg); }
+details.msg > summary:hover { background: var(--hover); }
+details.msg[open] > summary { background: var(--sel); margin-bottom: 0; }
+.msg-id { color: var(--navy); font-weight: 600; min-width: 36px; }
+.msg-body { padding: 14px 8px 18px 26px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+@media (max-width: 520px) { .msg-body { padding-left: 8px; } }
+details.msg > summary > span { min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 900px) {
+  details.msg > summary { display: grid; grid-template-columns: 12px 52px 150px minmax(0, 1fr) 120px 64px 80px 128px 72px; gap: 12px; }
+  details.msg > summary > span:nth-child(6) { text-align: right; }
+}
+details.msg > summary > .badge { justify-self: start; }

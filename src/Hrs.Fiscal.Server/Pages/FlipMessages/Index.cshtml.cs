@@ -15,7 +15,6 @@ public sealed class IndexModel(FlipCapture capture, PropertyClock clock, IConfig
     }
 
     public IReadOnlyList<FlipMessageRow> Messages { get; private set; } = [];
-    public FlipMessageRow? Selected { get; private set; }
     public string Mode { get; private set; } = "";
     public FlipStub Stub { get; private set; } = new(200, "text/plain", "");
     public PropertyClock Clock => clock;
@@ -43,10 +42,10 @@ public sealed class IndexModel(FlipCapture capture, PropertyClock clock, IConfig
 
     public async Task OnGetAsync()
     {
-        Messages = await capture.RecentAsync();
+        Messages = await capture.RecentAsync(100);
         Mode = await capture.ModeAsync();
         Stub = await capture.StubAsync();
-        if (Id is { } id) Selected = await capture.GetAsync(id);
-        else if (Messages.Count > 0) Selected = Messages[0];
+        // A message linked directly (?Id=) opens expanded; older than the list → still shown on its own.
+        if (Id is { } id && Messages.All(m => m.Id != id) && await capture.GetAsync(id) is { } single) Messages = [single, .. Messages];
     }
 }

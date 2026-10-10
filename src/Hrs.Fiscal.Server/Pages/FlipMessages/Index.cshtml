@@ -29,63 +29,58 @@ else
     <p class="small muted" style="margin: 12px 0 0">Enter one of these as the EndPoint Url in FLIP's partner configuration (port 5080 is only for this admin page). Messages appear here within a second.</p>
 </section>
 
-<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start">
-    <section class="card">
-        <h2>Received (@Model.Messages.Count)</h2>
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>#</th><th>Received</th><th>From</th><th>Request</th><th>Format</th><th style="text-align: right">Size</th></tr></thead>
-                <tbody>
-                @foreach (var m in Model.Messages)
-                {
-                    <tr style="@(Model.Selected?.Id == m.Id ? "background: #F0F1F6" : "")">
-                        <td class="mono"><a href="/FlipMessages?Id=@m.Id">@m.Id</a></td>
-                        <td class="mono">@Model.Clock.Format(m.ReceivedAt)</td>
-                        <td class="mono">@m.RemoteAddress</td>
-                        <td class="mono">@(m.Transport == "tcp" ? "TCP" : $"{m.Method} {m.Path}")</td>
-                        <td><span class="badge neutral">@m.Kind</span></td>
-                        <td class="num">@m.Size.ToString("N0") B</td>
-                    </tr>
-                }
-                @if (Model.Messages.Count == 0)
-                {
-                    <tr><td colspan="6" class="muted">Nothing received yet. Generate a folio in OPERA once FLIP points to this server.</td></tr>
-                }
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    @if (Model.Selected is { } s)
+<section class="card">
+    <h2>Received (@Model.Messages.Count)</h2>
+    @if (Model.Messages.Count == 0)
     {
-        <section class="card" style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
-            <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center">
-                <h2 style="margin: 0">Message @s.Id</h2>
-                <a class="btn small" href="/flip-messages/@s.Id/raw">Download raw</a>
-            </div>
-            <div class="kv">
-                <div>Received</div><div>@Model.Clock.Format(s.ReceivedAt)</div>
-                <div>From</div><div class="mono">@s.RemoteAddress</div>
-                <div>Request</div><div class="mono">@(s.Transport == "tcp" ? "raw TCP" : $"{s.Method} {s.Path}")</div>
-                <div>Content type</div><div class="mono">@(s.ContentType ?? "—")</div>
-                <div>Our answer</div><div class="mono">HTTP @(s.ResponseStatus?.ToString() ?? "—")</div>
-                @if (s.ReceiptId is { } rid) { <div>Receipt</div><div><a href="/Receipts/Detail/@rid">Open the fiscal receipt</a></div> }
-            </div>
-            @if (!string.IsNullOrEmpty(s.ResponseBody))
-            {
-                <details>
-                    <summary>Our answer to FLIP <span class="muted small">(@s.ResponseBody.Length.ToString("N0") characters)</span></summary>
-                    <pre class="payload">@Model.Pretty(s.ResponseBody)</pre>
-                </details>
-            }
-            <details>
-                <summary>Headers</summary>
-                <pre class="payload">@s.Headers</pre>
-            </details>
-            <details>
-                <summary>Body from OPERA <span class="muted small">(@s.Kind, @s.Size.ToString("N0") bytes)</span></summary>
-                <pre class="payload" style="max-height: 560px">@s.Pretty()</pre>
-            </details>
-        </section>
+        <p class="muted" style="margin: 0">Nothing received yet. Generate a folio in OPERA once FLIP points to this server.</p>
     }
-</div>
+    else
+    {
+        <p class="small muted" style="margin: 0 0 8px">Newest first. Click a message to see its details.</p>
+        <div class="msg-list">
+        @foreach (var m in Model.Messages)
+        {
+            var ok = m.ResponseStatus is >= 200 and < 300;
+            <details class="msg" id="m@(m.Id)" open="@(Model.Id == m.Id)">
+                <summary>
+                    <span class="msg-id mono">#@m.Id</span>
+                    <span class="mono">@Model.Clock.Format(m.ReceivedAt)</span>
+                    <span class="mono">@(m.Transport == "tcp" ? "TCP" : $"{m.Method} {m.Path}")</span>
+                    <span class="mono muted">@m.RemoteAddress</span>
+                    <span class="badge neutral">@m.Kind</span>
+                    <span class="mono muted">@m.Size.ToString("N0") B</span>
+                    <span class="badge @(m.Mode == "rejected" ? "rejected" : ok ? "accepted" : m.ResponseStatus is null ? "neutral" : "rejected")">@(m.Mode == "rejected" ? "refused (token)" : $"HTTP {m.ResponseStatus?.ToString() ?? "—"}")</span>
+                    <span>@if (m.ReceiptId is not null) { <span class="badge accepted">receipt</span> }</span>
+                </summary>
+                <div class="msg-body">
+                    <div class="kv">
+                        <div>Received</div><div>@Model.Clock.Format(m.ReceivedAt)</div>
+                        <div>From</div><div class="mono">@m.RemoteAddress</div>
+                        <div>Request</div><div class="mono">@(m.Transport == "tcp" ? "raw TCP" : $"{m.Method} {m.Path}")</div>
+                        <div>Content type</div><div class="mono">@(m.ContentType ?? "—")</div>
+                        <div>Our answer</div><div class="mono">HTTP @(m.ResponseStatus?.ToString() ?? "—")</div>
+                        @if (m.ReceiptId is { } rid) { <div>Receipt</div><div><a href="/Receipts/Detail/@rid">Open the fiscal receipt</a></div> }
+                    </div>
+                    @if (!string.IsNullOrEmpty(m.ResponseBody))
+                    {
+                        <details>
+                            <summary>Our answer to FLIP <span class="muted small">(@m.ResponseBody.Length.ToString("N0") characters)</span></summary>
+                            <pre class="payload">@Model.Pretty(m.ResponseBody)</pre>
+                        </details>
+                    }
+                    <details>
+                        <summary>Headers</summary>
+                        <pre class="payload">@m.Headers</pre>
+                    </details>
+                    <details>
+                        <summary>Body from OPERA <span class="muted small">(@m.Kind, @m.Size.ToString("N0") bytes)</span></summary>
+                        <pre class="payload" style="max-height: 560px">@m.Pretty()</pre>
+                    </details>
+                    <div><a class="btn small" href="/flip-messages/@m.Id/raw">Download raw</a></div>
+                </div>
+            </details>
+        }
+        </div>
+    }
+</section>
