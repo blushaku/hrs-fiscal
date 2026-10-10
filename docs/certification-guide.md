@@ -143,7 +143,7 @@ Write it in Albanian (English annex if helpful). Suggested chapters, all materia
 | 5 | Clock check against ATK | Spec requires time synchronised with ATK | Developer (add a check + alert) |
 | 6 | Working ATK TEST profile | The current fiscalization number returns 404 on `/ca/verify`; the Commission demo needs registration to work | Hotel/developer: new number from EDI |
 | 7 | Fiscal Client (only if certifying workstation signing) | Not built | Developer |
-| 8 | Release for certification | Freeze a version (e.g. 1.0.0), tag it, keep source and build reproducible; Art. 7.4 applies to every later change | Developer |
+| 8 | Release for certification | Version 1.0.0 set 10.10.2026 for submission; tag it, keep source and build reproducible; Art. 7.4 applies to every later change | Developer |
 
 **Documents**
 - Application form (annex) — **ask ATK for it.**

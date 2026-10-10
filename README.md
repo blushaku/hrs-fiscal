@@ -163,8 +163,8 @@ the Fiscal Client.
 
 ## Version
 
-The release version is set once in `Directory.Build.props` (now **0.9.0**, before ATK certification); the build adds
-the git commit (`0.9.0+<commit>`). It is shown in the menu and on the sign-in page, returned by `/health`, printed in
+The release version is set once in `Directory.Build.props` (now **1.0.0**, the version submitted for ATK certification); the build adds
+the git commit (`1.0.0+<commit>`). It is shown in the menu and on the sign-in page, returned by `/health`, printed in
 the footer of every PDF export, and each service start is logged (`SERVICE_STARTED` with version and commit).
 
 ## Roles and permissions

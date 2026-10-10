@@ -1,7 +1,7 @@
 # Opera Cloud Fiscal Solution - Kosovo — Printing fiscal data and the QR code on the OPERA Cloud folio
 
 **Audience:** OPERA Cloud administrator / implementation consultant. **Applies to:** OPERA Cloud with OFIS
-(on-premise FLIP) and fiscal server 0.9 in live mode.
+(on-premise FLIP) and fiscal server 1.0 in live mode.
 
 Items marked **[Oracle]** depend on how FLIP stores the partner response in OPERA and must be confirmed with Oracle
 (FLIP installation guide / Oracle support) before go-live. Everything else uses standard OPERA Cloud features.
