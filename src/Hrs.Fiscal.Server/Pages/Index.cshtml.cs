@@ -12,6 +12,7 @@ public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receip
     public DashboardStats Stats { get; private set; } = new();
     public IReadOnlyList<TerminalRow> Terminals { get; private set; } = [];
     public BusinessInfo? Business { get; private set; }
+    public int VatRates { get; private set; }
     public PropertyClock Clock => clock;
     public DateTime UtcNow { get; private set; }
 
@@ -26,6 +27,7 @@ public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receip
     public async Task<IActionResult> OnGetAsync()
     {
         Business = await settings.BusinessAsync();
+        VatRates = (await settings.VatRatesAsync()).Count;
         // Setting up the business is the first step: administrators go straight there until it exists.
         if (Business is null && (await auth.AuthorizeAsync(User, "perm:" + Hrs.Fiscal.Server.Security.Permissions.SettingsManage)).Succeeded)
             return RedirectToPage("/Settings/Business", new { Edit = true });

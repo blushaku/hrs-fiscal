@@ -100,6 +100,7 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
         if (string.IsNullOrWhiteSpace(VatInput.Description)) errors.Add("Description is required.");
         if (errors.Count > 0) return Error(errors);
         VatInput.Description = VatInput.Description.Trim();
+        VatInput.Percent = decimal.Round(VatInput.Percent, 2);
         try
         {
             if (Editing) await settings.SaveVatRateAsync(VatInput, User.Identity!.Name!);
@@ -107,6 +108,20 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
         }
         catch (InvalidOperationException ex) { return Error([ex.Message]); }
         TempData["Message"] = $"VAT rate {VatInput.Letter} {(Editing ? "saved" : "added")} and logged. It applies to receipts issued from now on.";
+        return RedirectToPage(new { Form = (string?)null, Key = (string?)null });
+    }
+
+    public async Task<IActionResult> OnPostDeleteVatAsync()
+    {
+        await LoadAsync();
+        Form = "vat";
+        try { await settings.DeleteVatRateAsync(Key ?? "", User.Identity!.Name!); }
+        catch (InvalidOperationException ex)
+        {
+            if (Vat.SingleOrDefault(v => v.Letter == Key) is { } v) VatInput = v;
+            return Error([ex.Message]);
+        }
+        TempData["Message"] = $"VAT rate {Key} deleted and logged.";
         return RedirectToPage(new { Form = (string?)null, Key = (string?)null });
     }
 

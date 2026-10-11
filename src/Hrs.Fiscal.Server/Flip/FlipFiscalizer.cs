@@ -167,7 +167,13 @@ public sealed class FlipFiscalizer(
         {
             trxMap.TryGetValue(l.TrxCode, out var m);
             var letter = m?.VatLetter ?? LetterFor(l.VatPercent, vat);
-            if (letter is null) { errors.Add($"{l.Description} ({l.TrxCode}): VAT {l.VatPercent:0.##}% does not match any VAT rate ({string.Join(", ", vat.Select(v => $"{v.Letter} {v.Percent:0.##}%"))})."); continue; }
+            if (letter is null)
+            {
+                errors.Add(vat.Count == 0
+                    ? $"{l.Description} ({l.TrxCode}): no VAT rates are set up. Add them under Settings › OPERA overrides & VAT."
+                    : $"{l.Description} ({l.TrxCode}): VAT {l.VatPercent:0.##}% does not match any VAT rate set to match OPERA lines ({string.Join(", ", vat.Where(v => v.MatchOpera).Select(v => $"{v.Letter} {v.Percent:0.##}%"))}). Add or change it under Settings › OPERA overrides & VAT.");
+                continue;
+            }
             var gross = l.Gross * sign;
             lines.Add(new ReceiptLine
             {
@@ -223,12 +229,9 @@ public sealed class FlipFiscalizer(
     }
 
     /// <summary>VAT letter for a percentage. 0 % → C (zero rate); exempt (A) only through an override.</summary>
-    public static string? LetterFor(decimal percent, IReadOnlyList<VatRateRow> rates)
-    {
-        if (percent == 0 && rates.Any(r => r.Letter == "C" && r.Percent == 0)) return "C";
-        return rates.Where(r => r.Percent == percent && r.Letter != "A").Select(r => r.Letter).FirstOrDefault()
-               ?? rates.Where(r => r.Percent == percent).Select(r => r.Letter).FirstOrDefault();
-    }
+    /// <summary>The VAT rate set to match OPERA lines with this percentage (Settings › OPERA overrides &amp; VAT).</summary>
+    public static string? LetterFor(decimal percent, IReadOnlyList<VatRateRow> rates) =>
+        rates.Where(r => r.MatchOpera && r.Percent == percent).Select(r => r.Letter).FirstOrDefault();
 
     /// <summary>Override table (when switched on) → payment name → Other.</summary>
     public static PaymentType PaymentTypeFor(OperaPayment p, IReadOnlyDictionary<string, PaymentMapping> map)

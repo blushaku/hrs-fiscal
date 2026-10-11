@@ -176,7 +176,22 @@ registration message says so and **Use ATK's name** (with confirmation, logged) 
 the name ATK has on record. Address and VAT details cannot be looked up automatically: ATK's API returns only the
 name, and ARBK has no public API.
 
-### 5.3 Settings › Workstations
+### 5.3 Settings › OPERA overrides & VAT: VAT rates
+
+**The VAT list starts empty.** Before the first receipt, add every VAT rate the property uses with **Add VAT rate**:
+the **letter** ATK expects for that rate (one capital letter), the **percent** and a description. Until at least one
+rate exists, the dashboard shows an alert and every folio is refused with "no VAT rates are set up".
+
+OPERA sends a VAT percentage for each folio line; the fiscal server uses the rate marked **Use for OPERA lines with this
+percentage**. Only one rate per percentage can have it. Two rates with the same percentage are possible (for example
+*exempt* and *0 %*): mark the one OPERA lines should get, and use the other only through OPERA overrides per
+transaction code. A folio line whose percentage matches no marked rate is refused with a message naming the line.
+
+**Edit** changes the percent, description or matching; **Delete this rate** (in the edit window) removes a rate that no
+OPERA override uses. Changes apply to receipts issued afterwards; receipts already issued keep their letter and rate.
+Every change is in the audit log.
+
+### 5.4 Settings › Workstations
 
 One line per workstation that can issue a folio. Each one is a separate ATK POS with its own POS ID and certificate.
 
@@ -190,7 +205,7 @@ One line per workstation that can issue a folio. Each one is a separate ATK POS 
 
 Each workstation is shown as a tile with its POS ID, OPERA terminal, signing and certificate state. **Add workstation** opens one form: in central signing it adds the workstation *and* registers it with ATK in the same step (or imports the key and certificate from ATK's onboarder tool, or registers later). If registration fails, the workstation stays *pending* and its tile offers **Register with ATK** again.
 
-### 5.4 Signing mode and ATK registration
+### 5.5 Signing mode and ATK registration
 
 Every workstation is its own ATK POS with its own key and certificate in both modes. The difference is where the key lives.
 
@@ -219,12 +234,12 @@ records (check them in EDI); *timeout* — outbound HTTPS to ATK is blocked.
 **Workstation client mode** — install the Fiscal Client on each PC and register it there (separate client manual,
 available with the client release).
 
-### 5.5 OPERA Cloud and FLIP
+### 5.6 OPERA Cloud and FLIP
 
 Follow [manual-opera-cloud-ofis-flip.md](manual-opera-cloud-ofis-flip.md). Afterwards, check the **FLIP messages** page (left menu):
 every folio OPERA sends must appear there.
 
-### 5.6 Reports and logs per workstation
+### 5.7 Reports and logs per workstation
 
 Receipts, Audit log and Export all filter by **workstation**. *Receipts* and *Audit log* have **Export CSV / PDF**
 buttons that export exactly the filtered view (period, workstation, status or event). *Export* also offers a

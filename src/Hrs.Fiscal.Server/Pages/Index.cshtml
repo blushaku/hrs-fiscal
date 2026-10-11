@@ -133,6 +133,10 @@ else if (canReceipts)
     {
     <section class="card" style="display: flex; flex-direction: column; gap: 12px">
         <h2 style="margin: 0">Alerts</h2>
+        @if (Model.VatRates == 0)
+        {
+            <div class="notice warn"><strong>No VAT rates are set up.</strong> Receipts cannot be fiscalized until they are added under <a href="/Settings/Mapping#vat">Settings › OPERA overrides &amp; VAT</a>.</div>
+        }
         @if (s.Overdue48h > 0)
         {
             <div class="notice bad"><strong>@s.Overdue48h receipt(s) are past the 48-hour deadline.</strong> Notify ATK of the outage and submit them by the 10th of next month at the latest.</div>
@@ -145,7 +149,7 @@ else if (canReceipts)
         {
             <div class="notice neutral"><strong>Certificate renewal</strong> needed for @t.Label within @((int)(t.CertificateExpires!.Value - Model.UtcNow).TotalDays) days.</div>
         }
-        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0)
+        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0 && Model.VatRates > 0)
         {
             <div class="notice ok">No alerts. All receipts are fiscalized.</div>
         }

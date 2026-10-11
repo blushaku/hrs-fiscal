@@ -67,6 +67,8 @@ public sealed class VatRateRow
     public string Letter { get; set; } = "";
     public decimal Percent { get; set; }
     public string Description { get; set; } = "";
+    /// <summary>Used automatically for OPERA lines with this percentage (at most one rate per percentage).</summary>
+    public bool MatchOpera { get; set; } = true;
 }
 
 /// <summary>Configuration stored in the database. Every write records old and new values in the audit log.</summary>
@@ -315,23 +317,55 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     public async Task<IReadOnlyList<VatRateRow>> VatRatesAsync(CancellationToken ct = default)
     {
         await using var conn = await db.OpenConnectionAsync(ct);
-        return (await conn.QueryAsync<VatRateRow>("SELECT letter, percent, description FROM fiscal.vat_rate ORDER BY letter")).ToList();
+        return (await conn.QueryAsync<VatRateRow>("SELECT letter, percent, description, match_opera FROM fiscal.vat_rate ORDER BY letter")).ToList();
     }
 
-    /// <summary>Adds a new VAT letter. Fails if the letter exists.</summary>
+    /// <summary>Adds a new VAT letter. Fails if the letter exists or another rate already matches OPERA lines with this percentage.</summary>
     public async Task AddVatRateAsync(VatRateRow v, string actor, CancellationToken ct = default)
     {
-        if ((await VatRatesAsync(ct)).Any(x => x.Letter == v.Letter)) throw new InvalidOperationException($"VAT letter {v.Letter} already exists.");
+        var rates = await VatRatesAsync(ct);
+        if (rates.Any(x => x.Letter == v.Letter)) throw new InvalidOperationException($"VAT letter {v.Letter} already exists.");
+        CheckMatch(v, rates);
         await using var conn = await db.OpenConnectionAsync(ct);
-        await conn.ExecuteAsync("INSERT INTO fiscal.vat_rate (letter, percent, description) VALUES (@Letter, @Percent, @Description)", v);
+        await conn.ExecuteAsync("INSERT INTO fiscal.vat_rate (letter, percent, description, match_opera) VALUES (@Letter, @Percent, @Description, @MatchOpera)", v);
         await audit.WriteAsync(actor, AuditLog.Actions.SettingChanged, "vat_rate", v.Letter, new { old = (VatRateRow?)null, @new = v }, ct: ct);
+    }
+
+    private static void CheckMatch(VatRateRow v, IEnumerable<VatRateRow> rates)
+    {
+        if (!v.MatchOpera) return;
+        var other = rates.FirstOrDefault(x => x.Letter != v.Letter && x.MatchOpera && x.Percent == v.Percent);
+        if (other is not null)
+            throw new InvalidOperationException($"VAT rate {other.Letter} ({other.Description}) already matches OPERA lines with {v.Percent:0.##}%. " +
+                                                "Only one rate per percentage can; use the other one through OPERA overrides, or change rate " + other.Letter + " first.");
+    }
+
+    /// <summary>OPERA overrides that use this VAT letter (a rate in use cannot be deleted).</summary>
+    public async Task<IReadOnlyList<string>> VatRateUsedByAsync(string letter, CancellationToken ct = default)
+    {
+        await using var conn = await db.OpenConnectionAsync(ct);
+        return (await conn.QueryAsync<string>("SELECT trx_code FROM fiscal.opera_trx_mapping WHERE vat_letter = @letter ORDER BY trx_code", new { letter })).ToList();
+    }
+
+    /// <summary>Deletes a VAT rate. Receipts already issued keep their own letter and percentage.</summary>
+    public async Task DeleteVatRateAsync(string letter, string actor, CancellationToken ct = default)
+    {
+        var before = (await VatRatesAsync(ct)).SingleOrDefault(x => x.Letter == letter) ?? throw new InvalidOperationException("Unknown VAT letter.");
+        var used = await VatRateUsedByAsync(letter, ct);
+        if (used.Count > 0)
+            throw new InvalidOperationException($"VAT rate {letter} is used by OPERA override(s) {string.Join(", ", used)}. Change them to another rate first.");
+        await using var conn = await db.OpenConnectionAsync(ct);
+        await conn.ExecuteAsync("DELETE FROM fiscal.vat_rate WHERE letter = @letter", new { letter });
+        await audit.WriteAsync(actor, AuditLog.Actions.SettingChanged, "vat_rate", letter, new { old = before, @new = (VatRateRow?)null }, ct: ct);
     }
 
     public async Task SaveVatRateAsync(VatRateRow v, string actor, CancellationToken ct = default)
     {
-        var before = (await VatRatesAsync(ct)).SingleOrDefault(x => x.Letter == v.Letter) ?? throw new InvalidOperationException("Unknown VAT letter.");
+        var rates = await VatRatesAsync(ct);
+        var before = rates.SingleOrDefault(x => x.Letter == v.Letter) ?? throw new InvalidOperationException("Unknown VAT letter.");
+        CheckMatch(v, rates);
         await using var conn = await db.OpenConnectionAsync(ct);
-        await conn.ExecuteAsync("UPDATE fiscal.vat_rate SET percent = @Percent, description = @Description WHERE letter = @Letter", v);
+        await conn.ExecuteAsync("UPDATE fiscal.vat_rate SET percent = @Percent, description = @Description, match_opera = @MatchOpera WHERE letter = @Letter", v);
         await audit.WriteAsync(actor, AuditLog.Actions.SettingChanged, "vat_rate", v.Letter, new { old = before, @new = v }, ct: ct);
     }
 }

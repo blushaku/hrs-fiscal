@@ -48,6 +48,17 @@ public sealed class DemoSeeder(NpgsqlDataSource db, SettingsStore settings, User
         }
         var terminalRows = await settings.TerminalsAsync(ct);
 
+        // VAT rates start empty in a real installation; the demo adds the ones its folios use.
+        if ((await settings.VatRatesAsync(ct)).Count == 0)
+            foreach (var v in new[]
+            {
+                new VatRateRow { Letter = "A", Percent = 0, Description = "Exempt from VAT", MatchOpera = false },
+                new VatRateRow { Letter = "C", Percent = 0, Description = "VAT 0%" },
+                new VatRateRow { Letter = "D", Percent = 8, Description = "Reduced VAT rate" },
+                new VatRateRow { Letter = "E", Percent = 18, Description = "Standard VAT rate" },
+            })
+                await settings.AddVatRateAsync(v, Actor, ct);
+
         var catalog = new (string Code, string Name, string Unit, string Cat, string Vat, decimal Price)[]
         {
             ("1000", "Room night", "nate", "HT", "D", 110m),

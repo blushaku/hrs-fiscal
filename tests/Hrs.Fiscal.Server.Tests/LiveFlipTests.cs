@@ -32,7 +32,7 @@ public class OperaPayloadTests
     [Fact]
     public void Vat_letter_and_payment_type_rules()
     {
-        var rates = new List<VatRateRow> { new() { Letter = "A", Percent = 0 }, new() { Letter = "C", Percent = 0 }, new() { Letter = "D", Percent = 8 }, new() { Letter = "E", Percent = 18 } };
+        var rates = new List<VatRateRow> { new() { Letter = "A", Percent = 0, MatchOpera = false }, new() { Letter = "C", Percent = 0 }, new() { Letter = "D", Percent = 8 }, new() { Letter = "E", Percent = 18 } };
         Assert.Equal("C", FlipFiscalizer.LetterFor(0, rates));
         Assert.Equal("D", FlipFiscalizer.LetterFor(8, rates));
         Assert.Equal("E", FlipFiscalizer.LetterFor(18, rates));

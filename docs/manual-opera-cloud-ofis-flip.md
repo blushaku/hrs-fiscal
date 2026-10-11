@@ -156,7 +156,7 @@ known.
 | `DocumentInfo.FiscalFolioId` (+ hotel code) | Idempotency key: a folio sent again (reprint, retry) returns the first receipt; nothing new goes to ATK |
 | `DocumentInfo.TerminalId` | Workstation → ATK POS ID and signing key |
 | `FolioInfo.Postings`, charges | Receipt lines: description from `TrxInfo`, quantity, VAT-inclusive amount (`GrossAmount`, or net + generated taxes) |
-| Generated tax postings (`TrxCodeType` X) | Not lines; their `TaxRate` gives the line's VAT % → letter by Settings › VAT (0 % → C, 8 % → D, 18 % → E) |
+| Generated tax postings (`TrxCodeType` X) | Not lines; their `TaxRate` gives the line's VAT % → letter from the VAT rate set to match that percentage (Settings › OPERA overrides & VAT, see the installation manual §5.3) |
 | Negative charges (corrections) | Discount on lines with the same VAT letter |
 | Postings `TrxType` FC | Payments; type from the override table, else from the name (cash / card / voucher / cheque), else *Other* |
 | Folio total below zero | Return receipt referencing `FLIP_ASSOCIATED_FISCAL_BILL_NO` |
