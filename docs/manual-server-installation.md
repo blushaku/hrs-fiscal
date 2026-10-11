@@ -154,9 +154,11 @@ steps:
    code, then **Save**. **The OPERA property code is required for live mode**: folios from any other property are
    refused.
 
-Saving needs a validation of exactly the values being saved: if NUI, fiscalization number, unit number or Application ID
-is changed after validating, the details close again until they are validated anew (a validation is valid for two
-hours). When these four values stay as saved, the other details can be edited without a new check.
+**Validation and saving are separate.** Validate asks ATK and nothing else; **Save** stores the form and never contacts
+ATK. If ATK refuses or cannot be reached and you are sure the values are right, **Fill in the details anyway** opens step
+2 without ATK's confirmation (then *Name at ATK* is not updated). If NUI, fiscalization number, unit number or Application
+ID is changed after validating, step 2 closes until you validate again or choose to continue anyway. When these four
+values stay as saved, the other details can be edited straight away.
 
 Everything can be edited later with **Edit** (same two steps). Changing **NUI or unit number** switches the taxpayer: receipts already
 issued stay in the archive under the previous taxpayer (receipt pages show the taxpayer they belong to), and every

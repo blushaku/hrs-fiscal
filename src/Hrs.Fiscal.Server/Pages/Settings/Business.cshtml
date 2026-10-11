@@ -57,7 +57,7 @@ else
 
 <dialog class="modal wide" id="dlg-business" aria-labelledby="dlg-business-title" data-autoopen="@(Model.Editing ? "1" : null)" open="@Model.Editing">
     <div class="modal-head"><h2 id="dlg-business-title">@(firstSetup ? "Set up the business" : "Edit business and unit")</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Business" aria-label="Close">×</button></div>
-    <form method="post" class="modal-body" id="business-form" data-confirm="@(firstSetup ? "Save the business and unit?" : "Save the business and unit? If NUI or unit number change, every workstation must be registered with ATK again.")" data-new="@(firstSetup ? "1" : null)">
+    <form method="post" asp-page="/Settings/Business" class="modal-body" id="business-form" data-confirm="@(firstSetup ? "Save the business and unit?" : "Save the business and unit? If NUI or unit number change, every workstation must be registered with ATK again.")" data-new="@(firstSetup ? "1" : null)">
         <div asp-validation-summary="All" class="validation"></div>
         <input type="hidden" asp-for="Validation">
 
@@ -96,8 +96,8 @@ else
             <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
         </div>
         <div id="step2-locked" class="step-locked" hidden="@Model.Step2Open">
-            <p style="margin: 0"><span class="step-no muted-no">2</span> Business and unit details open after ATK confirms the values above.</p>
-            <div class="actions"><button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
+            <p style="margin: 0"><span class="step-no muted-no">2</span> Business and unit details open after ATK confirms the values above.@(Model.ValidationFailed ? " If you are sure the values are right (for example ATK is not reachable), you can fill in the details without ATK's confirmation." : "")</p>
+            <div class="actions">@if (Model.ValidationFailed) {<button type="button" class="btn" data-show-step2>Fill in the details anyway</button>}<button type="button" class="btn" data-dialog-close data-return="/Settings/Business">Cancel</button></div>
         </div>
     </form>
 </dialog>
@@ -116,6 +116,8 @@ else
             if (msg) msg.hidden = dirty;
         }
         step1.forEach(function (el) { el.addEventListener('input', update); });
+        var anyway = form.querySelector('[data-show-step2]');
+        if (anyway) anyway.addEventListener('click', function () { open = true; update(); });
     })();
 </script>
 

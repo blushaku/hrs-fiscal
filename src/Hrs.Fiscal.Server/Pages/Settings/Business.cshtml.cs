@@ -11,8 +11,7 @@ namespace Hrs.Fiscal.Server.Pages.Settings;
 /// <summary>
 /// Business & unit. Setup and changes run in two steps: (1) the values ATK issued — NUI, fiscalization number, unit number,
 /// Application ID — are validated with ATK's registration check; (2) only then the rest of the form opens, with the
-/// registered name taken from ATK's answer. Saving needs a validation of exactly the values being saved, unless they are
-/// unchanged from what is already saved (then only the other fields are edited).
+/// registered name taken from ATK's answer. Saving is separate from validation: it never calls ATK again.
 /// </summary>
 public sealed class BusinessModel(SettingsStore settings, BusinessReset reset, IAtkClientFactory atkFactory, AuditLog audit,
     IDataProtectionProvider protection) : PageModel
@@ -157,17 +156,15 @@ public sealed class BusinessModel(SettingsStore settings, BusinessReset reset, I
         return Page();
     }
 
-    /// <summary>Step 2: save. New or changed ATK values need a matching validation.</summary>
+    /// <summary>
+    /// Step 2: save. Saving never calls ATK and does not depend on a validation: the check is a separate action. A valid
+    /// validation only adds the name ATK answered with (shown as Name at ATK).
+    /// </summary>
     public async Task<IActionResult> OnPostAsync()
     {
         await LoadAsync();
         Edit = true;
         if (!ModelState.IsValid) return Page();
-        if (!Step2Open)
-        {
-            ModelState.AddModelError("", "Validate NUI, fiscalization number, unit number and Application ID with ATK first.");
-            return Page();
-        }
         var info = new BusinessInfo
         {
             Nui = Input.Nui, Name = Input.Name.Trim(), FiscalizationNo = Input.FiscalizationNo.Trim(), VatNo = Input.VatNo?.Trim(),

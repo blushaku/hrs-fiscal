@@ -5,7 +5,7 @@ namespace Hrs.Fiscal.Server.Tests;
 
 /// <summary>
 /// Business setup runs in two steps: NUI, fiscalization no., unit and Application ID are validated with ATK first; only then
-/// the rest opens, with the registered name from ATK's answer. Saving changed ATK values needs a matching validation.
+/// the rest opens, with the registered name from ATK's answer. Saving is separate and never calls ATK.
 /// </summary>
 public class BusinessValidationTests(ServerFixture app) : IClassFixture<ServerFixture>
 {
@@ -52,23 +52,16 @@ public class BusinessValidationTests(ServerFixture app) : IClassFixture<ServerFi
         Assert.Contains("Enter the Application ID", html);
         Assert.Contains("id=\"step2\" hidden", html);
 
-        // Changed ATK values without validation: saving is refused.
-        var (refused, refusedHtml) = await PostAsync(client, "", s, "EDI-2", 123456789);
-        Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
-        Assert.Contains("Validate NUI, fiscalization number, unit number and Application ID with ATK first", refusedHtml);
-
         // Validate: ATK confirms, the registered name is filled from its answer, step 2 opens.
         (_, html) = await PostAsync(client, "Validate", s, "EDI-2", 123456789);
         Assert.Contains("ATK (Test) confirms these values: registered to “Hotel Demo Prishtina”", html);
         Assert.Contains("value=\"Hotel Demo Prishtina\"", html);
         Assert.Contains("Registered name (from ATK)", html);
+        // Save posts to the page itself, never back to the Validate handler (that would ask ATK again instead of saving).
+        Assert.Matches("<form method=\"post\" class=\"modal-body\" id=\"business-form\"[^>]*action=\"/Settings/Business\"|<form method=\"post\" action=\"/Settings/Business\" class=\"modal-body\" id=\"business-form\"", html);
         var validation = ValidationToken(html);
         Assert.False(string.IsNullOrEmpty(validation));
         Assert.Equal(0L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.terminal WHERE pos_id = 99")); // nothing registered
-
-        // The token covers exactly the validated values: another fiscalization number is refused.
-        (refused, refusedHtml) = await PostAsync(client, "", s, "EDI-3", 123456789, "Hotel Demo Prishtina", validation);
-        Assert.Contains("with ATK first", refusedHtml);
 
         var (saved, _) = await PostAsync(client, "", s, "EDI-2", 123456789, "Hotel Demo Prishtina", validation);
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
@@ -83,9 +76,19 @@ public class BusinessValidationTests(ServerFixture app) : IClassFixture<ServerFi
         Assert.Equal(HttpStatusCode.Redirect, renamed.StatusCode);
         Assert.Equal("Prishtinë", await app.ScalarAsync<string>("SELECT location FROM fiscal.branch WHERE active"));
 
-        // A wrong fiscalization number: ATK refuses, the dialog says why, step 2 stays closed.
+        // Saving does not depend on a validation and never calls ATK: changed values without one are saved,
+        // but ATK's name is not touched (it only comes from a real ATK answer).
+        var checks = await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'ATK_CHECK'");
+        var (unvalidated, _) = await PostAsync(client, "", s, "EDI-3", 123456789, "Hotel Without Check");
+        Assert.Equal(HttpStatusCode.Redirect, unvalidated.StatusCode);
+        Assert.Equal("EDI-3", await app.ScalarAsync<string>($"SELECT fiscalization_no FROM fiscal.business WHERE nui = {s.Nui}"));
+        Assert.Equal("\"Hotel Demo Prishtina\"", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'atk_business_name'"));
+        Assert.Equal(checks, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'ATK_CHECK'"));
+
+        // A wrong fiscalization number: ATK refuses, the dialog says why, step 2 stays closed with a way to continue.
         (_, html) = await PostAsync(client, "Validate", s, "WRONG", 123456789);
         Assert.Contains("ATK did not accept this combination", html);
+        Assert.Contains("Fill in the details anyway", html);
         Assert.Contains("id=\"step2\" hidden", html);
         Assert.Equal(2L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.audit_log WHERE action = 'ATK_CHECK'"));
     }
