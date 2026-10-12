@@ -3,8 +3,9 @@
 Kosovo fiscalization software (**SEF – Softuer Elektronik Fiskal**) for hotels on **Oracle OPERA Cloud**.
 OPERA Cloud sends fiscal payloads via **OFIS with FLIP** (installed on-premise). FLIP delivers them over the hotel LAN
 to the fiscal server. Every workstation that issues folios is its own ATK POS with its own key and certificate.
-**Signing is selectable** (Settings › General, overridable per workstation): the Fiscal Client on the workstation
-signs, or the server signs centrally with a separate non-exportable key per workstation.
+**Signing is selectable** (Settings › General, overridable per workstation). The default is central signing: the
+server signs with a separate non-exportable key per workstation. The alternative, signing by the Fiscal Client on each
+workstation, is not built yet.
 Everything is archived in an append-only PostgreSQL store.
 
 ```
@@ -14,11 +15,32 @@ OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ fiscal server ──
    └── fiscal data ◀──┘ offline queue, admin UI, exports   ◀── result ─────┘──▶ ATK /pos/coupon
 ```
 
-## Manuals
+## Documentation
+
+Manuals (English):
 
 - [Server installation and configuration](docs/manual-server-installation.md)
 - [OPERA Cloud OFIS/FLIP configuration](docs/manual-opera-cloud-ofis-flip.md)
+- [OPERA folio: printing the fiscal block](docs/manual-opera-folio-fiscal-print.md)
 - [Testing on an OPERA Cloud demo](docs/opera-demo-test-plan.md)
+
+ATK certification:
+
+- [Certification guide](docs/certification-guide.md): the procedure, the documents and what is still open
+- [ATK compliance review](docs/atk-compliance-review.md): every ATK requirement checked against the app and documents
+  (12.10.2026: 28 met, 6 partly, 0 missing, 2 depend on Oracle, 4 need a written answer from ATK)
+- [ATK TEST results of 08.10.2026](docs/atk-test-results-2026-10-08.md)
+- [Requirements and design notes](docs/requirements-and-design.md)
+
+Submission package for ATK (Albanian; personal data and signatures are left blank on purpose and are filled in on
+paper before submitting):
+
+| Art. | Document |
+|---|---|
+| 5.5.1 | [Kërkesë për certifikim](docs/submission/01-kerkese-per-certifikim.md) (application request) |
+| 5.5.5 | [Përshkrimi i përgjithshëm i zgjidhjes softuerike](docs/submission/02-pershkrimi-i-pergjithshem.md) (general description) |
+| 5.5.6 | [Manuali i përdoruesit](docs/submission/03-manuali-i-perdoruesit.md) (user manual) |
+| 5.5.7 | [Deklarata e pajtueshmërisë](docs/submission/04-deklarata-e-pajtueshmerise.md) (compliance declaration, signed last) |
 
 ## Repository layout
 
@@ -32,7 +54,8 @@ OPERA Cloud ─OFIS─▶ FLIP (on-prem) ──LAN──▶ fiscal server ──
 | `db/migrations` | PostgreSQL schema |
 | `db/tests` | Schema self-test (immutability, hash chain, tamper detection) |
 | `deploy/` | Windows installer (`install-server.ps1`) and daily backup script (`backup-db.ps1`) |
-| `docs/` | Requirements and design notes, manuals |
+| `docs/` | Manuals, certification guide, ATK compliance review, submission documents (`docs/submission`) |
+| `tools/i18n` | Source of the Albanian and Serbian translations and the script that builds `i18n/*.json` |
 
 ## Build and test
 
@@ -58,12 +81,22 @@ createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initi
 | Page | What it does | Roles |
 |---|---|---|
 | Dashboard | Today's receipts, accepted, waiting to send (with the 48 h deadline), rejected; workstation status; certificate expiry; alerts | all |
-| Receipts | Search by receipt no., NUIKF, folio or cashier; filter by date, workstation, type and status; paging | all |
-| Receipt detail | Fiscal data, QR, every send attempt to ATK, items and VAT, linked returns, original OPERA/FLIP message, signed payload | all |
-| Download copy (PDF) | Receipt copy marked "KOPJE E KUPONIT", logged as REPRINT | Cashier, Supervisor, Admin |
+| Receipts | Search by receipt no., NUIKF, folio or cashier; filter by date, workstation, type (sale, return, cancel) and status; paging | all |
+| Receipt detail | Fiscal data, daily number, OFFLINE mark, QR, every send attempt to ATK, items and VAT, linked returns and cancellation, original OPERA/FLIP message, signed payload | all |
+| Cancel receipt | Cancel receipt ("Kupon i anulimit") with a required reason, same lines and amounts, linked to the original; once per receipt | Supervisor, Admin |
+| Enter paper receipt | Receipts written from the special paper block while the system was down: serial, written date and time, workstation, lines, payment; signed and sent to ATK; serial unique | Supervisor, Admin |
+| Download copy (PDF) | 80 mm receipt copy (Annex F layout) marked "KOPJE E KUPONIT", logged as REPRINT | Cashier, Supervisor, Admin |
 | Audit log | Search all events; **integrity check** of both hash chains (logged) | all |
 | Export | Receipts, unsent receipts or audit log as CSV (UTF-8) or PDF; every export logged with a SHA-256 | Supervisor, Admin, Auditor |
-| Settings | General (retention, backup, ATK environment and ApplicationId, timeouts, VAT rounding); business and unit; signing mode (workstation client / central); workstations (POS ID ↔ OPERA Fiscal Terminal, ATK registration in central mode); optional OPERA overrides per transaction code and payment method; VAT rates; users | Admin |
+| Settings | General (retention, backup, ATK environment, timeouts, VAT rounding); business and unit, set up in two steps (NUI, fiscalization no., unit no. and ApplicationId validated with ATK, then the rest prefilled from ATK's answer); signing mode; workstations (POS ID ↔ OPERA Fiscal Terminal, ATK registration); VAT rates, user-defined (the list starts empty; one rate per percentage matches OPERA); units with ATK's list as suggestions; optional OPERA overrides per transaction code and payment method; users | Admin |
+
+The interface is in **Albanian** (default), **Serbian** (Latin script) and **English**, switched with SQ · SR · EN in
+the header (cookie `lang`). Translations live in `src/Hrs.Fiscal.Server/i18n/*.json`, generated by
+`tools/i18n/build.py`. Receipt texts are Albanian, as in ATK's samples.
+
+Background checks: the server compares its clock with ATK's server time every 15 minutes (alert and audit entry above
+30 s drift, `CLOCK_DRIFT` / `CLOCK_OK`); the dashboard warns about receipts unsent for 48 hours and, around the 10th of
+the month, about last month's receipts still unsent.
 
 Every settings change is written to the audit log with its old and new values. Failed logins are logged, and an
 account is blocked for 15 minutes after 5 failures. Users and workstations are deactivated, never deleted.
@@ -73,8 +106,9 @@ FLIP. The per-code mappings in Settings are **optional overrides** for exception
 (`opera_overrides_enabled`, off by default). The fiscal server validates every folio
 (known VAT letter, VAT consistent with the rates, totals = payments) before sending it to ATK.
 
-No fiscal printer is involved. OPERA prints the fiscal data (SEF ID, receipt no., NUIKF, ATK transaction, QR,
-"e-kupon") on the folio from the FLIP response. The OPERA folio template needs a fiscal block for this.
+No fiscal printer is involved. OPERA prints the fiscal data (SEF ID, receipt no., daily no., NUIKF, ATK transaction,
+QR, "e-kupon", OFFLINE when ATK was unreachable) on the folio from the FLIP response, which also carries the
+ready-to-print lines (`FiscalText`). The OPERA folio template needs a fiscal block for this.
 
 ### Run it locally
 
@@ -169,7 +203,7 @@ the footer of every PDF export, and each service start is logged (`SERVICE_START
 
 ## Roles and permissions
 
-Four roles (Cashier, Supervisor, Auditor, Admin) and ten permissions (`Security/Permissions.cs`). The role → permission
+Four roles (Cashier, Supervisor, Auditor, Admin) and twelve permissions (`Security/Permissions.cs`). The role → permission
 matrix is stored in `fiscal.role_permission` and edited under Settings › Roles & permissions (audited); Admin always
 has all permissions. Every page and endpoint is protected by a permission policy, and the menu, dashboard and buttons
 are built from the same permissions.
@@ -186,8 +220,13 @@ are built from the same permissions.
   `VatRounding.TruncateNet` reproduces ATK's sample numbers. **The official rule is pending ATK's answer.**
 - **CouponId** must be unique across the whole business: `branch_id × 10^10 + sequence`.
 - **VerificationNo (NUIKF)** is 16 random characters from an alphabet without 0/O/1/I/L.
-- **Corrections** are made only with Return coupons that reference the original. Cancel coupons are not used
-  in Kosovo.
+- **Corrections:** credit folios from OPERA become Return coupons that reference the original. Errors found after
+  issue are corrected with a Cancel coupon from the admin interface (reason required, linked to the original, at most
+  one per receipt). Nothing is ever changed or deleted.
+- **Daily number** ("Kupon fiskal ditor nr."): per workstation and property day, assigned inside the archive's insert
+  trigger so concurrent receipts cannot share a number.
+- **OFFLINE:** a receipt whose first sending at issue fails is marked OFFLINE (receipt status, copy, response to OPERA)
+  and is resent automatically in order. ATK's data model has no field for it.
 - **Keys:** one key per workstation, non-exportable (CNG, TPM when available). Only the CSR and public key
   leave the machine. In central mode the keys live on the server (`Signing/ServerKeyStore.cs`; `Signing:KeyStore`
   = `auto`/`cng`, or `file` for test machines only) and workstations are registered from Settings › Workstations.
@@ -199,7 +238,8 @@ are built from the same permissions.
 ## Open questions (ATK / Oracle)
 
 1. For a cloud PMS whose workstations are browsers: is central signing on the property server, with one key and
-   certificate per workstation, acceptable, or must software run on each workstation? (Both are implemented and selectable.)
+   certificate per workstation, acceptable, or must software run on each workstation? (Central signing is the default;
+   the workstation client is not built yet.)
 2. The official VAT rounding rule.
 3. The behaviour of `/pos/coupon` when a CouponId is resent (idempotency).
 4. `verification_code` vs `verification_no` in `/ca/signcsr`. Both are sent for now.
@@ -207,4 +247,6 @@ are built from the same permissions.
 6. How to flag offline receipts (there is no field in the proto).
 7. Advance payments (UA Art 6.2) versus the hotel practice of not taking deposits.
 8. The retention period (Law on Tax Administration Procedures).
-9. Oracle: the FLIP-to-fiscal-partner interface spec (message format, response, timeout, terminal addressing) and how FLIP connects to OPERA Cloud.
+9. A4 folio printed by OPERA instead of 58–100 mm thermal paper.
+10. Where the developer's identification goes when the developer is a natural person without a NUI.
+11. Oracle: the FLIP-to-fiscal-partner interface spec (message format, response, timeout, terminal addressing) and how FLIP connects to OPERA Cloud.

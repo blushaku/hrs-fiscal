@@ -91,7 +91,7 @@ Sources:
 
 | # | Requirement | API status | Question for ATK |
 |---|---|---|---|
-| 1 | Receipts issued offline marked "OFFLINE" and sent within 48h | No offline flag in the model and no batch endpoint | Is a late `Time` enough? Is replay ordering or rate-limiting enforced? |
+| 1 | Receipts issued offline marked "OFFLINE" and sent within 48h | No offline flag in the model and no batch endpoint (the app marks OFFLINE locally and in the response to OPERA since 12.10.2026) | Is a late `Time` enough? Is replay ordering or rate-limiting enforced? |
 | 2 | Idempotency on retry | Not documented | What happens if a CouponId is resent (timeout after the server already accepted it)? Duplicate error or the same `transaction_id`? |
 | 3 | Advance payment receipts (UA Art 6) | No coupon type | Sale with a special item Type? How do we offset the advance on the final receipt? |
 | 4 | Reprint "KOPJE" | Nothing to send | Confirm it is print-only. |
@@ -103,10 +103,11 @@ Sources:
 | 10 | Private key never leaves the POS | Conflicts with cloud/central SEF and with OPERA Cloud folio printing | Can one certified central service hold keys for several logical POS? |
 | 11 | Field name `verification_code` vs `verification_no` | Readme and Swagger differ | Which one does `/ca/signcsr` expect? |
 | 12 | Status or lookup endpoint | None | How do we reconcile? Is there a daily report or Z-report? |
-| 13 | Cancel reason (TR Art 25) | No field | Not transmitted? |
+| 13 | Cancel reason (TR Art 25) | No field | Not transmitted? The reason is archived and printed on the receipt copy (since 12.10.2026). |
 
 ## 4. Business rules confirmed by the user (08.10.2026)
 - Deposits and cancellations are not used in Kosovo. Corrections are made with Return (kthim) receipts that reference the original.
+  - Update 12.10.2026: after the compliance review a Cancel receipt (with reason, linked to the original) was added to the admin interface, because the technical requirements (Art 25.11, Annex F) list it. OPERA corrections still arrive as Returns.
   - Note: UA Art 6.2 still says a fiscal receipt is required "for every payment made before the supply is completed". Confirm how ATK treats hotel advance payments.
 - All receipts (fiscal coupons) and logs must be kept (UA Art 46, retention per the Law on Tax Administration Procedures; period to be confirmed).
 
