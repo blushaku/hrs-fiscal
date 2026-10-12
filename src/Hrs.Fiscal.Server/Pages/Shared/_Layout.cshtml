@@ -10,6 +10,8 @@
     var business = signedIn ? await Settings.BusinessAsync() : null;
     bool On(string prefix) => prefix == "/" ? path == "/" : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     var environment = signedIn ? await Settings.GetAsync("atk_environment", "Test") ?? "Test" : "Test";
+    var lang = Hrs.Fiscal.Server.Localization.Languages.Current(Context);
+    var here = Context.Request.Path + Context.Request.QueryString;
 }
 <!doctype html>
 <html lang="en">
@@ -21,7 +23,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
     <script src="~/js/site.js" asp-append-version="true" defer></script>
 </head>
-<body>
+<body data-t-nothing="Nothing has changed." data-t-saving="Saving…" data-t-empty="(empty)" data-t-newpass="(new password)" data-t-yes="yes" data-t-no="no" data-t-allowed="allowed" data-t-notallowed="not allowed">
 @if (!signedIn)
 {
     <main class="login-shell">@RenderBody()</main>
@@ -35,6 +37,7 @@ else
                 <div><div class="name">Opera Cloud Fiscal Solution</div><div class="sub">Kosovo SEF · @(business is null ? "property not set up" : $"{business.BranchName}, unit {business.BranchId}")</div></div>
             </a>
             <div class="who">
+                <partial name="_LangSwitch" />
                 <span class="env @(environment == "Production" ? "prod" : "")">@(environment == "Production" ? "PRODUCTION" : "TEST")</span>
                 <span><b>@User.Display()</b> · @User.Role()</span>
                 <form method="post" action="/logout">

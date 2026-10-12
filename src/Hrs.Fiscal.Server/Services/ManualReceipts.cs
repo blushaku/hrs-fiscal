@@ -45,6 +45,11 @@ public sealed class ManualReceipts(
         var business = await settings.BusinessAsync(ct);
         if (business is null || business.Nui != r.BusinessNui || business.BranchId != r.BranchId)
             return "This receipt belongs to a previous taxpayer or unit.";
+        // The cancellation is signed with the original workstation's key, so that workstation must be able to sign here.
+        var terminal = (await settings.TerminalsAsync(ct)).FirstOrDefault(t => t.PosId == r.PosId);
+        var defaultMode = await settings.SigningModeDefaultAsync(ct);
+        if (terminal is null || terminal.EffectiveMode(defaultMode) != SigningModes.Server || terminal.SigningState(defaultMode) != TerminalSigningState.Ready)
+            return $"Workstation POS {r.PosId} cannot sign on this server; register it with ATK under Settings › Workstations first.";
         return null;
     }
 

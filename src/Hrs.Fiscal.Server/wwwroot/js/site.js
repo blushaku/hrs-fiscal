@@ -33,6 +33,9 @@
         document.querySelectorAll('dialog[data-autoopen="1"]').forEach(open);
     });
 
+    // ---- texts written by this script, in the page's language (set on <body> by the layout) ------------
+    function t(key, english) { var d = document.body && document.body.dataset; return (d && d['t' + key]) || english; }
+
     // ---- confirmation before saving ----------------------------------------------------------------
     function labelOf(el) {
         if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
@@ -44,21 +47,21 @@
     }
 
     function shown(el) {
-        if (el.type === 'checkbox') return el.checked ? 'yes' : 'no';
+        if (el.type === 'checkbox') return el.checked ? t('Yes', 'yes') : t('No', 'no');
         if (el.tagName === 'SELECT') return el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : '';
-        if (el.type === 'password') return el.value ? '(new password)' : '';
+        if (el.type === 'password') return el.value ? t('Newpass', '(new password)') : '';
         if (el.type === 'file') return el.files.length ? el.files[0].name : '';
-        return el.value === '' ? '(empty)' : el.value;
+        return el.value === '' ? t('Empty', '(empty)') : el.value;
     }
 
     function before(el) {
-        if (el.type === 'checkbox') return el.defaultChecked ? 'yes' : 'no';
+        if (el.type === 'checkbox') return el.defaultChecked ? t('Yes', 'yes') : t('No', 'no');
         if (el.tagName === 'SELECT') {
             for (var i = 0; i < el.options.length; i++) if (el.options[i].defaultSelected) return el.options[i].text;
             return el.options[0] ? el.options[0].text : '';
         }
         var d = el.hasAttribute('data-before') ? el.getAttribute('data-before') : el.defaultValue;
-        return d === '' ? '(empty)' : d;
+        return d === '' ? t('Empty', '(empty)') : d;
     }
 
     function changed(el) {
@@ -94,7 +97,7 @@
         fields.forEach(function (el) {
             if (el.type === 'radio') { if (radioSeen[el.name] || !el.checked) return; radioSeen[el.name] = 1; lines.push(labelOf(el)); return; }
             var isNew = form.hasAttribute('data-new');
-            if (el.type === 'checkbox' && el.getAttribute('aria-label')) { lines.push(labelOf(el) + ': ' + (el.checked ? 'allowed' : 'not allowed')); return; }
+            if (el.type === 'checkbox' && el.getAttribute('aria-label')) { lines.push(labelOf(el) + ': ' + (el.checked ? t('Allowed', 'allowed') : t('Notallowed', 'not allowed'))); return; }
             lines.push(isNew ? labelOf(el) + ': ' + shown(el) : labelOf(el) + ': ' + before(el) + ' → ' + shown(el));
         });
         var box = form.querySelector('.confirm');
@@ -104,7 +107,7 @@
         list.innerHTML = '';
         lines.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; list.appendChild(li); });
         var nothing = lines.length === 0 && !form.hasAttribute('data-new');
-        title.textContent = nothing ? 'Nothing has changed.' : form.getAttribute('data-confirm');
+        title.textContent = nothing ? t('Nothing', 'Nothing has changed.') : form.getAttribute('data-confirm');
         box.querySelector('[data-confirm-yes]').hidden = nothing;
         box.hidden = false;
         form.querySelectorAll('[data-hide-on-confirm]').forEach(function (n) { n.hidden = true; });
@@ -117,7 +120,7 @@
             var form = yes.closest('form');
             form.dataset.confirmed = '1';
             yes.disabled = true;
-            yes.textContent = 'Saving…';
+            yes.textContent = t('Saving', 'Saving…');
             HTMLFormElement.prototype.submit.call(form);
             return;
         }

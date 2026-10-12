@@ -190,7 +190,7 @@ td.wrap { white-space: normal; min-width: 240px; }
 label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); flex: 1 1 160px; min-width: 0; }
 label.field.wide { flex: 2 1 260px; }
 .card > label.field { flex: none; }
-input[type=text], input[type=search], input[type=date], input[type=number], input[type=password], select, textarea {
+input[type=text], input[type=search], input[type=date], input[type=datetime-local], input[type=number], input[type=password], select, textarea {
   font: inherit; font-size: 14px; color: var(--ink); background: #fff; border: 1px solid var(--field); border-radius: var(--r); min-height: 40px; padding: 0 10px; width: 100%; }
 input[type=file] { font: inherit; font-size: 13px; padding: 8px; border: 1px solid var(--field); border-radius: var(--r); background: #fff; width: 100%; }
 input[readonly] { background: var(--code); color: var(--muted); }
@@ -278,3 +278,9 @@ dialog .btn.danger[type=submit] { background: var(--bad-ink); color: #fff; }
 .paper-lines input, .paper-lines select { width: 100%; min-width: 70px; }
 .paper-lines td { padding: 4px 6px; }
 .paper-lines td:first-child { min-width: 220px; }
+
+/* ---- Language switch ------------------------------------------------------------------------------ */
+.lang { display: inline-flex; gap: 2px; }
+.lang a { padding: 2px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; }
+.lang a[aria-current="true"] { color: var(--navy); border-bottom-color: var(--orange); }
+.login-card .lang { align-self: flex-end; }

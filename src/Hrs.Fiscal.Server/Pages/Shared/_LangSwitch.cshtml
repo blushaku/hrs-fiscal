@@ -1,0 +1,11 @@
+@* Interface language. Labels are the languages' own names, so they are never translated. *@
+@{
+    var current = Hrs.Fiscal.Server.Localization.Languages.Current(Context);
+    var back = Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString);
+}
+<nav class="lang" aria-label="Gjuha / Jezik / Language" translate="no">
+    @foreach (var (code, label) in Hrs.Fiscal.Server.Localization.Languages.All)
+    {
+        <a href="/lang/@code?returnUrl=@back" lang="@code" aria-current="@(code == current ? "true" : null)" title="@label">@code.ToUpperInvariant()</a>
+    }
+</nav>

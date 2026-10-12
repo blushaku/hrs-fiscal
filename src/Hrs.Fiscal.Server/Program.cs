@@ -31,6 +31,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService();
 
 builder.Services.AddSingleton<PropertyClock>();
+builder.Services.AddSingleton<Hrs.Fiscal.Server.Localization.Translations>();
 builder.Services.AddFiscalDatabase(builder.Configuration);
 builder.Services.AddScoped<Exporter>();
 builder.Services.AddScoped<Hrs.Fiscal.Server.Data.BusinessReset>();
@@ -84,6 +85,8 @@ builder.Services.AddRazorPages(o =>
 });
 
 var app = builder.Build();
+if (app.Configuration["I18n:DefaultLanguage"] is { } defaultLanguage && Hrs.Fiscal.Server.Localization.Languages.All.Any(l => l.Code == defaultLanguage))
+    Hrs.Fiscal.Server.Localization.Languages.Default = defaultLanguage;
 
 // ---- command-line tools ---------------------------------------------------------------------
 if (args.Length > 0 && args[0] is "create-user" or "seed-demo")
@@ -134,6 +137,7 @@ catch (Exception ex)
 
 if (!app.Environment.IsDevelopment()) app.UseExceptionHandler("/Error");
 app.UseStaticFiles();
+app.UseMiddleware<Hrs.Fiscal.Server.Localization.TranslationMiddleware>();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -172,6 +176,20 @@ app.MapGet("/export/{dataset}", async (string dataset, string format, DateOnly? 
         return result is null ? Results.BadRequest() : Results.File(result.Content, result.ContentType, result.FileName);
     })
     .RequireAuthorization(Permissions.Policy(Permissions.Export));
+
+// Development aid: texts shown without a translation (only when I18n:CollectMissing is set).
+app.MapGet("/i18n/missing", (Hrs.Fiscal.Server.Localization.Translations t) =>
+    t.Missing is null ? Results.NotFound() : Results.Json(t.Missing.Keys.Order().ToArray()));
+
+// Interface language (Albanian default, Serbian Latin, English), remembered in a cookie for a year.
+app.MapGet("/lang/{code}", (string code, string? returnUrl, HttpContext http) =>
+{
+    if (!Hrs.Fiscal.Server.Localization.Languages.All.Any(l => l.Code == code)) return Results.BadRequest();
+    http.Response.Cookies.Append(Hrs.Fiscal.Server.Localization.Languages.Cookie, code,
+        new CookieOptions { MaxAge = TimeSpan.FromDays(365), HttpOnly = true, SameSite = SameSiteMode.Lax, IsEssential = true });
+    var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//") ? returnUrl : "/";
+    return Results.Redirect(target);
+}).AllowAnonymous();
 
 app.MapPost("/logout", async (HttpContext http, AuditLog audit) =>
 {
