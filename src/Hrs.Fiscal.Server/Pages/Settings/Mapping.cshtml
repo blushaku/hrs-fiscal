@@ -73,27 +73,21 @@ else
             <a class="btn small primary" href="/Settings/Mapping?Form=vat" data-dialog-open="@(form == "vat" && Model.Editing ? null : "dlg-vat-add")">Add VAT rate</a>
         </div>
         <p class="small muted" style="margin: 0 0 12px">Add the VAT rates the property uses, with the letter ATK expects for each. OPERA sends a VAT percentage per line; the rate marked <em>Matches OPERA</em> for that percentage is used. A change applies to receipts issued afterwards; receipts already issued keep their rate.</p>
-        @if (Model.Vat.Count == 0)
-        {
-            <div class="notice warn">No VAT rates yet. Receipts cannot be fiscalized until the rates are added.</div>
-        }
-        else
-        {
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Letter</th><th>Rate</th><th>Description</th><th>Matches OPERA</th><th><span class="sr-only">Edit</span></th></tr></thead>
-                    <tbody>
-                    @foreach (var v in Model.Vat)
-                    {
-                        <tr class="@(form == "vat" && Model.Key == v.Letter ? "row-current" : "")">
-                            <td class="mono">@v.Letter</td><td>@Pct(v.Percent)</td><td>@v.Description</td><td>@(v.MatchOpera ? $"yes, lines with {Pct(v.Percent)}" : "no, overrides only")</td>
-                            <td style="text-align: right"><a class="btn small" href="/Settings/Mapping?Form=vat&Key=@v.Letter">Edit</a></td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        }
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Letter</th><th>Rate</th><th>Description</th><th>Matches OPERA</th><th><span class="sr-only">Edit</span></th></tr></thead>
+                <tbody>
+                @foreach (var v in Model.Vat)
+                {
+                    <tr class="@((form == "vat" || form == "vatdel") && Model.Key == v.Letter ? "row-current" : "")">
+                        <td class="mono">@v.Letter</td><td>@Pct(v.Percent)</td><td>@v.Description</td><td>@(v.MatchOpera ? $"yes, lines with {Pct(v.Percent)}" : "no, overrides only")</td>
+                        <td class="row-actions"><a class="btn small" href="/Settings/Mapping?Form=vat&Key=@v.Letter">Edit</a> <a class="btn small danger" href="/Settings/Mapping?Form=vatdel&Key=@v.Letter">Delete</a></td>
+                    </tr>
+                }
+                @if (Model.Vat.Count == 0) { <tr><td colspan="5" class="muted">No VAT rates yet. Receipts cannot be fiscalized until the rates are added.</td></tr> }
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>
 
@@ -168,11 +162,18 @@ else
         <partial name="_ConfirmBox" model="@(editVat ? "Yes, save" : "Yes, add")" />
         <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">@(editVat ? "Save" : "Add")</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Mapping">Cancel</button></div>
     </form>
-    @if (editVat)
-    {
-        <form method="post" asp-page-handler="DeleteVat" asp-route-Key="@Model.Key" class="modal-body vat-delete" data-new="1" data-confirm="Delete VAT rate @Model.Key? Receipts already issued keep their rate.">
-            <partial name="_ConfirmBox" model="@("Yes, delete")" />
-            <div class="actions" data-hide-on-confirm><button type="submit" class="btn small danger">Delete this rate</button></div>
-        </form>
-    }
 </dialog>
+
+@* VAT rate: delete (?Form=vatdel&Key=…) *@
+@if (form == "vatdel" && Model.Editing)
+{
+    <dialog class="modal" id="dlg-vat-delete" aria-labelledby="vatdel-title" data-autoopen="1" open>
+        <div class="modal-head"><h2 id="vatdel-title">Delete VAT rate @Model.Key</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Mapping" aria-label="Close">×</button></div>
+        <form method="post" asp-page-handler="DeleteVat" asp-route-Key="@Model.Key" class="modal-body">
+            <div asp-validation-summary="All" class="validation"></div>
+            <p style="margin: 0"><span class="mono">@Model.VatInput.Letter</span> · @Pct(Model.VatInput.Percent) · @Model.VatInput.Description</p>
+            <p class="small muted">Receipts already issued keep their rate. A rate used by an OPERA override cannot be deleted until the override uses another rate.</p>
+            <div class="actions"><button type="submit" class="btn danger">Delete</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Mapping">Cancel</button></div>
+        </form>
+    </dialog>
+}

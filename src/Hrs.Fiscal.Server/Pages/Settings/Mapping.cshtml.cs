@@ -7,7 +7,7 @@ namespace Hrs.Fiscal.Server.Pages.Settings;
 
 /// <summary>
 /// Transaction codes, payment methods and VAT rates. Lists are read-only; "Add" or "Edit" opens a form
-/// (?Form=trx|pay|vat, &amp;Key=… for editing) that is saved with its own Save button.
+/// (?Form=trx|pay|vat, &amp;Key=… for editing; ?Form=vatdel&amp;Key=… asks before deleting a VAT rate) that is saved with its own Save button.
 /// </summary>
 public sealed class MappingModel(SettingsStore settings) : PageModel
 {
@@ -45,7 +45,7 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
         {
             case "trx" when Trx.SingleOrDefault(t => t.TrxCode == Key) is { } t: TrxInput = t; break;
             case "pay" when Payments.SingleOrDefault(p => p.PaymentCode == Key) is { } p: PaymentInput = p; break;
-            case "vat" when Vat.SingleOrDefault(v => v.Letter == Key) is { } v: VatInput = v; break;
+            case "vat" or "vatdel" when Vat.SingleOrDefault(v => v.Letter == Key) is { } v: VatInput = v; break;
             default: Form = null; Key = null; break;
         }
     }
@@ -115,7 +115,7 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
     public async Task<IActionResult> OnPostDeleteVatAsync()
     {
         await LoadAsync();
-        Form = "vat";
+        Form = "vatdel";
         try { await settings.DeleteVatRateAsync(Key ?? "", User.Identity!.Name!); }
         catch (InvalidOperationException ex)
         {

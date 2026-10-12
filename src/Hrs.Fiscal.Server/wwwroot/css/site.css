@@ -263,6 +263,7 @@ details.msg > summary > .badge { justify-self: start; }
 .btn.danger { border-color: var(--bad-ink); color: var(--bad-ink); }
 .btn.danger:hover { background: var(--bad-bg); color: var(--bad-ink); }
 dialog .btn.danger[type=submit] { background: var(--bad-ink); color: #fff; }
+.row-actions { text-align: right; white-space: nowrap; }
 
 /* ---- Business setup: two steps ---------------------------------------------------------------- */
 .step-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--navy, #1f2a44); display: flex; align-items: center; gap: 8px; }

@@ -49,6 +49,12 @@ public class VatRateTests(ServerFixture app) : IClassFixture<ServerFixture>
         html = await PostAsync(client, "DeleteVat", used, []);
         Assert.Contains($"VAT rate {used} is used by OPERA override(s)", html);
 
+        // Every rate has its own Delete button, which asks first.
+        Assert.Contains("Form=vatdel&Key=G", html);
+        var ask = WebUtility.HtmlDecode(await client.GetStringAsync("/Settings/Mapping?Form=vatdel&Key=G"));
+        Assert.Contains("Delete VAT rate G", ask);
+        Assert.Contains("Tourism exempt", ask);
+
         html = await PostAsync(client, "DeleteVat", "G", []);
         Assert.Contains("VAT rate G deleted", html);
         Assert.Equal(0L, await app.ScalarAsync<long>("SELECT count(*) FROM fiscal.vat_rate WHERE letter = 'G'"));
