@@ -127,23 +127,23 @@ Write it in Albanian (English annex if helpful). Suggested chapters, all materia
 ## 7. Readiness — what to do before applying
 
 **Decisions**
-1. **Which configuration we certify.** Central signing on the fiscal server (built, tested) or signing on each workstation
-   with the Fiscal Client (default setting, but the client is **not built yet**). Recommendation: certify central
+1. **Which configuration we certify.** Central signing on the fiscal server (built, tested, the default since
+   12.10.2026) or signing on each workstation with the Fiscal Client (**not built yet**). Recommendation: certify central
    signing first, with ATK's written agreement (open question #10), and notify the client later as a change under Art. 7.4.
 2. **Applicant.** Decided 09.10.2026: the application is made by a **natural person without a registered business**
    (5.2: copy of personal ID). Product name: **Opera Cloud Fiscal Solution - Kosovo**.
 
-**Product gaps**
-| # | Gap | Why it matters | Owner |
+**Product gaps** (status 12.10.2026; full requirement-by-requirement review in the *ATK Compliance Review* doc)
+| # | Gap | Why it matters | Status |
 |---|---|---|---|
-| 1 | Fiscal block on the OPERA folio: QR, NUIKF, SEF ID, *e-kupon*, RKS logo | The receipt the guest gets is the folio; "accuracy of receipt generation" will be judged on it | Developer + Oracle (FLIP response format) |
-| 2 | "OFFLINE" mark on folios issued while ATK is unreachable | Required by the technical spec | Developer (after #1) |
-| 3 | KOPJE E KUPONIT on OPERA reprints | Required for copies; we only mark the fiscal server's own PDF copies | Developer + Oracle/ATK |
-| 4 | Albanian (and Serbian) texts on the receipt and in the user interface | Receipt content in Albanian and Serbian, Latin script | Developer |
-| 5 | Clock check against ATK | Spec requires time synchronised with ATK | Developer (add a check + alert) |
-| 6 | Working ATK TEST profile | The current fiscalization number returns 404 on `/ca/verify`; the Commission demo needs registration to work | Hotel/developer: new number from EDI |
-| 7 | Fiscal Client (only if certifying workstation signing) | Not built | Developer |
-| 8 | Release for certification | Version 1.0.0 set 10.10.2026 for submission; tag it, keep source and build reproducible; Art. 7.4 applies to every later change | Developer |
+| 1 | Fiscal block on the OPERA folio: QR, NUIKF, SEF ID, daily no., OFFLINE, *e-kupon*, RKS logo | The receipt the guest gets is the folio | Server side done: the answer to OPERA carries every field and the ready-to-print lines (`FiscalText`). **Printing waits for Oracle's FLIP response format** |
+| 2 | "OFFLINE" mark | Required by the technical spec (Art 26.13, 28.6) | Done 12.10.2026 (receipt status, copies, answer to OPERA) |
+| 3 | KOPJE E KUPONIT on OPERA reprints | Required for copies | Fiscal server copies done; OPERA reprints depend on Oracle/ATK |
+| 4 | Albanian and Serbian interface | Official languages, Latin script (Art 25.14) | Done 12.10.2026 (Albanian default, Serbian Latin, English) |
+| 5 | Clock check against ATK | Time synchronised with ATK (Art 26.5) | Done 12.10.2026 |
+| 6 | Working ATK TEST profile | The Commission demo needs registration to work | Open: new TEST fiscalization number from EDI |
+| 7 | Daily receipt number, Cancel receipt with reason, paper-block entry | Named in Art 25.11, 25.16, 25.18 | Done 12.10.2026 |
+| 8 | Release for certification | Art 7.4 applies to every later change | Version 1.0.0; tag the release that is submitted |
 
 **Documents**
 - Application form (annex) — **ask ATK for it.**
@@ -151,7 +151,6 @@ Write it in Albanian (English annex if helpful). Suggested chapters, all materia
 - User manual in Albanian: front desk (what changes at check-out, offline, reprint), administrator (settings,
   workstations, exports, audit), installation (existing manual, translated).
 - Declaration of compliance, signed.
-- ARBK certificate.
 
 **Written answers to get from ATK before submitting** (they decide what the Commission will test against):
 - Central signing on one server for several POS — acceptable? (#10)

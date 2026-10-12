@@ -29,7 +29,14 @@ what OPERA stored from the answer; the QR image is drawn by OPERA from a **QR Co
 | SEF ID | `SefId` | Unit–NUI–POS |
 | ATK transaction | `AtkTransactionId` | Empty while `AtkStatus` = `pending` (receipt is still valid; the fiscal server sends it later) |
 | Date/time of the receipt | `IssuedAt` | |
+| Daily receipt number | `DailyNo` | "KUPON FISKAL DITOR NR. 0001": per workstation and day (Doc. 01-06-1967 Art 25.18) |
+| Receipt type | `ReceiptType` | KUPON FISKAL · KUPON FISKAL KTHIMI (return) · KUPON FISKAL I ANULUAR (cancellation) |
+| **OFFLINE** | `Offline` = true | Required on every receipt issued while ATK was unreachable (Art 26.13, 28.6) |
 | Text **e-kupon** | fixed text | |
+
+`FiscalText` carries all of these lines ready to print, in ATK's order (type, SEF ID, NUIKF, receipt number, daily
+number, OFFLINE when it applies, e-kupon). A template that prints `FiscalText` line by line needs no conditional logic
+for OFFLINE.
 
 The QR text is typically 250–400 characters and grows with the number of VAT groups, so it needs a QR version
 that holds at least ~450 bytes (see step 4).

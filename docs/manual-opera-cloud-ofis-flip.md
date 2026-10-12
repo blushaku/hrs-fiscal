@@ -186,9 +186,14 @@ not registered…) are answered with HTTP 422 and the reason, and logged as `FOL
 { "Status": "OK", "Message": "Fiscalized.", "FiscalFolioId": "67838",
   "FiscalBillNo": "10000000001", "VerificationNo": "4NASS5E3UZPE3P9N", "SefId": "1-811159898-901",
   "AtkStatus": "accepted", "AtkTransactionId": "14174883308481107345", "QrCode": "<base64>|<signature>",
+  "DailyNo": 1, "Offline": false, "ReceiptType": "KUPON FISKAL",
+  "FiscalText": ["KUPON FISKAL", "NR. IDENTIFIKUES I SEF: 1-811159898-901", "NUIKF: 4NASS5E3UZPE3P9N",
+                 "KUPONI NR. 10000000001", "KUPON FISKAL DITOR NR. 0001", "e-kupon"],
   "IssuedAt": "2026-10-09T17:24:02", "TotalCents": 19000, "Duplicate": false, "TestEnvironment": true }
 ```
 Errors: `{ "Status": "ERROR", "Message": "…", "FiscalFolioId": "…" }` with HTTP 422 (500 for internal errors).
+When ATK cannot be reached, the receipt is still issued: `AtkStatus` is `pending`, `Offline` is `true` and
+`FiscalText` contains `OFFLINE`; the folio must print it.
 
 **Demo properties outside Kosovo** (e.g. an Albanian training hotel with 6 % VAT and ALL): such folios are refused
 because 6 % is not a Kosovo rate. For tests only, turn on OPERA overrides and give the transaction codes a Kosovo VAT

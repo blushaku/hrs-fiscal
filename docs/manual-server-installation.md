@@ -130,13 +130,19 @@ All settings below are stored in the database and every change is written to the
 | ATK environment | **Test** until the hotel goes live, then **Production**. Never send test receipts to production |
 | Application ID | Shown here; entered under *Business & unit* together with the fiscalization number |
 | Timeout / retry | 10 s / 2 min (defaults) |
-| **Signing** | *Workstation client* or *Central* — see 5.4 |
+| **Signing** | *Central* (default) or *Workstation client* — see 5.5. The Fiscal Client is not available yet, so keep *Central* |
 | OPERA overrides | Off (default). Turn on only if OPERA cannot send a field correctly; then set the codes under *OPERA overrides & VAT* |
 | OPERA / FLIP connection | **Capture** during setup (records what FLIP sends). **Live** once fiscalization is enabled |
 | FLIP access token | **Generate token**, copy it into FLIP's partner configuration (shown only once), keep *Require the token* on. Header: `Authorization` unless FLIP uses another one. *Generate new token* replaces the old one at once, so update FLIP at the same time |
 | VAT calculation | Round VAT half-up (default) — pending ATK's official rule |
 | Folio validation | Property always checked; tax number check on; tolerance €0.01 per line. See the OPERA manual §8 |
 | Retention | Placeholder 10 years until the legal period is confirmed. Nothing is ever deleted automatically |
+| Clock check | Automatic every 15 minutes against ATK's server time. If the difference exceeds 30 s (`clock_max_drift_seconds`), the dashboard shows an alert and the audit log records `CLOCK_DRIFT`; synchronise Windows time (`w32tm /resync`) |
+
+**Language.** The interface is in **Albanian** by default; **Serbian (Latin)** and **English** are chosen with
+*SQ · SR · EN* in the header or on the sign-in page and remembered per browser. Receipt texts (copies, the fiscal
+lines sent to OPERA) are always in Albanian, as in ATK's samples. To start the interface in another language for
+everyone, set `I18n:DefaultLanguage` (`sq`, `sr` or `en`) in `appsettings.json`.
 
 ### 5.2 Settings › Business
 
@@ -237,9 +243,29 @@ available with the client release).
 ### 5.6 OPERA Cloud and FLIP
 
 Follow [manual-opera-cloud-ofis-flip.md](manual-opera-cloud-ofis-flip.md). Afterwards, check the **FLIP messages** page (left menu):
-every folio OPERA sends must appear there.
+every folio OPERA sends must appear there. The answer to OPERA contains the fiscal lines to print (`FiscalText`),
+including the daily number and, when ATK was unreachable, OFFLINE; see the folio printing manual.
 
-### 5.7 Reports and logs per workstation
+### 5.7 Corrections: cancellation and paper-block receipts
+
+**Cancellation** (*Receipts › open a receipt › Cancel receipt…*, permission *Cancel receipts*; Admin and Supervisor
+by default). For an error found after a sale receipt was issued: enter the reason (printed on the receipt as
+*ARSYEJA E ANULIMIT*). A **cancellation receipt** (*KUPON FISKAL I ANULUAR*) with the same lines and amounts is issued,
+linked to the original, signed with the same workstation's key and sent to ATK. A receipt can be cancelled once, and
+not when a return already refers to it; to give back part of an amount, issue a return (credit folio) in OPERA.
+
+**Paper-block receipts** (*Receipts › Enter paper receipt*, permission *Enter paper-block receipts*). When a
+workstation or the fiscal server stops completely, receipts are written from ATK's special paper block. Within 48
+hours the system must work again; within 5 days after that, enter every paper receipt: workstation, the serial number
+printed on the paper, the date and time written on it, who wrote it, the lines and the payment. The receipt is signed,
+keeps the paper serial and the written time, and is sent to ATK. A serial can be entered only once.
+
+**Daily number and OFFLINE.** Every receipt gets a daily number per workstation (*Kupon fiskal ditor nr.*). A receipt
+issued while ATK cannot be reached is marked **OFFLINE**: on its copy, on the receipt page and in the answer to OPERA,
+which must print it on the folio. Unsent receipts are resent automatically; the dashboard warns at 48 hours and before
+the 10th of the following month.
+
+### 5.8 Reports and logs per workstation
 
 Receipts, Audit log and Export all filter by **workstation**. *Receipts* and *Audit log* have **Export CSV / PDF**
 buttons that export exactly the filtered view (period, workstation, status or event). *Export* also offers a
