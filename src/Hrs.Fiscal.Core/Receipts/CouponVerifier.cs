@@ -57,6 +57,7 @@ public static class CouponVerifier
         if (paid != c.Total) errors.Add($"Payments {paid / 100m:0.00} do not equal the receipt total {c.Total / 100m:0.00}.");
         if (c.Payments.Any(p => p.Amount <= 0)) errors.Add("A payment amount is zero or negative.");
         if (c.Type == CouponType.Return && c.ReferenceNo == 0) errors.Add("A return must refer to the original receipt.");
+        if (c.Type == CouponType.Cancel && c.ReferenceNo == 0) errors.Add("A cancellation must refer to the original receipt.");
         return errors;
     }
 }

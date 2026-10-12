@@ -17,6 +17,7 @@
     </div>
     <div class="actions">
         @if ((await RolePerms.ForUserAsync(User)).Contains(Permissions.ReceiptsCopy)) { <a class="btn primary" href="/receipts/@r.Id/copy.pdf">Download copy (PDF)</a> }
+        @if (Model.CanCancel) { <a class="btn" href="/Receipts/Detail/@r.Id?Cancel=true" data-dialog-open="dlg-cancel">Cancel receipt…</a> }
     </div>
 </div>
 
@@ -33,7 +34,10 @@
             <div>Workstation</div><div>@r.TerminalLabel · POS @r.PosId</div>
             <div>Cashier</div><div>@r.OperatorId</div>
             <div>Application ID</div><div class="mono">@r.ApplicationId</div>
-            <div>Issued offline</div><div>@(r.IssuedOffline ? "Yes — marked OFFLINE" : "No")</div>
+            <div>Daily number</div><div class="mono">@(r.DailyNo is { } dn ? dn.ToString("0000") : "—")</div>
+            @if (r.CancelReason is not null) { <div>Reason for cancellation</div><div>@r.CancelReason</div> }
+            @if (r.PaperSerial is not null) { <div>Paper block</div><div>Entered from paper receipt <span class="mono">@r.PaperSerial</span></div> }
+            <div>Issued offline</div><div>@(r.Offline ? "Yes — marked OFFLINE" : "No")</div>
             <div>Record hash</div><div class="mono muted">@(r.RowHash is null ? "—" : Convert.ToHexString(r.RowHash)[..8].ToLowerInvariant() + "…")</div>
         </div>
     </section>
@@ -137,3 +141,20 @@
 
 signature: @r.Signature</pre>
 </details>
+
+@if (Model.CanCancel)
+{
+    <dialog class="modal" id="dlg-cancel" aria-labelledby="dlg-cancel-title" data-autoopen="@(Model.Cancel ? "1" : null)" open="@Model.Cancel">
+        <div class="modal-head"><h2 id="dlg-cancel-title">Cancel receipt @r.CouponId</h2><button type="button" class="modal-close" data-dialog-close data-return="/Receipts/Detail/@r.Id" aria-label="Close">×</button></div>
+        <form method="post" asp-page-handler="Cancel" asp-route-id="@r.Id" class="modal-body" data-new="1" data-confirm="Issue a cancellation receipt for receipt @r.CouponId (@((r.TotalCents / 100m).ToString("0.00", inv)) €)? It is sent to ATK and cannot be undone.">
+            <p style="margin: 0">For an error found after the receipt was issued. A <strong>cancellation receipt</strong> (KUPON FISKAL I ANULUAR) with the same lines and amounts is issued, linked to this receipt and sent to ATK. To give back part of the amount, use a return (credit folio) in OPERA instead.</p>
+            <label class="field">Reason for the cancellation (printed on the receipt) <input type="text" name="Reason" maxlength="200" required placeholder="e.g. Gabim gjatë shtypjes" autocomplete="off"></label>
+            <partial name="_ConfirmBox" model="@("Yes, issue the cancellation")" />
+            <div class="actions" data-hide-on-confirm><button type="submit" class="btn danger">Issue cancellation receipt</button><button type="button" class="btn" data-dialog-close data-return="/Receipts/Detail/@r.Id">Back</button></div>
+        </form>
+    </dialog>
+}
+else if (Model.CannotCancel is not null && r.CouponType == 1)
+{
+    <p class="small muted">Cancellation not possible: @Model.CannotCancel</p>
+}

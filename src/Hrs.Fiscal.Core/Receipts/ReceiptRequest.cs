@@ -21,7 +21,7 @@ public sealed record ReceiptRequest
     public required DateTimeOffset IssuedAt { get; init; }
     public CouponType Type { get; init; } = CouponType.Sale;
 
-    /// <summary>CouponId of the original sale. Required for Return (and Cancel, which HRS does not use).</summary>
+    /// <summary>CouponId of the original sale. Required for Return and Cancel.</summary>
     public ulong ReferenceNo { get; init; }
 
     public required IReadOnlyList<ReceiptLine> Lines { get; init; }

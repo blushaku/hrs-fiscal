@@ -7,7 +7,11 @@ using Npgsql;
 namespace Hrs.Fiscal.Server.Data;
 
 /// <summary>Appends signed receipts and their transmission attempts to the archive.</summary>
-public sealed class ReceiptArchive(NpgsqlDataSource db)
+/// <param name="CancelReason">Reason printed on a Cancel receipt.</param>
+/// <param name="PaperSerial">Serial number of a receipt written from the special paper block.</param>
+public sealed record ReceiptExtras(string? CancelReason = null, string? PaperSerial = null);
+
+public sealed class ReceiptArchive(NpgsqlDataSource db, PropertyClock clock)
 {
     public async Task<long> NextCouponIdAsync(long branchId, CancellationToken ct = default)
     {
@@ -25,15 +29,18 @@ public sealed class ReceiptArchive(NpgsqlDataSource db)
     }
 
     public async Task<long> AppendReceiptAsync(PosCoupon coupon, SignedPayload signedPos, string qrString, long terminalId,
-        bool issuedOffline, long? sourcePayloadId, string? sourceDocument, CancellationToken ct = default)
+        bool issuedOffline, long? sourcePayloadId, string? sourceDocument, CancellationToken ct = default, ReceiptExtras? extras = null)
     {
+        // Daily number: per workstation and property day of issue; assigned by the chain trigger.
+        var day = DateOnly.FromDateTime(clock.ToLocal(DateTimeOffset.FromUnixTimeSeconds((long)coupon.Time).UtcDateTime));
         await using var conn = await db.OpenConnectionAsync(ct);
         return await conn.ExecuteScalarAsync<long>("""
             INSERT INTO fiscal.receipt (coupon_id, verification_no, coupon_type, reference_coupon_id, business_nui, branch_id, pos_id,
                 terminal_id, application_id, operator_id, source_payload_id, source_document, issued_at, issued_offline,
-                total_cents, total_tax_cents, pos_coupon, signature, qr_string)
+                total_cents, total_tax_cents, pos_coupon, signature, qr_string, issued_day, cancel_reason, paper_serial)
             VALUES (@couponId, @verificationNo, @type, @reference, @nui, @branch, @pos, @terminalId, @app, @operatorId,
-                @sourcePayloadId, @sourceDocument, to_timestamp(@time), @issuedOffline, @total, @tax, @bytes, @signature, @qrString)
+                @sourcePayloadId, @sourceDocument, to_timestamp(@time), @issuedOffline, @total, @tax, @bytes, @signature, @qrString,
+                @day, @cancelReason, @paperSerial)
             RETURNING id
             """, new
         {
@@ -57,6 +64,9 @@ public sealed class ReceiptArchive(NpgsqlDataSource db)
             bytes = Convert.FromBase64String(signedPos.Details),
             signature = signedPos.Signature,
             qrString,
+            day = day.ToDateTime(TimeOnly.MinValue),
+            cancelReason = extras?.CancelReason,
+            paperSerial = extras?.PaperSerial,
         });
     }
 

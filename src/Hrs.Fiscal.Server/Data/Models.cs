@@ -41,6 +41,8 @@ public sealed class ReceiptListRow
     public long TotalCents { get; init; }
     public string Status { get; init; } = "";
     public decimal? AtkTransactionId { get; init; }
+    public int? DailyNo { get; init; }
+    public string? PaperSerial { get; init; }
 }
 
 public sealed class ReceiptDetail
@@ -60,6 +62,11 @@ public sealed class ReceiptDetail
     public string? SourceDocument { get; init; }
     public DateTime IssuedAt { get; init; }
     public bool IssuedOffline { get; init; }
+    /// <summary>Issued while ATK could not be reached (receipt_status.offline): printed "OFFLINE".</summary>
+    public bool Offline { get; init; }
+    public int? DailyNo { get; init; }
+    public string? CancelReason { get; init; }
+    public string? PaperSerial { get; init; }
     public long TotalCents { get; init; }
     public long TotalTaxCents { get; init; }
     public byte[] PosCoupon { get; init; } = [];
@@ -140,6 +147,8 @@ public sealed class DashboardStats
     public long Pending { get; init; }
     public DateTime? OldestPendingIssuedAt { get; init; }
     public long Overdue48h { get; init; }
+    /// <summary>Unsent receipts from an earlier month: they must reach ATK by the 10th of this month (UA Art 44.6).</summary>
+    public long PendingPreviousMonth { get; init; }
     public long RejectedToday { get; init; }
     public long Rejected30Days { get; init; }
 }

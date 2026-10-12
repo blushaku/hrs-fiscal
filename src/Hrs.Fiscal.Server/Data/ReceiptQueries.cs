@@ -9,7 +9,7 @@ public sealed class ReceiptQueries(NpgsqlDataSource db, PropertyClock clock)
     private const string ListColumns = """
         r.id, r.coupon_id, r.verification_no, r.coupon_type, r.reference_coupon_id, r.source_document,
         r.operator_id, coalesce(t.opera_terminal_id, t.hostname) AS terminal_label, r.pos_id, r.issued_at,
-        r.issued_offline, r.total_cents, s.status, s.atk_transaction_id
+        s.offline AS issued_offline, r.total_cents, s.status, s.atk_transaction_id, r.daily_no, r.paper_serial
         """;
 
     private const string FromClause = """
@@ -43,11 +43,18 @@ public sealed class ReceiptQueries(NpgsqlDataSource db, PropertyClock clock)
         await foreach (var row in reader.WithCancellation(ct)) yield return row!;
     }
 
+    /// <summary>When the receipt with this CouponId was issued (for "KUPON FISKAL NR. … DATË" on returns and cancellations).</summary>
+    public async Task<DateTime?> IssuedAtAsync(long couponId, CancellationToken ct = default)
+    {
+        await using var conn = await db.OpenConnectionAsync(ct);
+        return await conn.ExecuteScalarAsync<DateTime?>("SELECT issued_at FROM fiscal.receipt WHERE coupon_id = @couponId", new { couponId });
+    }
+
     public async Task<ReceiptDetail?> GetAsync(long id, CancellationToken ct = default)
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         return await conn.QuerySingleOrDefaultAsync<ReceiptDetail>("""
-            SELECT r.*, coalesce(t.opera_terminal_id, t.hostname) AS terminal_label, s.status, s.atk_transaction_id,
+            SELECT r.*, coalesce(t.opera_terminal_id, t.hostname) AS terminal_label, s.status, s.atk_transaction_id, s.offline,
                    b.name AS business_name, b.vat_no, br.name AS branch_name, br.location, br.address
             FROM fiscal.receipt r
             JOIN fiscal.receipt_status s ON s.id = r.id
@@ -143,6 +150,7 @@ public sealed class DashboardQueries(NpgsqlDataSource db, PropertyClock clock)
     {
         var today = clock.Today;
         var (from, to) = DbSetup.ToUtcRange(today, today, clock.TimeZone);
+        var monthStart = DbSetup.ToUtcRange(new DateOnly(today.Year, today.Month, 1), today, clock.TimeZone).Item1;
         await using var conn = await db.OpenConnectionAsync(ct);
         return await conn.QuerySingleAsync<DashboardStats>("""
             SELECT
@@ -152,8 +160,9 @@ public sealed class DashboardQueries(NpgsqlDataSource db, PropertyClock clock)
               (SELECT count(*) FROM fiscal.offline_queue) AS pending,
               (SELECT min(issued_at) FROM fiscal.offline_queue) AS oldest_pending_issued_at,
               (SELECT count(*) FROM fiscal.offline_queue WHERE overdue_48h) AS overdue48h,
+              (SELECT count(*) FROM fiscal.offline_queue WHERE issued_at < @monthStart) AS pending_previous_month,
               (SELECT count(*) FROM fiscal.receipt_status WHERE issued_at >= @from AND issued_at < @to AND status = 'rejected') AS rejected_today,
               (SELECT count(*) FROM fiscal.receipt_status WHERE issued_at >= now() - interval '30 days' AND status = 'rejected') AS rejected30days
-            """, new { from, to });
+            """, new { from, to, monthStart });
     }
 }

@@ -26,7 +26,7 @@ public class OperaPayloadTests
         var pay = Assert.Single(f.Payments);
         Assert.Equal(("900000", "Cash", 19000m), (pay.TrxCode, pay.Description, pay.Amount));
         Assert.Equal(f.Gross, f.Paid);
-        Assert.Equal("TEST.USER", f.Operator);
+        Assert.Equal("TEST.USER (2)", f.Operator);   // OPERA user and cashier ID (UA Art 7.2.5)
     }
 
     [Fact]

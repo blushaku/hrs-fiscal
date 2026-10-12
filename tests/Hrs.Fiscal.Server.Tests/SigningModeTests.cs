@@ -75,9 +75,12 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
     }
 
     [PgFact]
-    public async Task Default_is_workstation_client_and_registering_on_the_server_is_refused()
+    public async Task Default_is_central_and_client_mode_refuses_registering_on_the_server()
     {
-        Assert.Equal("\"client\"", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'signing_mode_default'"));
+        // A new installation signs centrally (the Fiscal Client is not available yet).
+        Assert.Equal("\"server\"", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'signing_mode_default' AND updated_by = 'migration'")
+                                   ?? "\"server\"");
+        await SetAsync(new() { ["signing_mode_default"] = "client" });
         var id = await TerminalIdAsync(11);
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
         var page = await client.GetStringAsync($"/Settings/Workstations?Edit={id}");
@@ -88,6 +91,7 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
             new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token }));
         Assert.Contains("Register it from the client", await client.GetStringAsync($"/Settings/Workstations?Edit={id}"));
         Assert.Null(await app.ScalarAsync<string>($"SELECT key_reference FROM fiscal.terminal WHERE id = {id}"));
+        await SetAsync(new() { ["signing_mode_default"] = "server" });
     }
 
     [PgFact]
@@ -153,8 +157,7 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
     [PgFact]
     public async Task Changing_the_property_mode_flags_workstations_registered_elsewhere()
     {
-        await SetAsync(new() { ["signing_mode_default"] = "server" });
-        try
+        // Demo workstation 13 was registered on its Fiscal Client; the property signs centrally (the default).
         {
             using var scope = app.Services.CreateScope();
             var settings = scope.ServiceProvider.GetRequiredService<SettingsStore>();
@@ -162,10 +165,6 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
             Assert.Equal(TerminalSigningState.RegisterAgain, t13.SigningState(await settings.SigningModeDefaultAsync()));
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 scope.ServiceProvider.GetRequiredService<TerminalEnrollment>().OpenKeyAsync(t13.Id));
-        }
-        finally
-        {
-            await SetAsync(new() { ["signing_mode_default"] = "client" });
         }
     }
 }

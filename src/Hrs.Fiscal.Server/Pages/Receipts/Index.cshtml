@@ -4,6 +4,7 @@
 @{
     var perms = await RolePerms.ForUserAsync(User);
     var canExport = perms.Contains(Permissions.Export);
+    var canPaper = perms.Contains(Permissions.ReceiptsPaper);
     ViewData["Title"] = "Receipts";
     var statuses = new (string? Key, string Label)[] { (null, "All"), ("accepted", "Accepted"), ("pending", "Waiting to send"), ("rejected", "Rejected") };
 }
@@ -12,11 +13,15 @@
         <h1>Receipts</h1>
         <p>All fiscal receipts are kept permanently and cannot be edited or deleted.</p>
     </div>
-    @if (canExport)
+    @if (canExport || canPaper)
     {
         <div class="actions">
-            <a class="btn" href="@Model.ExportLink("csv")">Export CSV</a>
-            <a class="btn" href="@Model.ExportLink("pdf")">Export PDF</a>
+            @if (canPaper) { <a class="btn" href="/Receipts/Paper">Enter paper receipt</a> }
+            @if (canExport)
+            {
+                <a class="btn" href="@Model.ExportLink("csv")">Export CSV</a>
+                <a class="btn" href="@Model.ExportLink("pdf")">Export PDF</a>
+            }
         </div>
     }
 </div>
@@ -38,6 +43,7 @@
             <option value="">All</option>
             <option value="1">Sale</option>
             <option value="3">Return</option>
+            <option value="2">Cancel</option>
         </select>
     </label>
     <input type="hidden" asp-for="Status">

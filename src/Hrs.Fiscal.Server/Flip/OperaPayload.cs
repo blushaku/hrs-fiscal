@@ -121,6 +121,8 @@ public static class OperaPayload
         var resv = root["ReservationInfo"] as JsonObject;
         var user = root["FiscalFolioUserInfo"] as JsonObject;
         var appUser = Str(user, "AppUser");
+        var cashierId = Str(Array(folio["Postings"]).FirstOrDefault(), "CashierId");
+        var userName = appUser is { Length: > 0 } ? appUser.Split('@')[0] : null;
         return new OperaFolio
         {
             FiscalFolioId = Str(doc, "FiscalFolioId") is { Length: > 0 } id ? id : throw new FormatException("DocumentInfo.FiscalFolioId is missing."),
@@ -129,7 +131,14 @@ public static class OperaPayload
             HotelCode = Str(doc, "HotelCode") ?? "",
             CountryCode = Str(doc, "CountryCode") ?? "",
             LocalCurrency = Str(root["HotelInfo"], "LocalCurrency") ?? "",
-            Operator = appUser is { Length: > 0 } ? appUser.Split('@')[0] : Str(Array(folio["Postings"]).FirstOrDefault(), "CashierId"),
+            // Operator name and identification number (UA Art 7.2.5): OPERA user and cashier ID.
+            Operator = (userName, cashierId) switch
+            {
+                ({ } n, { Length: > 0 } c) => $"{n} ({c})",
+                ({ } n, _) => n,
+                (_, { Length: > 0 } c) => c,
+                _ => null,
+            },
             FolioReference = resv is null ? null : $"Folio {Str(doc, "FiscalFolioId")} · conf. {Str(resv, "ConfirmationNo")} · room {Str(resv, "RoomNumber")}",
             AssociatedFiscalBillNo = udfs.GetValueOrDefault("FLIP_ASSOCIATED_FISCAL_BILL_NO"),
             HotelInfoCode = Str(root["HotelInfo"], "HotelCode") ?? "",

@@ -112,7 +112,8 @@ else
         <div class="form-grid">
             <label class="field">OPERA code <input type="text" asp-for="TrxInput.TrxCode" readonly="@editTrx" autocomplete="off" placeholder="1000"></label>
             <label class="field">Item name on receipt <input type="text" asp-for="TrxInput.ItemName" placeholder="Accommodation"></label>
-            <label class="field">Unit <input type="text" asp-for="TrxInput.Unit" placeholder="nate, cope…"></label>
+            <label class="field">Unit <input type="text" asp-for="TrxInput.Unit" list="atk-units" placeholder="nate, cope…"></label>
+            <partial name="_AtkUnits" />
             <label class="field">ATK category
                 <input type="text" asp-for="TrxInput.Category" list="categories" placeholder="HT">
                 <datalist id="categories">@foreach (var cat in Hrs.Fiscal.Server.Pages.Settings.MappingModel.SuggestedCategories) { <option value="@cat.Code">@cat.Label</option> }</datalist>

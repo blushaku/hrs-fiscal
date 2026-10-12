@@ -1,0 +1,66 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Receipts.PaperModel
+@{
+    ViewData["Title"] = "Enter paper receipt";
+}
+<div><a href="/Receipts">← Back to receipts</a></div>
+<div class="page-head">
+    <div>
+        <h1>Enter a paper-block receipt</h1>
+        <p>When the workstation or the fiscal server stops working completely, receipts are written from the special paper block. Enter each one here within 5 days after the system works again (at most 48 hours + 5 days). It is signed and sent to ATK with the serial number and the time written on the paper.</p>
+    </div>
+</div>
+
+<form method="post" class="card" style="display: flex; flex-direction: column; gap: 14px" data-new="1" data-confirm="Enter this paper receipt and send it to ATK?">
+    <div asp-validation-summary="All" class="validation"></div>
+    <div class="form-grid">
+        <label class="field">Workstation (POS)
+            <select name="PosId" required>
+                <option value="">Choose…</option>
+                @foreach (var t in Model.Terminals) { <option value="@t.PosId" selected="@(Model.PosId == t.PosId)">POS @t.PosId · @(t.OperaTerminalId ?? t.Hostname)</option> }
+            </select>
+        </label>
+        <label class="field">Serial number on the paper receipt <input type="text" asp-for="Serial" autocomplete="off" required></label>
+        <label class="field">Date and time written on it <input type="datetime-local" asp-for="IssuedAt" required></label>
+        <label class="field">Written by <input type="text" asp-for="Operator" required></label>
+        <label class="field">Payment
+            <select asp-for="Payment">
+                <option value="Cash">Cash</option>
+                <option value="CreditCard">Card</option>
+                <option value="Voucher">Voucher</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
+            </select>
+        </label>
+    </div>
+    @if (Model.Vat.Count == 0)
+    {
+        <div class="notice warn">No VAT rates are set up. Add them under <a href="/Settings/Mapping#vat">Settings › OPERA overrides &amp; VAT</a> first.</div>
+    }
+    <div class="table-wrap">
+        <table class="paper-lines">
+            <thead><tr><th>Item or service</th><th>Quantity</th><th>Unit price (VAT incl.)</th><th>VAT</th><th>Unit</th></tr></thead>
+            <tbody>
+            @for (var i = 0; i < Model.Lines.Count; i++)
+            {
+                <tr>
+                    <td><input type="text" name="Lines[@i].Name" value="@Model.Lines[i].Name" aria-label="Line @(i + 1) item"></td>
+                    <td><input type="number" step="0.001" min="0" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" aria-label="Line @(i + 1) quantity"></td>
+                    <td><input type="number" step="0.0001" min="0" name="Lines[@i].UnitPrice" value="@Model.Lines[i].UnitPrice" aria-label="Line @(i + 1) unit price"></td>
+                    <td>
+                        <select name="Lines[@i].TaxRate" aria-label="Line @(i + 1) VAT rate">
+                            <option value=""></option>
+                            @foreach (var v in Model.Vat) { <option value="@v.Letter" selected="@(Model.Lines[i].TaxRate == v.Letter)">@v.Letter · @v.Percent.ToString("0.##") %</option> }
+                        </select>
+                    </td>
+                    <td><input type="text" name="Lines[@i].Unit" value="@Model.Lines[i].Unit" list="atk-units" aria-label="Line @(i + 1) unit"></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_AtkUnits" />
+    <p class="small muted" style="margin: 0">Empty lines are ignored. Identical lines are merged into one, as on every receipt.</p>
+    <partial name="_ConfirmBox" model="@("Yes, enter and send")" />
+    <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Enter and send to ATK</button><a class="btn" href="/Receipts">Cancel</a></div>
+</form>

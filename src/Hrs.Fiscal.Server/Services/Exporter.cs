@@ -95,80 +95,104 @@ public sealed class Exporter(ReceiptQueries receipts, AuditLog audit, SettingsSt
         return new ExportFile(content, format == "csv" ? "text/csv; charset=utf-8" : "application/pdf", fileName, rows.Count);
     }
 
-    /// <summary>PDF copy of one fiscal receipt, marked "KOPJE E KUPONIT". Logged as REPRINT.</summary>
+    /// <summary>
+    /// PDF copy of one fiscal receipt, marked "KOPJE E KUPONIT", laid out like ATK's SEF receipt samples
+    /// (Doc. 01-06-1967 Art 25.18, Annex F). Logged as REPRINT.
+    /// </summary>
     public async Task<ExportFile?> ReceiptCopyPdfAsync(long id, string actor, CancellationToken ct)
     {
         var r = await receipts.GetAsync(id, ct);
         if (r is null) return null;
         var coupon = PosCoupon.Parser.ParseFrom(r.PosCoupon);
         var qr = QrRenderer.Png(r.QrString, 8);
+        var rates = (await settings.VatRatesAsync(ct)).ToDictionary(v => v.Letter, v => v.Percent);
+        var inv = CultureInfo.InvariantCulture;
+        string Eur(long cents) => (cents / 100m).ToString("0.00", inv);
+        string Price(long units) => (units / 10000m).ToString("0.00##", inv);
+        DateTime? referenceAt = null;
+        if (r.ReferenceCouponId is { } refId)
+            referenceAt = await receipts.IssuedAtAsync(refId, ct);
 
         var pdf = Document.Create(doc => doc.Page(page =>
         {
-            page.Size(PageSizes.A5);
-            page.Margin(28);
-            page.DefaultTextStyle(t => t.FontSize(9));
+            page.Size(80, 297, Unit.Millimetre);       // thermal-receipt width (Art 26.14: 58–100 mm)
+            page.ContinuousSize(80, Unit.Millimetre);
+            page.Margin(4, Unit.Millimetre);
+            page.DefaultTextStyle(t => t.FontSize(7.5f));
             page.Content().Column(col =>
             {
-                col.Spacing(6);
-                col.Item().AlignCenter().Text(r.BusinessName).Bold().FontSize(12);
-                col.Item().AlignCenter().Text($"NUI: {r.BusinessNui}" + (string.IsNullOrEmpty(r.VatNo) ? "" : $" · TVSH: {r.VatNo}"));
-                col.Item().AlignCenter().Text($"{r.Address ?? r.Location} · Njësia: {r.BranchId}");
-                col.Item().Border(1.5f).Padding(4).AlignCenter().Text("KOPJE E KUPONIT").Bold().FontSize(12);
-                col.Item().AlignCenter().Text($"KUPON FISKAL · {CouponTypes.Label(r.CouponType).ToUpperInvariant()}").Bold();
+                col.Spacing(2.5f);
+                void Head(string k, string? v) { if (!string.IsNullOrWhiteSpace(v)) col.Item().Text($"{k}: {v}"); }
+                Head("TATIMPAGUESI", r.BusinessName);
+                Head("EMRI I NJËSISË", r.BranchName);
+                Head("ADRESA E NJËSISË", r.Address);
+                Head("VENDI", r.Location);
+                Head("NF-NUI", r.BusinessNui.ToString(inv));
+                Head("NUMRI I TVSH-SË", r.VatNo);
+                Head("EMRI I PUNËTORIT", r.OperatorId);
+                col.Item().PaddingVertical(2).Border(1).Padding(2).AlignCenter().Text("KOPJE E KUPONIT").Bold().FontSize(10);
+                col.Item().AlignCenter().Text(ReceiptTexts.TypeTitle(r.CouponType)).Bold().FontSize(9);
+                if (r.ReferenceCouponId is { } reference)
+                    col.Item().Text($"KUPON FISKAL NR. {reference}" + (referenceAt is { } at ? $"  DATË: {clock.ToLocal(at):dd/MM/yyyy HH:mm}" : ""));
+                if (r.CancelReason is { } reason) col.Item().Text($"ARSYEJA E ANULIMIT: {reason.ToUpperInvariant()}").SemiBold();
+                if (r.PaperSerial is { } serial) col.Item().Text($"NGA BLLOKU I VEÇANTË, NR. {serial}").SemiBold();
 
-                col.Item().Table(t =>
+                col.Item().PaddingTop(3).Table(t =>
                 {
-                    t.ColumnsDefinition(c => { c.RelativeColumn(4); c.RelativeColumn(1.4f); c.RelativeColumn(1.6f); c.RelativeColumn(0.8f); c.RelativeColumn(1.6f); });
+                    t.ColumnsDefinition(c => { c.RelativeColumn(3.2f); c.RelativeColumn(2.4f); c.RelativeColumn(1.6f); c.ConstantColumn(9); });
                     t.Header(h =>
                     {
-                        foreach (var label in new[] { "Artikulli", "Sasia", "Çmimi", "TVSH", "Vlera" })
-                            h.Cell().BorderBottom(0.5f).PaddingBottom(2).Text(label).SemiBold();
+                        foreach (var label in new[] { "ARTIKULLI", "SASIA X ÇMIMI", "SHUMA", "" })
+                            h.Cell().BorderBottom(0.5f).PaddingBottom(1).Text(label).SemiBold();
                     });
                     foreach (var i in coupon.Items)
                     {
+                        var gross = (long)Math.Round(i.Price * (decimal)i.Quantity, MidpointRounding.AwayFromZero);
                         t.Cell().Text(i.Name);
-                        t.Cell().AlignRight().Text($"{i.Quantity.ToString("0.###", CultureInfo.InvariantCulture)} {i.Unit}");
-                        t.Cell().AlignRight().Text((i.Price / 10000m).ToString("0.0000", CultureInfo.InvariantCulture));
-                        t.Cell().AlignCenter().Text(i.TaxRate);
-                        t.Cell().AlignRight().Text((i.Total / 10000m).ToString("0.00", CultureInfo.InvariantCulture));
+                        t.Cell().Text($"{((decimal)i.Quantity).ToString("0.###", inv)} X {Price(i.Price)}");
+                        t.Cell().AlignRight().Text((gross / 10000m).ToString("0.00", inv));
+                        t.Cell().AlignRight().Text(i.TaxRate);
+                        if (gross != i.Total)
+                        {
+                            t.Cell().PaddingLeft(6).Text("Ulje");
+                            t.Cell().Text("");
+                            t.Cell().AlignRight().Text("-" + ((gross - i.Total) / 10000m).ToString("0.00", inv));
+                            t.Cell().Text("");
+                        }
                     }
                 });
 
                 col.Item().LineHorizontal(0.5f);
-                foreach (var g in coupon.TaxGroups)
-                    col.Item().Row(row =>
-                    {
-                        row.RelativeItem().Text($"TVSH {g.TaxRate}: baza {(g.TotalForTax / 100m):0.00}");
-                        row.ConstantItem(80).AlignRight().Text($"{(g.TotalTax / 100m):0.00}");
-                    });
-                col.Item().Row(row =>
+                void Row(string k, string v, bool bold = false) => col.Item().Row(row =>
                 {
-                    row.RelativeItem().Text("TOTAL EUR").Bold().FontSize(11);
-                    row.ConstantItem(80).AlignRight().Text($"{(coupon.Total / 100m):0.00}").Bold().FontSize(11);
+                    var left = row.RelativeItem().Text(k); var right = row.ConstantItem(70).AlignRight().Text(v);
+                    if (bold) { left.Bold(); right.Bold(); }
                 });
-                foreach (var p in coupon.Payments)
-                    col.Item().Row(row =>
-                    {
-                        row.RelativeItem().Text(p.Type.ToString());
-                        row.ConstantItem(80).AlignRight().Text($"{(p.Amount / 100m):0.00}");
-                    });
-
+                if (coupon.TotalDiscount > 0) Row("ULJE GJITHSEJ", "-" + Eur(coupon.TotalDiscount));
+                Row("TOTALI PËR PAGESË", Eur(coupon.Total) + " €", bold: true);
+                foreach (var p in coupon.Payments) Row($"MËNYRA E PAGESËS {ReceiptTexts.PaymentLabel((int)p.Type)}", Eur(p.Amount) + " €");
+                foreach (var g in coupon.TaxGroups)
+                    Row($"TVSH {g.TaxRate}" + (rates.TryGetValue(g.TaxRate, out var pct) ? $" {pct.ToString("0.##", inv)}%" : ""), Eur(g.TotalTax) + " €");
+                Row("TOTAL PA TVSH", Eur(coupon.TotalNoTax) + " €");
+                col.Item().Text($"ARTIKUJ - {coupon.Items.Count}");
                 col.Item().LineHorizontal(0.5f);
-                void Field(string k, string v) => col.Item().Row(row => { row.RelativeItem().Text(k); row.RelativeItem(2).AlignRight().Text(v); });
-                Field("Data", clock.Format(r.IssuedAt));
-                Field("Arkëtari", r.OperatorId);
-                if (!string.IsNullOrEmpty(r.SourceDocument)) Field("Dokumenti", r.SourceDocument);
-                Field("Kupon nr.", r.CouponId.ToString());
-                if (r.ReferenceCouponId is not null) Field("Referenca", r.ReferenceCouponId.ToString()!);
-                Field("SEF ID", $"{r.BranchId}-{r.BusinessNui}-{r.PosId}");
-                Field("Transaksioni ATK", r.AtkTransactionId?.ToString("0", CultureInfo.InvariantCulture) ?? "në pritje");
-                if (r.IssuedOffline) col.Item().AlignCenter().Text("OFFLINE").Bold();
 
-                col.Item().AlignCenter().Width(140).Image(qr);
-                col.Item().AlignCenter().Text($"NUIKF: {r.VerificationNo}").Bold();
+                col.Item().Text(r.CouponId.ToString("0000000000", inv));
+                col.Item().Text($"DATA DHE ORA {clock.ToLocal(r.IssuedAt):dd/MM/yyyy HH:mm}");
+                col.Item().Text($"NR. IDENTIFIKUES I SEF {r.BranchId}-{r.BusinessNui}-{r.PosId}");
+                col.Item().Text($"NUIKF: {r.VerificationNo}").Bold();
+                if (r.DailyNo is { } daily) col.Item().Text($"KUPON FISKAL DITOR NR. {daily:0000}");
+                if (r.Offline) col.Item().PaddingVertical(1).AlignCenter().Text("OFFLINE").Bold().FontSize(11);
+                col.Item().PaddingTop(2).AlignCenter().Width(34, Unit.Millimetre).Image(qr);
                 col.Item().AlignCenter().Text("e-kupon").Bold();
-                col.Item().AlignCenter().Text($"Kopje e gjeneruar {clock.Format(DateTime.UtcNow)} nga {actor}").FontSize(7).FontColor(Colors.Grey.Darken1);
+                // Fiscal logo (Annex: min 15 × 8 mm, max 20 × 10 mm).
+                col.Item().AlignCenter().Width(18, Unit.Millimetre).Height(9, Unit.Millimetre).Border(1).AlignMiddle().Column(logo =>
+                {
+                    logo.Item().AlignCenter().Text("RKS").Bold().FontSize(8);
+                    logo.Item().AlignCenter().Text("MF").Bold().FontSize(6);
+                });
+                col.Item().PaddingTop(3).AlignCenter().Text($"Transaksioni ATK: {r.AtkTransactionId?.ToString("0", inv) ?? "në pritje"}").FontSize(6.5f);
+                col.Item().AlignCenter().Text($"Kopje e gjeneruar {clock.Format(DateTime.UtcNow)} nga {actor}").FontSize(6).FontColor(Colors.Grey.Darken1);
             });
         })).GeneratePdf();
 

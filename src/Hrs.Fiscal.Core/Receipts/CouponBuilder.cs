@@ -21,7 +21,12 @@ public sealed class CouponBuilder
         _rounding = rounding;
     }
 
-    public PosCoupon Build(ReceiptRequest r)
+    public PosCoupon Build(ReceiptRequest r) => BuildCore(r, checkPayments: true);
+
+    /// <summary>The receipt total in cents, computed exactly as <see cref="Build"/> does (payments are ignored).</summary>
+    public long TotalCents(ReceiptRequest r) => BuildCore(r with { Payments = [] }, checkPayments: false).Total;
+
+    private PosCoupon BuildCore(ReceiptRequest r, bool checkPayments)
     {
         var errors = new List<string>();
         ValidateHeader(r, errors);
@@ -96,7 +101,7 @@ public sealed class CouponBuilder
             coupon.Payments.Add(new Payment { Type = p.Type, Amount = cents });
             paid += cents;
         }
-        if (paid != total)
+        if (checkPayments && paid != total)
             errors.Add($"Payments ({Money.CentsToEuros(paid):0.00}) do not match receipt total ({Money.CentsToEuros(total):0.00}).");
 
         if (errors.Count > 0) throw new FiscalValidationException(errors);

@@ -19,7 +19,7 @@ public sealed class BusinessReset(NpgsqlDataSource db, AuditLog audit)
         ("retention_years", "10"), ("backup_target", "\"\""), ("atk_environment", "\"Test\""), ("atk_application_id", "0"),
         ("atk_timeout_seconds", "10"), ("atk_retry_minutes", "2"), ("alert_emails", "\"\""), ("vat_rounding", "\"RoundTaxHalfUp\""),
         ("opera_overrides_enabled", "false"), ("flip_mode", "\"capture\""), ("flip_stub_status", "200"),
-        ("flip_stub_content_type", "\"text/plain\""), ("flip_stub_body", "\"\""), ("signing_mode_default", "\"client\""),
+        ("flip_stub_content_type", "\"text/plain\""), ("flip_stub_body", "\"\""), ("signing_mode_default", "\"server\""), ("clock_max_drift_seconds", "30"),
         ("flip_auth_required", "false"), ("flip_auth_header", "\"Authorization\""), ("default_item_category", "\"TT\""),
         ("default_item_unit", "\"cope\""), ("validation_check_tax_number", "true"), ("validation_tolerance", "0.01"),
     ];

@@ -20,7 +20,7 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
         public string? AlertEmails { get; set; }
         [RegularExpression("RoundTaxHalfUp|TruncateNet")] public string VatRounding { get; set; } = "RoundTaxHalfUp";
         public bool OperaOverridesEnabled { get; set; }
-        [RegularExpression("client|server")] public string SigningModeDefault { get; set; } = "client";
+        [RegularExpression("client|server")] public string SigningModeDefault { get; set; } = "server";
         [RegularExpression("capture|live")] public string FlipMode { get; set; } = "capture";
         [Range(100, 599)] public int FlipStubStatus { get; set; } = 200;
         public string? FlipStubContentType { get; set; } = "text/plain";
@@ -101,7 +101,7 @@ public sealed class IndexModel(SettingsStore settings, FlipAuth flipAuth, Proper
             AlertEmails = Str("alert_emails", ""),
             VatRounding = Str("vat_rounding", "RoundTaxHalfUp"),
             OperaOverridesEnabled = Bool("opera_overrides_enabled"),
-            SigningModeDefault = Str("signing_mode_default", "client"),
+            SigningModeDefault = Str("signing_mode_default", "server"),
             FlipMode = Str("flip_mode", "capture"),
             FlipStubStatus = Int("flip_stub_status", 200),
             FlipStubContentType = Str("flip_stub_content_type", "text/plain"),

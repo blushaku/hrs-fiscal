@@ -137,6 +137,15 @@ else if (canReceipts)
         {
             <div class="notice warn"><strong>No VAT rates are set up.</strong> Receipts cannot be fiscalized until they are added under <a href="/Settings/Mapping#vat">Settings › OPERA overrides &amp; VAT</a>.</div>
         }
+        @if (Model.ClockCheck.OutOfSync)
+        {
+            <div class="notice bad"><strong>The server clock differs from ATK's by @Math.Abs(Model.ClockCheck.DriftSeconds!.Value).ToString("0") seconds</strong> (limit @Model.ClockCheck.MaxDriftSeconds s). Receipt times must match ATK's time: synchronise the Windows clock (w32tm /resync) or check the time server.</div>
+        }
+        @if (s.PendingPreviousMonth > 0)
+        {
+            var late = Model.Clock.Today.Day > 10;
+            <div class="notice @(late ? "bad" : "warn")"><strong>@s.PendingPreviousMonth receipt(s) from last month are still not sent to ATK.</strong> @(late ? "The 10th has passed: submit them to ATK now and keep the notification of the outage." : $"They must reach ATK by the 10th of this month ({10 - Model.Clock.Today.Day} day(s) left); notify ATK of the outage if the connection cannot be restored.")</div>
+        }
         @if (s.Overdue48h > 0)
         {
             <div class="notice bad"><strong>@s.Overdue48h receipt(s) are past the 48-hour deadline.</strong> Notify ATK of the outage and submit them by the 10th of next month at the latest.</div>
@@ -149,7 +158,7 @@ else if (canReceipts)
         {
             <div class="notice neutral"><strong>Certificate renewal</strong> needed for @t.Label within @((int)(t.CertificateExpires!.Value - Model.UtcNow).TotalDays) days.</div>
         }
-        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0 && Model.VatRates > 0)
+        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0 && Model.VatRates > 0 && !Model.ClockCheck.OutOfSync)
         {
             <div class="notice ok">No alerts. All receipts are fiscalized.</div>
         }

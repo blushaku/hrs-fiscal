@@ -18,7 +18,8 @@ public sealed class MappingModel(SettingsStore settings) : PageModel
     public static readonly (string Code, string Label)[] SuggestedCategories =
     [
         ("HT", "Hotels and tourism"), ("UR", "Restaurant food"), ("PJA", "Non-alcoholic drinks"), ("PAL", "Alcoholic drinks"),
-        ("DUH", "Tobacco"), ("SUA", "Travel and accommodation services"), ("SHZ", "Beauty services"), ("ST", "Other services"), ("TT", "Other"),
+        ("DUH", "Tobacco"), ("SUA", "Travel and accommodation services"), ("SHZ", "Beauty services"), ("AU", "Food items (retail)"),
+        ("STR", "Transport services"), ("KS", "Sports clubs"), ("SHT", "Telecommunication services"), ("ST", "Other services"), ("TT", "Other"),
     ];
 
     public IReadOnlyList<TrxMapping> Trx { get; private set; } = [];

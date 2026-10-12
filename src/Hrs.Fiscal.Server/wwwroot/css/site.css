@@ -273,3 +273,8 @@ dialog .btn.danger[type=submit] { background: var(--bad-ink); color: #fff; }
 #step2 { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
 #step2[hidden], .step-locked[hidden] { display: none; }
 .step-locked { border: 1px dashed var(--field); padding: 12px; display: flex; flex-direction: column; gap: 10px; color: var(--muted, #5b6475); }
+
+/* ---- Paper-block entry -------------------------------------------------------------------------- */
+.paper-lines input, .paper-lines select { width: 100%; min-width: 70px; }
+.paper-lines td { padding: 4px 6px; }
+.paper-lines td:first-child { min-width: 220px; }

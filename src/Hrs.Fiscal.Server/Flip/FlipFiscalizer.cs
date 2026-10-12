@@ -22,6 +22,11 @@ public sealed record FlipResult
     public string? AtkStatus { get; init; }                 // accepted | pending (sent later, max 48 h) | rejected
     public string? AtkTransactionId { get; init; }
     public string? QrCode { get; init; }                    // content of the QR printed on the folio
+    public int? DailyNo { get; init; }                      // daily receipt number of this workstation ("Kupon fiskal ditor nr.")
+    public bool Offline { get; init; }                      // issued while ATK was unreachable: the folio must show "OFFLINE"
+    public string? ReceiptType { get; init; }               // KUPON FISKAL | KUPON FISKAL KTHIMI | KUPON FISKAL I ANULUAR
+    /// <summary>The fiscal lines to print on the folio, in order (ATK Doc. 01-06-1967 Art 25.18, Annex F).</summary>
+    public IReadOnlyList<string>? FiscalText { get; init; }
     public string? IssuedAt { get; init; }
     public long? TotalCents { get; init; }
     public bool Duplicate { get; init; }
@@ -262,21 +267,31 @@ public sealed class FlipFiscalizer(
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         var row = await conn.QuerySingleAsync<(long CouponId, string VerificationNo, long BranchId, long BusinessNui, long PosId, string QrString,
-            DateTime IssuedAt, long TotalCents, string Status, decimal? AtkTransactionId)>("""
+            DateTime IssuedAt, long TotalCents, string Status, decimal? AtkTransactionId, int? DailyNo, bool Offline, short CouponType)>("""
             SELECT r.coupon_id, r.verification_no, r.branch_id, r.business_nui, r.pos_id, r.qr_string, r.issued_at, r.total_cents,
-                   s.status, s.atk_transaction_id
+                   s.status, s.atk_transaction_id, r.daily_no, s.offline, r.coupon_type
             FROM fiscal.receipt r JOIN fiscal.receipt_status s ON s.id = r.id WHERE r.id = @receiptId
             """, new { receiptId });
+        var sefId = $"{row.BranchId}-{row.BusinessNui}-{row.PosId}";
+        var type = ReceiptTexts.TypeTitle(row.CouponType);
+        var lines = new List<string> { type, $"NR. IDENTIFIKUES I SEF: {sefId}", $"NUIKF: {row.VerificationNo}", $"KUPONI NR. {row.CouponId}" };
+        if (row.DailyNo is { } d) lines.Add($"KUPON FISKAL DITOR NR. {d:0000}");
+        if (row.Offline) lines.Add("OFFLINE");
+        lines.Add("e-kupon");
         return new FlipResult
         {
             Status = row.Status == "rejected" ? "ERROR" : "OK",
             FiscalFolioId = folioId,
             FiscalBillNo = row.CouponId.ToString(),
             VerificationNo = row.VerificationNo,
-            SefId = $"{row.BranchId}-{row.BusinessNui}-{row.PosId}",
+            SefId = sefId,
             AtkStatus = row.Status,
             AtkTransactionId = row.AtkTransactionId?.ToString("0"),
             QrCode = row.QrString,
+            DailyNo = row.DailyNo,
+            Offline = row.Offline,
+            ReceiptType = type,
+            FiscalText = lines,
             IssuedAt = clock.ToLocal(DateTime.SpecifyKind(row.IssuedAt, DateTimeKind.Utc)).ToString("yyyy-MM-ddTHH:mm:ss"),
             TotalCents = row.TotalCents,
             TestEnvironment = environment == AtkEnvironment.Test,

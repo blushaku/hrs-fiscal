@@ -130,9 +130,9 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     public async Task<bool> OperaOverridesEnabledAsync(CancellationToken ct = default) =>
         await GetAsync("opera_overrides_enabled", false, ct);
 
-    /// <summary>Property-wide signing mode (setting signing_mode_default): "client" (default) or "server".</summary>
+    /// <summary>Property-wide signing mode (setting signing_mode_default): "server" (default) or "client".</summary>
     public async Task<string> SigningModeDefaultAsync(CancellationToken ct = default) =>
-        await GetAsync("signing_mode_default", "client", ct) is "server" ? "server" : "client";
+        await GetAsync("signing_mode_default", "server", ct) is "client" ? "client" : "server";
 
     // ---- business / branch --------------------------------------------------------------
 
