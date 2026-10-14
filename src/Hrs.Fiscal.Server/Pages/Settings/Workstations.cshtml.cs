@@ -9,7 +9,7 @@ using Npgsql;
 namespace Hrs.Fiscal.Server.Pages.Settings;
 
 public sealed class WorkstationsModel(SettingsStore settings, PropertyClock clock, TerminalEnrollment enrollment, IServerKeyStore keyStore,
-    ILogger<WorkstationsModel> log) : PageModel
+    ClientRegistry clients, Hrs.Fiscal.Server.Services.ClientPackage package, ILogger<WorkstationsModel> log) : PageModel
 {
     public sealed class Form
     {
@@ -29,6 +29,8 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
     [BindProperty] public Form Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public long? Edit { get; set; }
     [BindProperty(SupportsGet = true)] public bool Add { get; set; }
+    /// <summary>Server address chosen for the client package (after "Create installation package").</summary>
+    [BindProperty(SupportsGet = true)] public string? Server { get; set; }
     /// <summary>The add/edit form is open (adding, editing, or a failed post).</summary>
     public bool FormOpen => Add || Input.Id != 0 || !ModelState.IsValid;
     public IReadOnlyList<TerminalEdit> Terminals { get; private set; } = [];
@@ -37,6 +39,19 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
     public string AtkEnvironment { get; private set; } = "Test";
     public string KeyStoreKind => keyStore.Kind;
     public TerminalEdit? Current => Terminals.SingleOrDefault(t => t.Id == Input.Id && Input.Id != 0);
+    public bool PackageAvailable => package.Available;
+    public DateTime UtcNow => clock.Time.GetUtcNow().UtcDateTime;
+    /// <summary>The current pairing code of a workstation's installation package (null = none or expired).</summary>
+    public (string Code, DateTime Expires)? Pairing(TerminalEdit t) => clients.CurrentPairing(t);
+
+    /// <summary>The server address the workstation will use: the address the admin opened, unless that is this computer only.</summary>
+    public string SuggestedServerUrl()
+    {
+        var host = Request.Host.Host;
+        var port = Request.Host.Port is { } p ? ":" + p : "";
+        if (host is "localhost" or "127.0.0.1" or "::1" or "[::1]") host = System.Net.Dns.GetHostName();
+        return $"{Request.Scheme}://{host}{port}";
+    }
 
     private async Task LoadAsync()
     {
@@ -92,9 +107,9 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
             TempData["Message"] = isNew
                 ? (mode == SigningModes.Server
                     ? $"Workstation POS {terminal.PosId} added. Register it with ATK on its tile when you are ready."
-                    : $"Workstation POS {terminal.PosId} added. Install the Fiscal Client on {terminal.Hostname} and register it there.")
+                    : $"Workstation POS {terminal.PosId} added. Create its installation package below and install the Fiscal Client on {terminal.Hostname}.")
                 : "Workstation saved and logged.";
-            return RedirectToPage(new { Edit = (long?)null, Add = false });
+            return RedirectToPage(new { Edit = isNew && mode == SigningModes.Client ? terminal.Id : (long?)null, Add = false });
         }
         try
         {
@@ -139,6 +154,31 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
             TempData["Error"] = ex.Message;
             return RedirectToPage(new { Edit = id });
         }
+    }
+
+    /// <summary>Workstation-client mode: a new one-time pairing code; the package can then be downloaded.</summary>
+    public async Task<IActionResult> OnPostClientPackageAsync(long id, string? serverUrl)
+    {
+        try
+        {
+            if (!Uri.TryCreate(serverUrl?.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+                throw new InvalidOperationException("Enter the fiscal server's address as the workstation reaches it, e.g. http://192.168.1.10:5080.");
+            var (_, expires) = await clients.CreatePairingAsync(id, User.Identity!.Name!);
+            TempData["Message"] = $"Installation package ready. Download it and run install-client.ps1 on the workstation before {clock.ToLocal(expires):dd.MM.yyyy HH:mm}.";
+            return RedirectToPage(new { Edit = id, Server = uri.GetLeftPart(UriPartial.Authority) });
+        }
+        catch (InvalidOperationException ex) { TempData["Error"] = ex.Message; }
+        return RedirectToPage(new { Edit = id });
+    }
+
+    /// <summary>The installation package (zip) with the current pairing code.</summary>
+    public async Task<IActionResult> OnGetClientDownloadAsync(long id, string server)
+    {
+        var t = (await settings.TerminalsAsync()).SingleOrDefault(x => x.Id == id);
+        if (t is null || clients.CurrentPairing(t) is not { } pairing || !Uri.TryCreate(server, UriKind.Absolute, out var uri)) return NotFound();
+        if (!package.Available) return NotFound();
+        var zip = package.Build(t, uri.GetLeftPart(UriPartial.Authority), pairing.Code, pairing.Expires);
+        return File(zip, "application/zip", $"Fiscal-Client-POS{t.PosId}-{t.Hostname}.zip");
     }
 
     public async Task<IActionResult> OnPostRegisterAsync(long id)

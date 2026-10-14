@@ -32,6 +32,7 @@ public sealed class TerminalEdit
     /// <summary>Where the current key and certificate live ("server" / "client"); null = not registered.</summary>
     public string? EnrolledMode { get; set; }
     public string? KeyReference { get; set; }
+    public string? CertificatePem { get; set; }
     /// <summary>Thermal printer for this workstation: "none", "network" (IP[:port], ESC/POS), "usb" (printer name in
     /// Windows on the fiscal server) or "serial" (COM port on the fiscal server).</summary>
     public string PrinterKind { get; set; } = "none";
@@ -44,9 +45,22 @@ public sealed class TerminalEdit
     public string PrinterFlow { get; set; } = "hardware";
     /// <summary>Print the receipt automatically after each fiscalization (when receipts are printed on printers).</summary>
     public bool PrinterAuto { get; set; } = true;
+    // Fiscal Client (workstation-client signing)
+    public string? ClientPairing { get; set; }
+    public DateTime? ClientPairingExpires { get; set; }
+    public string? ClientSecret { get; set; }
+    public DateTime? ClientPairedAt { get; set; }
+    public DateTime? ClientSeenAt { get; set; }
+    public string? ClientVersion { get; set; }
+    /// <summary>JSON from the client's heartbeat: {"printers":[…],"ports":[…]}.</summary>
+    public string? ClientPrinters { get; set; }
+    public bool ClientPaired => ClientSecret is not null;
+    /// <summary>The client answered within the last 3 minutes (it reports every minute).</summary>
+    public bool ClientOnline(DateTime nowUtc) => ClientSeenAt is { } s && nowUtc - DateTime.SpecifyKind(s, DateTimeKind.Utc) < TimeSpan.FromMinutes(3);
+
     /// <summary>The workstation issued at least one receipt: it can be disabled, not deleted.</summary>
     public bool HasReceipts { get; set; }
-    public bool HasPrinter => PrinterKind is "network" or "usb" or "serial" && !string.IsNullOrWhiteSpace(PrinterAddress);
+    public bool HasPrinter => PrinterKind is "network" or "usb" or "serial" or "client-usb" or "client-serial" && !string.IsNullOrWhiteSpace(PrinterAddress);
 
     public string EffectiveMode(string propertyDefault) => SigningMode ?? propertyDefault;
 
@@ -255,8 +269,10 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         await using var conn = await db.OpenConnectionAsync(ct);
         return (await conn.QueryAsync<TerminalEdit>("""
             SELECT id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, certificate_expires,
-                   signing_mode, enrolled_mode, key_reference, printer_kind, printer_address, printer_paper_mm, printer_auto,
+                   signing_mode, enrolled_mode, key_reference, certificate_pem, printer_kind, printer_address, printer_paper_mm, printer_auto,
                    printer_model, printer_baud, printer_flow,
+                   client_pairing, client_pairing_expires, client_secret, client_paired_at, client_seen_at, client_version,
+                   client_printers::text AS client_printers,
                    EXISTS (SELECT 1 FROM fiscal.receipt r WHERE r.terminal_id = fiscal.terminal.id) AS has_receipts
             FROM fiscal.terminal ORDER BY pos_id
             """)).ToList();
@@ -316,11 +332,11 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     public async Task SaveTerminalPrinterAsync(long terminalId, PrinterSetup p, string actor, CancellationToken ct = default)
     {
         var before = (await TerminalsAsync(ct)).SingleOrDefault(x => x.Id == terminalId) ?? throw new InvalidOperationException("Unknown workstation.");
-        if (!Printing.PrinterKinds.All.Contains(p.Kind)) throw new InvalidOperationException("Unknown printer connection.");
+        if (!Hrs.Fiscal.Core.Printing.PrinterKinds.All.Contains(p.Kind)) throw new InvalidOperationException("Unknown printer connection.");
         var model = Printing.PrinterModels.Get(p.Model);
-        if (!Printing.SerialSettings.BaudRates.Contains(p.Baud)) throw new InvalidOperationException("Unknown serial speed.");
-        if (!Printing.SerialSettings.Flows.Contains(p.Flow)) throw new InvalidOperationException("Unknown flow control.");
-        var address = p.Kind == Printing.PrinterKinds.None ? null : p.Address?.Trim();
+        if (!Hrs.Fiscal.Core.Printing.SerialSettings.BaudRates.Contains(p.Baud)) throw new InvalidOperationException("Unknown serial speed.");
+        if (!Hrs.Fiscal.Core.Printing.SerialSettings.Flows.Contains(p.Flow)) throw new InvalidOperationException("Unknown flow control.");
+        var address = p.Kind == Hrs.Fiscal.Core.Printing.PrinterKinds.None ? null : p.Address?.Trim();
         await using var conn = await db.OpenConnectionAsync(ct);
         await conn.ExecuteAsync("""
             UPDATE fiscal.terminal SET printer_kind = @Kind, printer_address = @address, printer_model = @model,

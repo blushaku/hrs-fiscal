@@ -4,8 +4,8 @@ For implementation engineers. One fiscal server is installed per hotel (property
 Oracle FLIP. Time needed: about 1 hour, plus ATK registration of the workstations.
 
 > Status (October 2026): the server, admin UI, archive, central signing and FLIP capture mode are ready. Live
-> fiscalization of OPERA folios follows once Oracle's FLIP interface specification is implemented. The Opera Cloud Fiscal Solution
-> Client (workstation signing) is not released yet: until then, use **central signing** for tests.
+> fiscalization of OPERA folios follows once Oracle's FLIP interface specification is implemented. Both signing modes
+> are available: **central signing** on the server, or the **Fiscal Client** on each workstation (section 5.5).
 
 ## 1. What gets installed
 
@@ -13,7 +13,7 @@ Oracle FLIP. Time needed: about 1 hour, plus ATK registration of the workstation
 |---|---|---|
 | fiscal server (Windows service `OperaCloudFiscalKosovo`) | Hotel server | Receives folios from FLIP, builds and signs receipts, sends them to ATK, archives everything, admin web UI |
 | PostgreSQL 16 | Same server (recommended) or a database server on the LAN | Append-only archive of receipts, ATK transmissions, OPERA/FLIP messages and the audit log |
-| Fiscal Client (only in *workstation client* signing mode) | Every PC that can issue a folio | Holds that workstation's ATK key and signs its receipts |
+| Fiscal Client (Windows service `OperaCloudFiscalKosovoClient`, only in *workstation client* signing mode) | Every PC that can issue a folio | Holds that workstation's ATK key, signs its receipts, prints on a receipt printer connected to that PC |
 
 ```
 OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fiscal server ──HTTPS :443──▶ ATK (fiskalizimi.atk-ks.org)
@@ -33,7 +33,8 @@ OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fisc
 **Software** (download before going on site)
 - [.NET 8 ASP.NET Core Runtime — Windows Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) (x64).
 - [PostgreSQL 16 for Windows](https://www.postgresql.org/download/windows/) (EDB installer).
-- `Opera-Cloud-Fiscal-Solution-Kosovo-win-x64.zip` (release package: application, `install-server.ps1`, `backup-db.ps1`).
+- `Opera-Cloud-Fiscal-Solution-Kosovo-win-x64.zip` (release package: application, `install-server.ps1`, `backup-db.ps1`,
+  and in `client\` the Fiscal Client with `install-client.ps1`). The Fiscal Client needs no runtime on the PCs.
 
 **Network**
 
@@ -43,7 +44,9 @@ OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fisc
 | Inbound | Admin PCs → fiscal server | TCP 5080 (HTTP) | Admin web UI |
 | Outbound | fiscal server → `fiskalizimi.atk-ks.org` (production), `fiskalizimi-test.atk-ks.org` (test) | TCP 443 | ATK API. Allow through the hotel firewall/proxy without TLS inspection |
 | Local | fiscal server → PostgreSQL | TCP 5432 | Only if PostgreSQL is on another machine |
-| Local | fiscal server → receipt printers | TCP 9100 | Only with thermal printing on network printers (Settings › Printing); USB and serial printers are connected to the fiscal server itself |
+| Local | fiscal server → receipt printers | TCP 9100 | Only with thermal printing on network printers (Settings › Printing) |
+| Local | Fiscal Client PCs → fiscal server | TCP 5080 (HTTP) | Only in workstation-client mode: pairing, ATK registration, status every minute |
+| Local | fiscal server → Fiscal Client PCs | TCP 5110 (HTTP) | Only in workstation-client mode: signing receipts, printing on the PC's printer. The client installer opens it for the fiscal server's IP only |
 
 Nothing is exposed to the internet. Do not forward ports 5080/5100 from outside.
 
@@ -131,7 +134,7 @@ All settings below are stored in the database and every change is written to the
 | ATK environment | **Test** until the hotel goes live, then **Production**. Never send test receipts to production |
 | Application ID | Shown here; entered under *Business & unit* together with the fiscalization number |
 | Timeout / retry | 10 s / 2 min (defaults) |
-| **Signing** | *Central* (default) or *Workstation client* — see 5.5. The Fiscal Client is not available yet, so keep *Central* |
+| **Signing** | *Central* (default) or *Workstation client* — see 5.5 |
 | OPERA overrides | Off (default). Turn on only if OPERA cannot send a field correctly; then set the codes under *OPERA overrides & VAT* |
 | OPERA / FLIP connection | **Capture** during setup (records what FLIP sends). **Live** once fiscalization is enabled |
 | FLIP access token | **Generate token**, copy it into FLIP's partner configuration (shown only once), keep *Require the token* on. Header: `Authorization` unless FLIP uses another one. *Generate new token* replaces the old one at once, so update FLIP at the same time |
@@ -208,7 +211,7 @@ One line per workstation that can issue a folio. Each one is a separate ATK POS 
 | OPERA Fiscal Terminal ID | Exactly the *Terminal ID* configured in OPERA Cloud for this workstation (see the OPERA manual) |
 | Computer name | Windows name of the PC, e.g. `FRONTDESK-01` |
 | Signing | *Property default*, or force *Workstation client* / *Server (central)* for this workstation |
-| Client address | Only for workstation-client mode: `https://<PC IP>:5100` |
+| Client address | Only for workstation-client mode. Filled in by the Fiscal Client (`http://<PC IP>:5110`); change it only if the server must reach the PC at another address |
 
 Each workstation is shown as a tile with its POS ID, OPERA terminal, signing and certificate state. **Add workstation** opens one form: in central signing it adds the workstation *and* registers it with ATK in the same step (or imports the key and certificate from ATK's onboarder tool, or registers later). If registration fails, the workstation stays *pending* and its tile offers **Register with ATK** again.
 
@@ -244,8 +247,54 @@ records (check them in EDI); *timeout* — outbound HTTPS to ATK is blocked.
 **Changing the mode** (property-wide or for one workstation) means the affected workstations show
 *register again* and cannot sign until they are registered in the new place. The old certificates remain in the audit log.
 
-**Workstation client mode** — install the Fiscal Client on each PC and register it there (separate client manual,
-available with the client release).
+**Workstation client mode — installing the Fiscal Client**
+
+The Fiscal Client is one standard program for all workstations. What makes it *this* workstation's client is a
+one-time **pairing code** created on the server. There are two ways to install it:
+
+*A. Installation package (recommended)*
+1. Settings › Workstations › the workstation (set to *Workstation client*) › **Fiscal Client**. Check *Server address,
+   as &lt;PC&gt; reaches it* (the address the PC uses to open the admin page, e.g. `http://192.168.1.10:5080`) and click
+   **Create installation package**.
+2. **Download installation package**: a zip named after the POS and the PC, with the client program, `install-client.ps1`,
+   `README.txt` and `pairing.json` (server address and the code). The code works **once**, for this workstation, for 2 days.
+3. On that PC: unzip, open PowerShell **as administrator** in the folder and run
+   `powershell -ExecutionPolicy Bypass -File .\install-client.ps1`
+
+*B. Standard client and code* — copy the release's `client\` folder to the PC and run
+`powershell -ExecutionPolicy Bypass -File .\install-client.ps1 -ServerUrl http://192.168.1.10:5080 -PairingCode ABCD-EFGH-JKLM`
+with the server address and pairing code shown on the server after *Create installation package*.
+
+The installer copies the client to `C:\Program Files\Opera Cloud Fiscal Solution\Client`, keeps its data in
+`%ProgramData%\Opera Cloud Fiscal Solution\Client` (Administrators and SYSTEM only), installs the service
+*Opera Cloud Fiscal Solution - Kosovo - Client* (restarts by itself) and opens TCP 5110 for the fiscal server's IP only.
+Within a minute the client then, by itself:
+
+1. **pairs** with the server using the code (the code is then used up; the server and the client share a secret that
+   signs every request between them, HMAC-SHA256 with the time, so requests cannot be forged or replayed);
+2. creates the workstation's **key in the PC's Windows key store**, non-exportable, in the TPM when there is one;
+3. **registers with ATK through the server**: the server checks the business with ATK and sends ATK the certificate
+   request from the PC; the private key never leaves the PC. The workstation becomes *active* on the server;
+4. reports to the server every minute (version, address, printers and COM ports of the PC).
+
+Settings › Workstations shows *Fiscal Client: online / offline since …*, the address, the version and the last contact.
+On the PC, `http://localhost:5110` shows the client's status (only on that PC).
+
+**How receipts are signed.** The server builds the receipt and asks the PC's client to sign it. The client checks that
+the receipt is for its own business, unit and POS before signing and keeps a local log of everything it signed
+(`signed.log` in the data folder). The server checks the signature against the workstation's certificate before the
+receipt is archived and sent to ATK. If the PC is off or the service is stopped, the folio is refused with
+*the Fiscal Client … does not answer*: start the PC or the service and send the folio again from OPERA.
+
+**Reinstalling or replacing the PC**: *Create a new installation package* and install it; the client pairs again,
+creates a new key and registers with ATK again (the old certificate stays in the audit log). Running
+`install-client.ps1` again without a new package only upgrades the program; the key and registration are kept.
+**Uninstall**: `Stop-Service OperaCloudFiscalKosovoClient; sc.exe delete OperaCloudFiscalKosovoClient`, then remove the
+program folder and the firewall rule *Fiscal Client (5110)*.
+
+> The connection between the server and the clients is HTTP on the hotel LAN, protected by the per-workstation secret
+> (HMAC) and the firewall rule; the receipts themselves are signed by the workstation's key. HTTPS between server and
+> clients is planned.
 
 ### 5.6 OPERA Cloud and FLIP
 
@@ -296,8 +345,12 @@ the 10th of the following month.
     parity, 1 stop bit. Epson TM printers leave the factory at 38400 bps with hardware (DTR/DSR) flow control: check the
     printer's self-test page (hold FEED while switching on) and use the same values.
 
-  USB and serial printers must be connected to the **fiscal server**: the front-desk PCs only run a browser, so a
-  printer plugged into a front-desk PC is not reachable. Connect front-desk printers by network.
+  - *USB / Serial (COM port), on this workstation (Fiscal Client)* — only for workstations in workstation-client mode:
+    the printer is plugged into the front-desk PC and the Fiscal Client on that PC prints. Choose the printer or COM
+    port from the ones the client reported (install a USB printer on the PC for all users).
+
+  Without the Fiscal Client, USB and serial printers must be connected to the **fiscal server**: the front-desk PCs
+  only run a browser. Connect front-desk printers by network, or use the Fiscal Client.
 - **Printer model** sets the paper width and characters per line: *Epson TM-T88 (VII, VI, V), 80 mm* — 42 characters
   (180 dpi), the default; *Epson TM-T88, 58 mm* — 30; *Other ESC/POS printer, 80 mm* — 48 (most 203 dpi printers);
   *Other, 58 mm* — 32.
@@ -380,7 +433,9 @@ retention period. Export or hand over a backup instead.
 | FLIP gets *401 Unauthorized* | Token missing or wrong in FLIP, or FLIP uses another header: the FLIP messages page shows refused requests (mode *rejected*, header check *missing*/*invalid*) and which headers FLIP sent. Set the header name or generate a new token |
 | FLIP messages do not arrive | Firewall rule *Fiscal Solution FLIP (5100)* and its allowed IP (`-FlipSourceIp`); FLIP's partner address; OPERA fiscal configuration |
 | ATK registration or sending times out | Outbound HTTPS to `fiskalizimi(-test).atk-ks.org` through the hotel firewall/proxy |
-| "Register with ATK" says to use the client | The workstation is in workstation-client mode (Signing column) |
+| "Register with ATK" says to use the client | The workstation is in workstation-client mode (Signing column): install the Fiscal Client (5.5) |
+| Fiscal Client stays *not installed* | On the PC: `http://localhost:5110` shows the last problem. *pairing code … expired / used*: create a new package. Cannot reach the server: the server address in the package, firewall rule *Fiscal Solution admin (5080)* |
+| Folio refused: *Fiscal Client … does not answer* | PC on, service *Opera Cloud Fiscal Solution - Kosovo - Client* running, firewall rule *Fiscal Client (5110)* on the PC, address shown under Settings › Workstations |
 | Workstation shows *register again* | The signing mode was changed after registration. Register it again |
 | Dashboard: receipts waiting | ATK unreachable; receipts are kept and resent automatically. ATK's limit is 48 hours |
 | Receipts do not print / dashboard *Receipt … was not printed* | Settings › Printing › Test print. *Cannot reach the printer*: IP address, printer on, port 9100 open, same network. *Windows printer … was not found*: exact name, printer installed for all users on the server. *Serial*: port number, speed and flow control as on the printer's self-test page; no other program (e.g. OPOS) holding the port |

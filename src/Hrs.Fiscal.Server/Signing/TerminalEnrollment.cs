@@ -35,7 +35,7 @@ public sealed class AtkClientFactory : IAtkClientFactory
 /// when a receipt has to be signed on its behalf.
 /// </summary>
 public sealed class TerminalEnrollment(
-    NpgsqlDataSource db, SettingsStore settings, AuditLog audit, IServerKeyStore keys, IAtkClientFactory atkFactory)
+    NpgsqlDataSource db, SettingsStore settings, AuditLog audit, IServerKeyStore keys, IAtkClientFactory atkFactory, ClientChannel clients)
 {
     /// <param name="NameInSettings">Set when ATK's business name differs from Settings › Business (null when they match).</param>
     public sealed record Result(DateTime CertificateExpiresUtc, string BusinessName, string KeyStoreKind, AtkEnvironment Environment, string? NameInSettings = null);
@@ -165,6 +165,23 @@ public sealed class TerminalEnrollment(
         var env = Enum.Parse<AtkEnvironment>(await settings.GetAsync("atk_environment", "Test", ct) ?? "Test");
         var differs = await RecordAtkNameAsync(Part("2.5.4.3"), business, $"ATK certificate of POS {terminal.PosId} (import)", actor, ct);
         return new Result(expires, Part("2.5.4.3"), keys.Kind, env, differs);
+    }
+
+    /// <summary>
+    /// The signer for a workstation: its key on the server (central mode) or its Fiscal Client (workstation-client mode).
+    /// Fails if the workstation must be registered (again) first.
+    /// </summary>
+    public async Task<ReceiptSigner> OpenSignerAsync(long terminalId, CancellationToken ct = default)
+    {
+        var terminal = (await settings.TerminalsAsync(ct)).SingleOrDefault(t => t.Id == terminalId)
+                       ?? throw new InvalidOperationException("Unknown workstation.");
+        var defaultMode = await settings.SigningModeDefaultAsync(ct);
+        var state = terminal.SigningState(defaultMode);
+        if (state != TerminalSigningState.Ready)
+            throw new InvalidOperationException($"Workstation POS {terminal.PosId} cannot sign ({state}).");
+        if (terminal.EffectiveMode(defaultMode) == SigningModes.Server) return ReceiptSigner.Local(keys.Open(terminal.KeyReference!));
+        return ReceiptSigner.Remote(items => clients.SignAsync(terminal, items, ct), terminal.CertificatePem
+            ?? throw new InvalidOperationException($"Workstation POS {terminal.PosId} has no certificate."));
     }
 
     /// <summary>The key to sign with for a workstation in central mode. Fails if it must be registered (again) first.</summary>

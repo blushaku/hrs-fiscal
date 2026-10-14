@@ -45,11 +45,11 @@ public sealed class ManualReceipts(
         var business = await settings.BusinessAsync(ct);
         if (business is null || business.Nui != r.BusinessNui || business.BranchId != r.BranchId)
             return "This receipt belongs to a previous taxpayer or unit.";
-        // The cancellation is signed with the original workstation's key, so that workstation must be able to sign here.
+        // The cancellation is signed with the original workstation's key (on the server or by its Fiscal Client).
         var terminal = (await settings.TerminalsAsync(ct)).FirstOrDefault(t => t.PosId == r.PosId);
         var defaultMode = await settings.SigningModeDefaultAsync(ct);
-        if (terminal is null || terminal.EffectiveMode(defaultMode) != SigningModes.Server || terminal.SigningState(defaultMode) != TerminalSigningState.Ready)
-            return $"Workstation POS {r.PosId} cannot sign on this server; register it with ATK under Settings › Workstations first.";
+        if (terminal is null || terminal.SigningState(defaultMode) != TerminalSigningState.Ready)
+            return $"Workstation POS {r.PosId} is not registered with ATK; register it under Settings › Workstations first.";
         return null;
     }
 
@@ -142,8 +142,6 @@ public sealed class ManualReceipts(
         var terminal = (await settings.TerminalsAsync(ct)).FirstOrDefault(t => t.PosId == posId)
                        ?? throw new FiscalValidationException($"Workstation POS {posId} is not set up.");
         var defaultMode = await settings.SigningModeDefaultAsync(ct);
-        if (terminal.EffectiveMode(defaultMode) != SigningModes.Server)
-            throw new FiscalValidationException($"Workstation POS {posId} is set to workstation-client signing, which is not available yet.");
         if (terminal.SigningState(defaultMode) is var state && state != TerminalSigningState.Ready)
             throw new FiscalValidationException($"Workstation POS {posId} cannot sign ({state}). Register it with ATK under Settings › Workstations.");
         var applicationId = await settings.GetAsync<long>("atk_application_id", 0, ct);
@@ -153,11 +151,10 @@ public sealed class ManualReceipts(
 
     private async Task<ManualReceiptResult> SignArchiveSendAsync(PosCoupon coupon, TerminalEdit terminal, string? document, ReceiptExtras extras, CancellationToken ct)
     {
-        var key = await enrollment.OpenKeyAsync(terminal.Id, ct);
-        using var keyLifetime = key as IDisposable;
-        var signer = new CouponSigner(key);
-        var signed = signer.Sign(coupon);
-        var qr = signer.Sign(CouponBuilder.ToCitizenCoupon(coupon)).ToQrString();
+        using var signer = await enrollment.OpenSignerAsync(terminal.Id, ct);
+        SignedPayload signed; string qr;
+        try { (signed, qr) = await signer.SignAsync(coupon); }
+        catch (ClientUnavailableException ex) { throw new FiscalValidationException(ex.Message); }
         var receiptId = await archive.AppendReceiptAsync(coupon, signed, qr, terminal.Id, false, null, document, ct, extras);
 
         var environment = Enum.Parse<AtkEnvironment>(await settings.GetAsync("atk_environment", "Test", ct) ?? "Test");

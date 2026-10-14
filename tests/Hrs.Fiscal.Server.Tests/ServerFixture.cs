@@ -54,11 +54,24 @@ public sealed class ServerFixture : WebApplicationFactory<Program>, IAsyncLifeti
         builder.UseSetting("Signing:KeyStore", "file");
         builder.UseSetting("I18n:DefaultLanguage", "en");   // tests read the English texts; LanguageTests covers sq/sr
         builder.UseSetting("Signing:KeyFolder", KeyFolder);
+        builder.UseSetting("FiscalClient:PackageFolder", ClientFolder);
         builder.ConfigureTestServices(s => s.AddSingleton<IAtkClientFactory>(FakeAtk));
     }
 
     /// <summary>Key folder for central signing; deleted after the run.</summary>
     public string KeyFolder { get; } = Path.Combine(Path.GetTempPath(), "hrs-fiscal-test-keys-" + Guid.NewGuid().ToString("N")[..8]);
+
+    /// <summary>Stand-in for the Fiscal Client program that installation packages are built from.</summary>
+    public string ClientFolder { get; } = CreateClientFolder();
+
+    private static string CreateClientFolder()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "hrs-fiscal-test-client-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "Hrs.Fiscal.Client.exe"), "test");
+        File.WriteAllText(Path.Combine(folder, "install-client.ps1"), "# test");
+        return folder;
+    }
 
     /// <summary>Stand-in for ATK's CA (verify + CSR signing); no network.</summary>
     public FakeAtk FakeAtk { get; } = new();
@@ -67,6 +80,7 @@ public sealed class ServerFixture : WebApplicationFactory<Program>, IAsyncLifeti
     {
         await base.DisposeAsync();
         try { Directory.Delete(KeyFolder, true); } catch (DirectoryNotFoundException) { }
+        try { Directory.Delete(ClientFolder, true); } catch (DirectoryNotFoundException) { }
         if (string.IsNullOrEmpty(_adminCs)) return;
         NpgsqlConnection.ClearAllPools();
         await using var conn = new NpgsqlConnection(_adminCs);

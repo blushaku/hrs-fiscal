@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hrs.Fiscal.Server\Hrs.Fiscal.Server.csproj" />
+    <ProjectReference Include="..\..\src\Hrs.Fiscal.Client\Hrs.Fiscal.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

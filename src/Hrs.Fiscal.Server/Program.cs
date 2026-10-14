@@ -40,7 +40,7 @@ builder.Services.AddScoped<Hrs.Fiscal.Server.Services.ManualReceipts>();
 builder.Services.AddScoped<FlipCapture>();
 builder.Services.AddScoped<FlipAuth>();
 builder.Services.AddScoped<FlipFiscalizer>();
-builder.Services.AddSingleton<Hrs.Fiscal.Server.Printing.IPrinterTransport, Hrs.Fiscal.Server.Printing.PrinterTransport>();
+builder.Services.AddSingleton<IPrinterTransport, PrinterTransport>();
 builder.Services.AddScoped<Hrs.Fiscal.Server.Printing.ReceiptPrinting>();
 builder.Services.AddSingleton<Hrs.Fiscal.Server.Printing.PrintQueue>();
 builder.Services.AddHostedService<Hrs.Fiscal.Server.Printing.PrintQueueService>();
@@ -52,6 +52,9 @@ builder.Services.AddHostedService<FlipTcpListener>();
 builder.Services.AddServerKeyStore(builder.Configuration);
 builder.Services.AddSingleton<IAtkClientFactory, AtkClientFactory>();
 builder.Services.AddScoped<TerminalEnrollment>();
+builder.Services.AddScoped<ClientRegistry>();
+builder.Services.AddScoped<ClientChannel>();
+builder.Services.AddSingleton<Hrs.Fiscal.Server.Services.ClientPackage>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -154,6 +157,31 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", product = AppVersion
 app.MapMethods("/flip/{**path}", ["GET", "POST", "PUT", "PATCH", "DELETE"], FlipCapture.HandleHttpAsync).AllowAnonymous().DisableAntiforgery();
 app.MapMethods("/flip", ["GET", "POST", "PUT"], FlipCapture.HandleHttpAsync).AllowAnonymous().DisableAntiforgery();
 
+// Fiscal Client on a workstation (workstation-client signing). /client/pair takes the one-time code of the installation
+// package; every other call is signed with the secret the client received there (HMAC, see ClientAuth).
+app.MapPost("/client/pair", async (HttpContext http, ClientRegistry registry) =>
+{
+    var request = await http.Request.ReadFromJsonAsync<Hrs.Fiscal.Core.Client.PairRequest>();
+    if (request is null) return Results.BadRequest(new Hrs.Fiscal.Core.Client.ClientError("Empty request."));
+    try { return Results.Ok(await registry.PairAsync(request, http.Connection.RemoteIpAddress?.ToString())); }
+    catch (ClientRequestException ex) { return Results.BadRequest(new Hrs.Fiscal.Core.Client.ClientError(ex.Message)); }
+}).AllowAnonymous().DisableAntiforgery();
+app.MapPost("/client/enroll/start", (HttpContext http, ClientRegistry registry) =>
+    ClientCall(http, registry, async (terminal, _) => Results.Ok(await registry.EnrollStartAsync(terminal)))).AllowAnonymous().DisableAntiforgery();
+app.MapPost("/client/enroll/finish", (HttpContext http, ClientRegistry registry) =>
+    ClientCall(http, registry, async (terminal, body) =>
+    {
+        var request = System.Text.Json.JsonSerializer.Deserialize<Hrs.Fiscal.Core.Client.EnrollFinishRequest>(body, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        return Results.Ok(await registry.EnrollFinishAsync(terminal, request?.CsrPem ?? ""));
+    })).AllowAnonymous().DisableAntiforgery();
+app.MapPost("/client/heartbeat", (HttpContext http, ClientRegistry registry) =>
+    ClientCall(http, registry, async (terminal, body) =>
+    {
+        var request = System.Text.Json.JsonSerializer.Deserialize<Hrs.Fiscal.Core.Client.HeartbeatRequest>(body, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))
+                      ?? throw new ClientRequestException("Empty request.");
+        return Results.Ok(await registry.HeartbeatAsync(terminal, request, http.Connection.RemoteIpAddress?.ToString()));
+    })).AllowAnonymous().DisableAntiforgery();
+
 app.MapGet("/flip-messages/{id:long}/raw", async (long id, FlipCapture capture) =>
 {
     var m = await capture.GetAsync(id);
@@ -229,6 +257,18 @@ static async Task BootstrapAdminAsync(WebApplication app)
     app.Logger.LogWarning("Created initial 'admin' user. Remove Bootstrap:AdminPassword from configuration now.");
 }
 
+
+static async Task<IResult> ClientCall(HttpContext http, ClientRegistry registry, Func<TerminalEdit, byte[], Task<IResult>> handle)
+{
+    using var buffer = new MemoryStream();
+    await http.Request.Body.CopyToAsync(buffer);
+    var body = buffer.ToArray();
+    var terminal = await registry.AuthenticateAsync(http.Request, body);
+    if (terminal is null) return Results.Json(new Hrs.Fiscal.Core.Client.ClientError("Not authorised: pair this Fiscal Client again."), statusCode: 401);
+    try { return await handle(terminal, body); }
+    catch (ClientRequestException ex) { return Results.BadRequest(new Hrs.Fiscal.Core.Client.ClientError(ex.Message)); }
+    catch (Hrs.Fiscal.Core.Atk.AtkApiException ex) { return Results.Json(new Hrs.Fiscal.Core.Client.ClientError("ATK: " + ex.Message), statusCode: 502); }
+}
 
 public static class UserExtensions
 {

@@ -36,6 +36,10 @@
                 <dt>Computer</dt><dd>@t.Hostname</dd>
                 <dt>Signing</dt><dd>@SigningModes.Label(mode)@(t.SigningMode is null ? "" : " (this workstation)")</dd>
                 <dt>Certificate</dt><dd>@(t.CertificateExpires is { } e && t.EnrolledMode is not null ? "valid to " + Model.Clock.ToLocal(e).ToString("dd.MM.yyyy") : "none")</dd>
+                @if (mode == SigningModes.Client)
+                {
+                    <dt>Fiscal Client</dt><dd>@(!t.ClientPaired ? "not installed" : t.ClientOnline(Model.UtcNow) ? "online" : "offline since " + Model.Clock.FormatShort(DateTime.SpecifyKind(t.ClientSeenAt!.Value, DateTimeKind.Utc)))</dd>
+                }
                 @if (!string.IsNullOrEmpty(t.Description)) { <dt>Note</dt><dd>@t.Description</dd> }
             </dl>
             <div class="actions">
@@ -135,7 +139,38 @@
             }
             else
             {
-                <p class="small muted">This workstation signs with the Fiscal Client. Install the client on @cur.Hostname and register it there.</p>
+                var pairing = Model.Pairing(cur);
+                <p class="small muted" style="margin: 0">The key of this workstation is created on @cur.Hostname by the Fiscal Client and never leaves it. The client registers with ATK through this server and signs every receipt of POS @cur.PosId.</p>
+                <dl class="kv" style="margin: 8px 0">
+                    <dt>Fiscal Client</dt>
+                    <dd>@(!cur.ClientPaired ? "not installed" : cur.ClientOnline(Model.UtcNow) ? "online" : "offline")</dd>
+                    @if (cur.ClientVersion is { } v) { <dt>Version</dt><dd class="mono">@v</dd> }
+                    @if (cur.ClientPaired)
+                    {
+                        <dt>Address</dt><dd class="mono">@cur.ClientEndpoint</dd>
+                        <dt>Last contact</dt><dd>@(cur.ClientSeenAt is { } seen ? Model.Clock.FormatShort(DateTime.SpecifyKind(seen, DateTimeKind.Utc)) : "never")</dd>
+                    }
+                </dl>
+                @if (!Model.PackageAvailable)
+                {
+                    <div class="notice warn">The Fiscal Client program is not part of this installation (folder <span class="mono">client</span> next to the server). Install the server from the full release package.</div>
+                }
+                else if (pairing is { } p && !string.IsNullOrEmpty(Model.Server))
+                {
+                    <div class="notice neutral" style="display: flex; flex-direction: column; gap: 8px">
+                        <div><strong>Installation package for POS @cur.PosId</strong> · valid until @Model.Clock.ToLocal(p.Expires).ToString("dd.MM.yyyy HH:mm"), for one installation.</div>
+                        <div><a class="btn primary small" href="/Settings/Workstations?handler=ClientDownload&id=@cur.Id&server=@Uri.EscapeDataString(Model.Server)">Download installation package</a></div>
+                        <div class="small">On @cur.Hostname, unzip it and run <span class="mono">install-client.ps1</span> as administrator. Manual set-up instead: server <span class="mono">@Model.Server</span>, pairing code <span class="mono">@p.Code</span>.</div>
+                    </div>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="ClientPackage" asp-route-id="@cur.Id" class="form-grid" style="align-items: end">
+                        <label class="field">Server address, as @cur.Hostname reaches it <input type="text" name="serverUrl" value="@Model.SuggestedServerUrl()" autocomplete="off"></label>
+                        <div><button type="submit" class="btn" disabled="@(cur.Status == "disabled")">@(cur.ClientPaired ? "Create a new installation package" : "Create installation package")</button></div>
+                    </form>
+                    @if (cur.ClientPaired) { <p class="small muted" style="margin: 6px 0 0">A new package pairs the client again (e.g. after reinstalling Windows on the workstation); the client then creates a new key and registers with ATK again.</p> }
+                }
             }
         </div>
         <div class="modal-body" style="border-top: 1px solid var(--line)">

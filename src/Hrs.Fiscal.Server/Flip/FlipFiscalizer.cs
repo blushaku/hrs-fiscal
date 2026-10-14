@@ -81,11 +81,11 @@ public sealed class FlipFiscalizer(
             var terminal = (await settings.TerminalsAsync(ct)).FirstOrDefault(t => string.Equals(t.OperaTerminalId, folio.TerminalId, StringComparison.OrdinalIgnoreCase))
                            ?? throw new FiscalValidationException($"OPERA terminal '{folio.TerminalId}' is not set up as a workstation in the fiscal server (Settings › Workstations › OPERA Fiscal Terminal ID).");
             var defaultMode = await settings.SigningModeDefaultAsync(ct);
-            if (terminal.EffectiveMode(defaultMode) != SigningModes.Server)
-                throw new FiscalValidationException($"Workstation POS {terminal.PosId} is set to workstation-client signing, which is not available yet. Set it to central signing (Settings › Workstations).");
             var state = terminal.SigningState(defaultMode);
             if (state != TerminalSigningState.Ready)
-                throw new FiscalValidationException($"Workstation POS {terminal.PosId} cannot sign ({state}). Register it with ATK under Settings › Workstations.");
+                throw new FiscalValidationException(terminal.EffectiveMode(defaultMode) == SigningModes.Client
+                    ? $"Workstation POS {terminal.PosId} cannot sign ({state}): install the Fiscal Client on {terminal.Hostname} (Settings › Workstations) and let it register with ATK."
+                    : $"Workstation POS {terminal.PosId} cannot sign ({state}). Register it with ATK under Settings › Workstations.");
             var applicationId = await settings.GetAsync<long>("atk_application_id", 0, ct);
             if (applicationId <= 0) throw new FiscalValidationException("ATK Application ID is not set (Settings › Business & unit).");
 
@@ -99,11 +99,11 @@ public sealed class FlipFiscalizer(
                 receiptFindings.AddRange(FolioValidator.CompareWithReceipt(folio, coupon, await settings.VatRatesAsync(ct), validation.Tolerance));
             if (receiptFindings.Count > 0) throw new FiscalValidationException(receiptFindings);
 
-            var key = await enrollment.OpenKeyAsync(terminal.Id, ct);
-            using var keyLifetime = key as IDisposable;
-            var signer = new CouponSigner(key);
-            var signed = signer.Sign(coupon);
-            var qr = signer.Sign(CouponBuilder.ToCitizenCoupon(coupon)).ToQrString();
+            // Central mode: signed here; workstation-client mode: signed by the Fiscal Client on the workstation.
+            using var signer = await enrollment.OpenSignerAsync(terminal.Id, ct);
+            SignedPayload signed; string qr;
+            try { (signed, qr) = await signer.SignAsync(coupon); }
+            catch (ClientUnavailableException ex) { throw new FiscalValidationException(ex.Message); }
 
             // Archive first: the payload exactly as received, then the signed receipt.
             long payloadId;

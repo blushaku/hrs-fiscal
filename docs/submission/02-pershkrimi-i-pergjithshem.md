@@ -29,7 +29,7 @@ flowchart LR
     B["Shfletuesi i administratorit"] -- "ndërfaqja web" --> S
 ```
 
-Serveri fiskal në rrjetin lokal të hotelit është e vetmja pjesë që komunikon me ATK-në; OPERA merr prej tij të dhënat fiskale për t'i shtypur në faturë. Çdo vendpunës që lëshon fatura në OPERA është POS i veçantë në ATK, me certifikatën dhe çelësin e vet në server.
+Serveri fiskal në rrjetin lokal të hotelit është e vetmja pjesë që komunikon me ATK-në; OPERA merr prej tij të dhënat fiskale për t'i shtypur në faturë. Çdo vendpunës që lëshon fatura në OPERA është POS i veçantë në ATK, me certifikatën dhe çelësin e vet. Mënyra e nënshkrimit zgjidhet: **qendror** (parazgjedhje; çelësi i çdo vendpunësi ruhet në server) ose **klienti në vendpunës** (programi *Fiscal Client* në kompjuterin e vendpunësit e ruan çelësin në depon e çelësave të Windows / TPM, regjistrohet në ATK përmes serverit dhe nënshkruan kuponët e atij vendpunësi; serveri i dërgon në ATK). Çelësi privat nuk largohet kurrë nga vendi ku është krijuar.
 
 **Çfarë janë OFIS dhe FLIP.** Janë dy komponentë të Oracle-it, prodhuesit të OPERA Cloud, përmes të cilëve OPERA dërgon faturat te softueri fiskal:
 

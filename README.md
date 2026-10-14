@@ -4,8 +4,10 @@ Kosovo fiscalization software (**SEF – Softuer Elektronik Fiskal**) for hotels
 OPERA Cloud sends fiscal payloads via **OFIS with FLIP** (installed on-premise). FLIP delivers them over the hotel LAN
 to the fiscal server. Every workstation that issues folios is its own ATK POS with its own key and certificate.
 **Signing is selectable** (Settings › General, overridable per workstation). The default is central signing: the
-server signs with a separate non-exportable key per workstation. The alternative, signing by the Fiscal Client on each
-workstation, is not built yet.
+server signs with a separate non-exportable key per workstation. The alternative is the **Fiscal Client** on each
+workstation: it keeps that workstation's key in the PC's Windows key store / TPM, registers with ATK through the
+server and signs that workstation's receipts. It is installed from a per-workstation package created on the server
+(Settings › Workstations › Fiscal Client), or as the standard client with a one-time pairing code.
 Everything is archived in an append-only PostgreSQL store.
 
 ```
@@ -48,7 +50,7 @@ paper before submitting):
 |---|---|
 | `src/Hrs.Fiscal.Core` | Shared fiscal library: ATK protobuf model, coupon builder and validation, VAT, ECDSA signing (DER), QR, CSR, ATK API client |
 | `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): admin web UI (receipts, audit log, exports, settings), archive, migrations, FLIP endpoint (capture / live), central signing, offline queue |
-| `src/Hrs.Fiscal.Client` | Workstation client for *workstation client* signing mode (Windows service): key and certificate, onboarding, signing. **Skeleton** |
+| `src/Hrs.Fiscal.Client` | Fiscal Client for *workstation client* signing mode (Windows service, port 5110): pairing, own key (CNG/TPM), ATK registration through the server, signing with its own POS check, printing on the PC's USB/COM printer, status page |
 | `tests/Hrs.Fiscal.Core.Tests` | Unit tests (xUnit) |
 | `tests/Hrs.Fiscal.Server.Tests` | Integration tests against PostgreSQL (set `HRS_TEST_PG`) |
 | `db/migrations` | PostgreSQL schema |
@@ -141,6 +143,13 @@ its own database.
 ### Configuration layers
 - **appsettings.json** on each machine: DB connection, Kestrel endpoints (LAN IP and port), time zone (default Europe/Belgrade).
 - **Database settings** (Admin UI): everything business-related, audited.
+
+### Fiscal Client protocol
+Pairing with a one-time code (12 characters, 2 days, single use) gives server and client a shared secret, stored
+protected on both sides (DataProtection / DPAPI). Every later request in both directions (`/client/enroll/*`,
+`/client/heartbeat` to the server; `/sign`, `/print` to the client) carries `X-Fiscal-Terminal`, `X-Fiscal-Time` and an
+HMAC-SHA256 over method, path, time and body, accepted within ±2 minutes. The server verifies every signature it
+receives against the workstation's ATK certificate before archiving.
 
 ### TLS inside the hotel (planned)
 No public certificates are needed; nothing is exposed to the internet. The server will create a property CA at
@@ -247,7 +256,7 @@ are built from the same permissions.
 
 1. For a cloud PMS whose workstations are browsers: is central signing on the property server, with one key and
    certificate per workstation, acceptable, or must software run on each workstation? (Central signing is the default;
-   the workstation client is not built yet.)
+   the Fiscal Client covers the second answer.)
 2. The official VAT rounding rule.
 3. The behaviour of `/pos/coupon` when a CouponId is resent (idempotency).
 4. `verification_code` vs `verification_no` in `/ca/signcsr`. Both are sent for now.

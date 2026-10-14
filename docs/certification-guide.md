@@ -128,8 +128,9 @@ Write it in Albanian (English annex if helpful). Suggested chapters, all materia
 
 **Decisions**
 1. **Which configuration we certify.** Central signing on the fiscal server (built, tested, the default since
-   12.10.2026) or signing on each workstation with the Fiscal Client (**not built yet**). Recommendation: certify central
-   signing first, with ATK's written agreement (open question #10), and notify the client later as a change under Art. 7.4.
+   12.10.2026) or signing on each workstation with the Fiscal Client (built 14.10.2026; key in each PC's key store /
+   TPM). Recommendation: present both and certify the one ATK accepts in writing (open question #10); the other can be
+   notified later as a change under Art. 7.4.
 2. **Applicant.** Decided 09.10.2026: the application is made by a **natural person without a registered business**
    (5.2: copy of personal ID). Product name: **Opera Cloud Fiscal Solution - Kosovo**.
 

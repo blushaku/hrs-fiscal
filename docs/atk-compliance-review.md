@@ -87,7 +87,7 @@ All documents ATK asks for exist. The description and the user manual match the 
 | T35 | Installation | Runs on at least one device type (amended Spec 25) | Windows server, browser interface | Met |
 | T36 | Environments | Test environment; production not used for tests (Spec 26.15) | Environment setting; Production only for live use; start-over blocked once Production was used | Met |
 | T37 | Reports | Reports for ATK's control and verification (Spec 25) | Receipts, unsent receipts, summary per workstation, audit log; search by date, number, NUIKF, folio, cashier, POS | Met |
-| T38 | Keys | One private key per installed SEF/POS, kept at a high security level (UA 34.2) | One key per POS, non-exportable, all held on the fiscal server; central signing is the default since 12.10.2026; the workstation client is not built | Ask ATK |
+| T38 | Keys | One private key per installed SEF/POS, kept at a high security level (UA 34.2) | One key per POS, non-exportable. Central signing (default): all keys on the fiscal server. Workstation-client signing: each key in its own PC's key store / TPM via the Fiscal Client; selectable per property and per workstation | Ask ATK |
 | T39 | Advance payments | Receipt for every payment before the supply is completed (UA 6.2) | Not handled: hotel deposits are not fiscalized | Ask ATK |
 | T40 | Personal data | Apply the personal data protection law (UA 48) | Archived OPERA messages contain guest names; access limited by roles; not described in the documents | Partly met |
 
@@ -134,7 +134,7 @@ Do the first two groups before applying. Most of the app work needs no outside i
 - [x] Albanian interface and receipt texts; Serbian (Latin) as a second language (T29)
 - [x] Clock check against ATK's server time, with an alert when it drifts (T30)
 - [x] Reminder before the 10th of the month for receipts still unsent (T8)
-- [x] Default signing mode set to central (server); the workstation client stays a later, notified change
+- [x] Default signing mode set to central (server); the Fiscal Client (key on each workstation) is built and selectable if ATK requires it
 - [x] Operator identification number next to the name (T24); copy PDF with RKS logo and total without VAT
 - [x] Offer ATK's units list as choices for the unit (T21)
 - [x] Print the whole receipt on a 58/80 mm thermal printer per workstation, as an alternative to the folio (T23, T27)

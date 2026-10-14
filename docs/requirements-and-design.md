@@ -177,6 +177,18 @@ override it. In both modes every workstation is its own ATK POS with its own key
   and a switched-off PC no longer blocks its folios.
 A certificate is bound to where it was registered; after a mode change the workstation must be registered again.
 
+**Fiscal Client as built (14.10.2026).** Central is the default since 12.10.2026. In workstation-client mode:
+- Installation: Settings › Workstations › Fiscal Client › *Create installation package* gives a zip for that workstation
+  (standard client, `install-client.ps1`, `pairing.json` with the server address and a one-time code valid 2 days).
+  The standard client can also be installed with `-ServerUrl` and `-PairingCode`.
+- The client pairs (shared HMAC secret), creates its key in the PC's CNG key store (TPM when present), and registers
+  with ATK *through the server* (the server calls `/ca/verify` and sends the client's CSR to `/ca/signcsr`; it checks
+  that the certificate's public key is the client's).
+- Step 4 is split: the client signs (after checking NUI, unit and POS of the coupon), the **server transmits** to ATK
+  and keeps the offline queue, so a receipt signed by the client is not lost if ATK is down. The server verifies the
+  signature against the workstation certificate before archiving. If the PC does not answer (8 s), the folio is refused.
+- The client also prints on a USB or COM receipt printer connected to its PC, and reports its printers every minute.
+
 **Clarify with ATK:**
 - For a cloud PMS whose workstations are browsers: is central signing with one key and certificate per workstation
   acceptable, or must software run on each workstation?

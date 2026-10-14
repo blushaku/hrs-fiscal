@@ -77,14 +77,15 @@ public class SigningModeTests(ServerFixture app) : IClassFixture<ServerFixture>
     [PgFact]
     public async Task Default_is_central_and_client_mode_refuses_registering_on_the_server()
     {
-        // A new installation signs centrally (the Fiscal Client is not available yet).
+        // A new installation signs centrally.
         Assert.Equal("\"server\"", await app.ScalarAsync<string>("SELECT value::text FROM fiscal.setting WHERE key = 'signing_mode_default' AND updated_by = 'migration'")
                                    ?? "\"server\"");
         await SetAsync(new() { ["signing_mode_default"] = "client" });
         var id = await TerminalIdAsync(11);
         var client = await app.SignedInAsync("admin", ServerFixture.AdminPassword);
         var page = await client.GetStringAsync($"/Settings/Workstations?Edit={id}");
-        Assert.Contains("signs with the Fiscal Client", page);
+        Assert.Contains("created on", page);
+        Assert.Contains("by the Fiscal Client and never leaves it", page);
 
         var token = await ServerFixture.AntiforgeryTokenAsync(client, $"/Settings/Workstations?Edit={id}");
         await client.PostAsync($"/Settings/Workstations?handler=Register&id={id}",

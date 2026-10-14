@@ -15,7 +15,7 @@ public sealed record PrintOutcome(bool Ok, string Message);
 /// </summary>
 public sealed class ReceiptPrinting(
     NpgsqlDataSource db, ReceiptQueries receipts, SettingsStore settings, AuditLog audit, PropertyClock clock,
-    IPrinterTransport transport, ILogger<ReceiptPrinting> log)
+    IPrinterTransport transport, Signing.ClientChannel clients, ILogger<ReceiptPrinting> log)
 {
     /// <param name="copy">null = original if the original was never printed, otherwise a copy.</param>
     public async Task<PrintOutcome> PrintAsync(long receiptId, string actor, bool? copy = null, CancellationToken ct = default)
@@ -34,7 +34,7 @@ public sealed class ReceiptPrinting(
         var printer = Describe(terminal);
         try
         {
-            await transport.SendAsync(PrinterTarget.From(terminal), job, ct);
+            await SendAsync(terminal, job, ct);
         }
         catch (PrinterException ex)
         {
@@ -65,7 +65,7 @@ public sealed class ReceiptPrinting(
         if (!terminal.HasPrinter) return new(false, $"Workstation POS {terminal.PosId} has no printer yet.");
         var printer = Describe(terminal);
         var job = ThermalReceipt.TestPage($"POS {terminal.PosId} · {terminal.OperaTerminalId ?? terminal.Hostname}", printer, PrinterModels.Get(terminal.PrinterModel), clock);
-        try { await transport.SendAsync(PrinterTarget.From(terminal), job, ct); }
+        try { await SendAsync(terminal, job, ct); }
         catch (PrinterException ex)
         {
             await audit.WriteAsync(actor, AuditLog.Actions.TestPrint, "terminal", terminalId.ToString(), new { printer, ok = false, error = ex.Message }, terminalId, ct);
@@ -75,8 +75,26 @@ public sealed class ReceiptPrinting(
         return new(true, $"Test page sent to {printer}.");
     }
 
+    /// <summary>Printers on the server's network or ports are printed here; printers on the front-desk PC by its Fiscal Client.</summary>
+    private async Task SendAsync(TerminalEdit t, byte[] job, CancellationToken ct)
+    {
+        if (!PrinterKinds.OnClient(t.PrinterKind))
+        {
+            await transport.SendAsync(new PrinterTarget(t.PrinterKind, t.PrinterAddress ?? "", t.PrinterBaud, t.PrinterFlow), job, ct);
+            return;
+        }
+        try
+        {
+            await clients.PrintAsync(t, new Hrs.Fiscal.Core.Client.PrintRequest(PrinterKinds.Local(t.PrinterKind), t.PrinterAddress ?? "", t.PrinterBaud, t.PrinterFlow,
+                Convert.ToBase64String(job)), ct);
+        }
+        catch (Signing.ClientUnavailableException ex) { throw new PrinterException(ex.Message); }
+    }
+
     public static string Describe(TerminalEdit t) => t.PrinterKind switch
     {
+        PrinterKinds.ClientUsb => $"USB printer \"{t.PrinterAddress}\" on {t.Hostname}",
+        PrinterKinds.ClientSerial => $"serial printer {t.PrinterAddress} ({t.PrinterBaud} bps) on {t.Hostname}",
         PrinterKinds.Network => $"network printer {t.PrinterAddress}",
         PrinterKinds.Usb => $"USB printer \"{t.PrinterAddress}\"",
         PrinterKinds.Serial => $"serial printer {t.PrinterAddress} ({t.PrinterBaud} bps)",

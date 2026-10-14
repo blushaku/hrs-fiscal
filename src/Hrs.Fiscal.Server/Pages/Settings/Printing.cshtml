@@ -31,7 +31,7 @@
     <div class="tile-head"><h2>Workstation printers</h2></div>
     <p class="small muted" style="margin: 0 0 12px">
         Each workstation prints on its own thermal receipt printer (ESC/POS, e.g. Epson TM-T88VII). <strong>Network</strong>: the printer's IP address, port 9100 unless you add another; use this for printers at the front desk.
-        <strong>USB</strong> and <strong>Serial (COM)</strong>: the printer is connected to the fiscal server itself (the front-desk PCs only run a browser). The first print of a receipt is the original; later prints are marked KOPJE E KUPONIT.
+        <strong>USB</strong> and <strong>Serial (COM)</strong>: the printer is connected to the fiscal server itself. A workstation with the Fiscal Client can also print on a USB or COM printer connected to that PC. The first print of a receipt is the original; later prints are marked KOPJE E KUPONIT.
         @if (!onPrinter) { <span>Printers are used only when receipts are printed on a thermal printer (above).</span> }
     </p>
     <div class="table-wrap">
@@ -44,7 +44,7 @@
                     <td>POS <span class="mono">@t.PosId</span>@(string.IsNullOrWhiteSpace(t.Description) ? "" : " · " + t.Description)</td>
                     <td class="mono">@t.OperaTerminalId</td>
                     <td>@Connection(t)</td>
-                    <td class="mono">@(t.HasPrinter ? t.PrinterAddress + (t.PrinterKind == "serial" ? $" · {t.PrinterBaud}" : "") : "")</td>
+                    <td class="mono">@(t.HasPrinter ? t.PrinterAddress + (PrinterKinds.Local(t.PrinterKind) == "serial" ? $" · {t.PrinterBaud}" : "") : "")</td>
                     <td>@(t.HasPrinter ? PrinterModels.Get(t.PrinterModel).Label : "")</td>
                     <td>@(t.HasPrinter ? (t.PrinterAuto ? "yes" : "no, on request") : "")</td>
                     <td class="row-actions">
@@ -90,6 +90,11 @@
                         <option value="network">Network (Ethernet / Wi-Fi)</option>
                         <option value="usb">USB, on the fiscal server</option>
                         <option value="serial">Serial (COM port), on the fiscal server</option>
+                        @if (Model.UsesClient(cur) || PrinterKinds.OnClient(cur.PrinterKind))
+                        {
+                            <option value="client-usb">USB, on this workstation (Fiscal Client)</option>
+                            <option value="client-serial">Serial (COM port), on this workstation (Fiscal Client)</option>
+                        }
                         <option value="none">No printer</option>
                     </select>
                 </label>
@@ -109,12 +114,28 @@
                 </label>
                 <p class="small muted" style="margin: 4px 0 0">Install the printer on the fiscal server for all users (Epson Advanced Printer Driver or the generic driver)@(Model.InstalledPrinters.Count > 0 ? $"; printers found: {Model.InstalledPrinters.Count}" : "").</p>
             </div>
+            @{ var (clientPrinters, clientPorts) = Hrs.Fiscal.Server.Pages.Settings.PrintingModel.ClientDevices(cur); }
+            <div data-show-for="printer-kind:client-usb">
+                <label class="field">Printer in Windows on @cur.Hostname
+                    <input type="text" name="Printer.Address" list="client-printers" value="@(Model.Printer.Kind == "client-usb" ? Model.Printer.Address : "")" autocomplete="off" placeholder="EPSON TM-T88VII Receipt">
+                    <datalist id="client-printers">@foreach (var name in clientPrinters) { <option value="@name"></option> }</datalist>
+                </label>
+                <p class="small muted" style="margin: 4px 0 0">Install the printer on the workstation for all users. The Fiscal Client on @cur.Hostname prints the receipt@(clientPrinters.Count > 0 ? $"; printers reported by the client: {clientPrinters.Count}" : cur.ClientPaired ? "" : "; the Fiscal Client is not installed on it yet").</p>
+            </div>
+            <div data-show-for="printer-kind:client-serial">
+                <label class="field">COM port on @cur.Hostname
+                    <input type="text" name="Printer.Address" list="client-ports" value="@(Model.Printer.Kind == "client-serial" ? Model.Printer.Address : "")" autocomplete="off" placeholder="COM1">
+                    <datalist id="client-ports">@foreach (var port in clientPorts) { <option value="@port"></option> }</datalist>
+                </label>
+            </div>
             <div data-show-for="printer-kind:serial">
+                <label class="field">COM port
+                    <input type="text" name="Printer.Address" list="serial-ports" value="@(Model.Printer.Kind == "serial" ? Model.Printer.Address : "")" autocomplete="off" placeholder="COM1">
+                    <datalist id="serial-ports">@foreach (var port in Model.SerialPorts) { <option value="@port"></option> }</datalist>
+                </label>
+            </div>
+            <div data-show-for="printer-kind:serial,client-serial">
                 <div class="form-grid">
-                    <label class="field">COM port
-                        <input type="text" name="Printer.Address" list="serial-ports" value="@(Model.Printer.Kind == "serial" ? Model.Printer.Address : "")" autocomplete="off" placeholder="COM1">
-                        <datalist id="serial-ports">@foreach (var port in Model.SerialPorts) { <option value="@port"></option> }</datalist>
-                    </label>
                     <label class="field">Speed (bps)
                         <select asp-for="Printer.Baud">@foreach (var b in SerialSettings.BaudRates) { <option value="@b">@b</option> }</select>
                     </label>

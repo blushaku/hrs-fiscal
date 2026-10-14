@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Hrs.Fiscal.Server.Data;
 using Hrs.Fiscal.Server.Printing;
@@ -28,6 +29,9 @@ public sealed class PrintingModel(SettingsStore settings, ReceiptPrinting printi
     public IReadOnlyList<TerminalEdit> Terminals { get; private set; } = [];
     public IReadOnlyList<string> InstalledPrinters { get; private set; } = [];
     public IReadOnlyList<string> SerialPorts { get; private set; } = [];
+    public string SigningDefault { get; private set; } = Signing.SigningModes.Server;
+    /// <summary>The workstation signs with its Fiscal Client, which can also print on a printer connected to that PC.</summary>
+    public bool UsesClient(TerminalEdit t) => t.EffectiveMode(SigningDefault) == Signing.SigningModes.Client;
     [BindProperty] public string? NewMode { get; set; }
     [BindProperty] public PrinterForm Printer { get; set; } = new();
     /// <summary>Workstation whose printer is being set up (?Edit=id).</summary>
@@ -64,21 +68,24 @@ public sealed class PrintingModel(SettingsStore settings, ReceiptPrinting printi
         var errors = new List<string>();
         Printer.Address = Printer.Address?.Trim();
         if (!PrinterKinds.All.Contains(Printer.Kind)) errors.Add("Choose how the printer is connected.");
+        if (PrinterKinds.OnClient(Printer.Kind) && !UsesClient(t))
+            errors.Add("A printer on the workstation itself needs the Fiscal Client: set the workstation to Workstation client signing first.");
         if (Printer.Kind != PrinterKinds.None && string.IsNullOrWhiteSpace(Printer.Address))
             errors.Add(Printer.Kind switch
             {
                 PrinterKinds.Network => "Enter the printer's IP address (and port, if not 9100).",
                 PrinterKinds.Usb => "Choose the USB printer as it is installed in Windows on the fiscal server.",
+                PrinterKinds.ClientUsb => "Choose the USB printer as it is installed in Windows on the workstation.",
                 _ => "Choose the COM port the printer is connected to.",
             });
         if (Printer.Kind == PrinterKinds.Network && !string.IsNullOrWhiteSpace(Printer.Address))
         {
             try { PrinterTransport.ParseAddress(Printer.Address); } catch (PrinterException ex) { errors.Add(ex.Message); }
         }
-        if (Printer.Kind == PrinterKinds.Serial && !string.IsNullOrWhiteSpace(Printer.Address) && !Regex.IsMatch(Printer.Address, @"^(COM\d{1,3}|/dev/[\w/.-]+)$", RegexOptions.IgnoreCase))
+        if (PrinterKinds.Local(Printer.Kind) == PrinterKinds.Serial && !string.IsNullOrWhiteSpace(Printer.Address) && !Regex.IsMatch(Printer.Address, @"^(COM\d{1,3}|/dev/[\w/.-]+)$", RegexOptions.IgnoreCase))
             errors.Add("A COM port is written like COM1 or COM3.");
         if (PrinterModels.All.All(m => m.Key != Printer.Model)) errors.Add("Choose the printer model.");
-        if (Printer.Kind != PrinterKinds.Serial) { Printer.Baud = t.PrinterBaud; Printer.Flow = t.PrinterFlow; }   // keep the serial settings
+        if (PrinterKinds.Local(Printer.Kind) != PrinterKinds.Serial) { Printer.Baud = t.PrinterBaud; Printer.Flow = t.PrinterFlow; }   // keep the serial settings
         if (!SerialSettings.BaudRates.Contains(Printer.Baud)) errors.Add("Choose the serial speed.");
         if (!SerialSettings.Flows.Contains(Printer.Flow)) errors.Add("Choose the flow control.");
         if (errors.Count > 0)
@@ -86,7 +93,7 @@ public sealed class PrintingModel(SettingsStore settings, ReceiptPrinting printi
             foreach (var e in errors) ModelState.AddModelError("", e);
             return Page();
         }
-        if (Printer.Kind == PrinterKinds.Serial) Printer.Address = Printer.Address!.ToUpperInvariant().StartsWith("COM") ? Printer.Address.ToUpperInvariant() : Printer.Address;
+        if (PrinterKinds.Local(Printer.Kind) == PrinterKinds.Serial) Printer.Address = Printer.Address!.ToUpperInvariant().StartsWith("COM") ? Printer.Address.ToUpperInvariant() : Printer.Address;
         await settings.SaveTerminalPrinterAsync(t.Id, new PrinterSetup(Printer.Kind, Printer.Address, Printer.Model, Printer.Baud, Printer.Flow, Printer.Auto), User.Identity!.Name!);
         TempData["Message"] = Printer.Kind == PrinterKinds.None
             ? $"Printer removed from workstation POS {t.PosId}."
@@ -107,6 +114,21 @@ public sealed class PrintingModel(SettingsStore settings, ReceiptPrinting printi
         Terminals = (await settings.TerminalsAsync()).Where(t => t.Status != "disabled").ToList();
         InstalledPrinters = transport.InstalledPrinters();
         SerialPorts = transport.SerialPorts();
+        SigningDefault = await settings.SigningModeDefaultAsync();
+    }
+
+    /// <summary>Printers and COM ports the workstation's Fiscal Client reported in its last heartbeat.</summary>
+    public static (IReadOnlyList<string> Printers, IReadOnlyList<string> Ports) ClientDevices(TerminalEdit t)
+    {
+        if (string.IsNullOrWhiteSpace(t.ClientPrinters)) return ([], []);
+        try
+        {
+            using var doc = JsonDocument.Parse(t.ClientPrinters);
+            static List<string> List(JsonElement root, string name) => root.TryGetProperty(name, out var a) && a.ValueKind == JsonValueKind.Array
+                ? a.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList() : [];
+            return (List(doc.RootElement, "printers"), List(doc.RootElement, "ports"));
+        }
+        catch (JsonException) { return ([], []); }
     }
 
     public static string ConnectionLabel(string kind) => kind switch
@@ -114,6 +136,8 @@ public sealed class PrintingModel(SettingsStore settings, ReceiptPrinting printi
         PrinterKinds.Network => "Network",
         PrinterKinds.Usb => "USB",
         PrinterKinds.Serial => "Serial (COM)",
+        PrinterKinds.ClientUsb => "USB on the workstation",
+        PrinterKinds.ClientSerial => "Serial (COM) on the workstation",
         _ => "None",
     };
 

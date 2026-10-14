@@ -4,13 +4,12 @@ using System.IO.Ports;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
-namespace Hrs.Fiscal.Server.Printing;
+namespace Hrs.Fiscal.Core.Printing;
 
 /// <summary>Where a print job goes: connection kind, address (IP[:port], Windows printer name or COM port) and the
 /// serial settings used only for COM ports.</summary>
 public sealed record PrinterTarget(string Kind, string Address, int Baud = 38400, string Flow = SerialSettings.FlowHardware)
 {
-    public static PrinterTarget From(Data.TerminalEdit t) => new(t.PrinterKind, t.PrinterAddress ?? "", t.PrinterBaud, t.PrinterFlow);
 }
 
 /// <summary>Sends a finished print job to a printer.</summary>
