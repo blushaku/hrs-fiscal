@@ -33,6 +33,8 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+/* Always reserve the scrollbar, so short and long pages have the same width (no sideways jump between tabs). */
+html { overflow-y: scroll; scrollbar-gutter: stable; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5; }
 strong, b { font-weight: 600; }
 a { color: var(--teal); } a:hover { color: var(--navy); }
@@ -60,7 +62,8 @@ header.bar { background: var(--surface); border-bottom: 1px solid var(--line); }
 nav.tabs { padding: 0 20px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
 nav.tabs a { flex: none; font-weight: 500; color: var(--navy); text-decoration: none; border-bottom: 3px solid transparent; padding: 12px 14px; min-height: 46px; display: inline-flex; align-items: center; white-space: nowrap; }
 nav.tabs a:hover { background: var(--hover); color: var(--navy); }
-nav.tabs a[aria-current="page"] { border-bottom-color: var(--orange); font-weight: 600; }
+/* Same font weight for the active tab: a bolder label is wider and would push the other tabs sideways. */
+nav.tabs a[aria-current="page"] { border-bottom-color: var(--orange); color: var(--navy); }
 .shell { display: block; }
 .content { padding: 24px 20px 40px; display: flex; flex-direction: column; gap: 18px; }
 .content > * { min-width: 0; max-width: 100%; }
@@ -214,8 +217,10 @@ input[type=checkbox], input[type=radio] { accent-color: var(--navy); }
 .settings-tabs { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--line); }
 .settings-tabs a { flex: none; font-weight: 500; color: var(--navy); text-decoration: none; border-bottom: 3px solid transparent; padding: 10px 14px; min-height: 44px; display: inline-flex; align-items: center; white-space: nowrap; }
 .settings-tabs a:hover { background: var(--surface); color: var(--navy); }
-.settings-tabs a.on { border-bottom-color: var(--orange); font-weight: 600; }
+.settings-tabs a.on { border-bottom-color: var(--orange); background: var(--surface); }
+/* Two lines reserved on wide screens, so the content below starts at the same height on every settings tab. */
 .settings-intro { margin: -6px 0 0; }
+@media (min-width: 900px) { .settings-intro { min-height: 3em; } }
 
 .kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 12px; font-size: 13.5px; margin: 0; }
 .kv dd { margin: 0; overflow-wrap: anywhere; }

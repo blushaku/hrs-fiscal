@@ -8,26 +8,24 @@
 }
 <partial name="_SettingsNav" />
 
-<div class="tile-grid">
-    <section class="card" id="mode">
-        <h2>Fiscal receipt for the guest</h2>
-        <dl class="kv">
-            <dt>Printed</dt>
-            <dd>@(onPrinter ? "On a thermal printer at the workstation" : "In the fiscal block of the OPERA folio")</dd>
-        </dl>
-        <p class="small muted" style="margin: 0">
-            @if (onPrinter)
-            {
-                @:The fiscal server prints the whole receipt (items, VAT, totals, NUIKF, QR) on the workstation's printer right after fiscalization. OPERA still receives the fiscal data for its folio.
-            }
-            else
-            {
-                @:OPERA prints the fiscal data and the QR on its folio, from the answer it receives through FLIP (see the folio printing manual).
-            }
-        </p>
-        <div class="tile-foot"><a class="btn small" href="/Settings/Printing?Change=true" data-dialog-open="dlg-mode">Change</a></div>
-    </section>
-</div>
+<section class="card" id="mode" style="display: flex; flex-direction: column; gap: 10px">
+    <h2>Fiscal receipt for the guest</h2>
+    <dl class="kv">
+        <dt>Printed</dt>
+        <dd>@(onPrinter ? "On a thermal printer at the workstation" : "In the fiscal block of the OPERA folio")</dd>
+    </dl>
+    <p class="small muted" style="margin: 0">
+        @if (onPrinter)
+        {
+            @:The fiscal server prints the whole receipt (items, VAT, totals, NUIKF, QR) on the workstation's printer right after fiscalization. OPERA still receives the fiscal data for its folio.
+        }
+        else
+        {
+            @:OPERA prints the fiscal data and the QR on its folio, from the answer it receives through FLIP (see the folio printing manual).
+        }
+    </p>
+    <div style="display: flex; gap: 8px"><a class="btn small" href="/Settings/Printing?Change=true" data-dialog-open="dlg-mode">Change</a></div>
+</section>
 
 <section class="card" id="printers">
     <div class="tile-head"><h2>Workstation printers</h2></div>
