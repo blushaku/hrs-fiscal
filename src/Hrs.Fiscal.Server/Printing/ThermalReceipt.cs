@@ -14,11 +14,11 @@ public static class ThermalReceipt
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
     public static byte[] Build(ReceiptDetail r, PosCoupon coupon, IReadOnlyDictionary<string, decimal> rates, PropertyClock clock,
-        int paperMm, bool copy, DateTime? referenceAt = null)
+        PrinterModel model, bool copy, DateTime? referenceAt = null)
     {
         string Eur(long cents) => (cents / 100m).ToString("0.00", Inv);
         string Price(long units) => (units / 10000m).ToString("0.00##", Inv);
-        var p = new EscPos(paperMm);
+        var p = new EscPos(model);
 
         // Taxpayer and unit
         p.Align(TextAlign.Center).Bold(true).Line(r.BusinessName).Bold(false);
@@ -78,15 +78,16 @@ public static class ThermalReceipt
     }
 
     /// <summary>A short test page: shows that the printer is reached, the paper width and the Albanian letters.</summary>
-    public static byte[] TestPage(string workstation, string printer, int paperMm, PropertyClock clock)
+    public static byte[] TestPage(string workstation, string printer, PrinterModel model, PropertyClock clock)
     {
-        var p = new EscPos(paperMm);
+        var p = new EscPos(model);
         p.Align(TextAlign.Center).Bold(true).Large(true).Line("PROVË", p.Columns / 2).Large(false).Line("Test i printerit").Bold(false);
         p.Line("Ky nuk është kupon fiskal");
         p.Align(TextAlign.Left).Rule();
         p.Line($"Vendpunësi: {workstation}");
         p.Line($"Printeri: {printer}");
-        p.Line($"Letra: {paperMm} mm, {p.Columns} shkronja për rresht");
+        p.Line($"Modeli: {model.Label}");
+        p.Line($"Letra: {model.PaperMm} mm, {p.Columns} shkronja për rresht");
         p.Line($"Data: {clock.Format(DateTime.UtcNow)}");
         p.Line("Shkronjat: ë Ë ç Ç");
         p.Line(string.Concat(Enumerable.Range(0, p.Columns).Select(i => (char)('0' + (i + 1) % 10))));

@@ -18,14 +18,15 @@ public sealed class EscPos
     }
     private readonly MemoryStream _out = new();
 
-    /// <summary>Characters per line in the normal font: 48 on 80 mm paper, 32 on 58 mm.</summary>
+    /// <summary>Characters per line in the normal font (font A): 42 on an Epson TM-T88 with 80 mm paper, 48 on most
+    /// other 80 mm printers, 30–32 on 58 mm.</summary>
     public int Columns { get; }
-    private readonly int _paperMm;
+    private readonly int _qrModule;
 
-    public EscPos(int paperMm)
+    public EscPos(PrinterModel model)
     {
-        _paperMm = paperMm == 58 ? 58 : 80;
-        Columns = _paperMm == 58 ? 32 : 48;
+        Columns = model.Columns;
+        _qrModule = model.QrModule;
         Raw(0x1B, 0x40);            // ESC @  initialise
         Raw(0x1B, 0x74, 0x02);      // ESC t 2  code page PC850 (Multilingual Latin I)
     }
@@ -63,7 +64,7 @@ public sealed class EscPos
     public EscPos Qr(string data, int? moduleSize = null)
     {
         var bytes = Encoding.ASCII.GetBytes(data);
-        var size = (byte)Math.Clamp(moduleSize ?? (_paperMm == 58 ? 4 : 5), 1, 16);
+        var size = (byte)Math.Clamp(moduleSize ?? _qrModule, 1, 16);
         Raw(0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00);   // model 2
         Raw(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, size);         // module size
         Raw(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31);         // error correction M

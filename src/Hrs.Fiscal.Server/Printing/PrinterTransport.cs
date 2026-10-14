@@ -1,32 +1,57 @@
+using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.IO.Ports;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
 namespace Hrs.Fiscal.Server.Printing;
 
+/// <summary>Where a print job goes: connection kind, address (IP[:port], Windows printer name or COM port) and the
+/// serial settings used only for COM ports.</summary>
+public sealed record PrinterTarget(string Kind, string Address, int Baud = 38400, string Flow = SerialSettings.FlowHardware)
+{
+    public static PrinterTarget From(Data.TerminalEdit t) => new(t.PrinterKind, t.PrinterAddress ?? "", t.PrinterBaud, t.PrinterFlow);
+}
+
 /// <summary>Sends a finished print job to a printer.</summary>
 public interface IPrinterTransport
 {
-    /// <param name="kind">"network" (address = host or host:port, port 9100 by default) or "windows" (address = printer name).</param>
-    Task SendAsync(string kind, string address, byte[] job, CancellationToken ct = default);
+    Task SendAsync(PrinterTarget target, byte[] job, CancellationToken ct = default);
+    /// <summary>Printers installed in Windows on the fiscal server (for the USB connection); empty elsewhere.</summary>
+    IReadOnlyList<string> InstalledPrinters();
+    /// <summary>Serial ports of the fiscal server (COM1, COM3 …).</summary>
+    IReadOnlyList<string> SerialPorts();
 }
 
 /// <summary>
-/// Network printers get the job over a raw TCP connection (port 9100, "JetDirect"), which every network receipt printer
-/// accepts. Windows printers get it through the print spooler as RAW data, so the printer driver passes the ESC/POS
-/// commands through unchanged. The Windows service runs as Local System: the printer must be installed on the fiscal
-/// server for all users (a printer added only in one user's profile is not visible to the service).
+/// <b>Network</b>: raw TCP to port 9100 (every network receipt printer, e.g. the Ethernet port of an Epson TM-T88VII).
+/// <b>USB</b>: a printer installed in Windows on the fiscal server (Epson Advanced Printer Driver or the generic driver);
+/// the job goes through the spooler as RAW data, so the ESC/POS commands pass unchanged. The service runs as Local System,
+/// so install the printer for all users. A shared printer (\\PC\Name) can work if the server's computer account may use it.
+/// <b>Serial</b>: a COM port on the fiscal server (RS-232, or USB through Epson's TM Virtual Port Driver), 8 data bits,
+/// no parity, 1 stop bit; jobs to one port are sent one after the other.
+/// USB and serial printers must be connected to the fiscal server itself: the front-desk PCs only run a browser.
 /// </summary>
 public sealed class PrinterTransport : IPrinterTransport
 {
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(8);
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> PortLocks = new(StringComparer.OrdinalIgnoreCase);
 
-    public Task SendAsync(string kind, string address, byte[] job, CancellationToken ct = default) => kind switch
+    public Task SendAsync(PrinterTarget target, byte[] job, CancellationToken ct = default) => target.Kind switch
     {
-        "network" => SendNetworkAsync(address, job, ct),
-        "windows" => Task.Run(() => SendWindows(address, job), ct),
+        PrinterKinds.Network => SendNetworkAsync(target.Address, job, ct),
+        PrinterKinds.Usb => Task.Run(() => SendWindows(target.Address, job), ct),
+        PrinterKinds.Serial => SendSerialAsync(target, job, ct),
         _ => throw new PrinterException("No printer is set up for this workstation."),
     };
+
+    public IReadOnlyList<string> InstalledPrinters() => OperatingSystem.IsWindows() ? EnumPrintersWindows() : [];
+
+    public IReadOnlyList<string> SerialPorts()
+    {
+        try { return SerialPort.GetPortNames().Distinct().Order().ToList(); }
+        catch { return []; }
+    }
 
     public static (string Host, int Port) ParseAddress(string address)
     {
@@ -64,10 +89,50 @@ public sealed class PrinterTransport : IPrinterTransport
         }
     }
 
+    private static async Task SendSerialAsync(PrinterTarget target, byte[] job, CancellationToken ct)
+    {
+        var portName = target.Address.Trim();
+        if (portName.Length == 0) throw new PrinterException("Enter the COM port of the printer.");
+        var gate = PortLocks.GetOrAdd(portName, _ => new SemaphoreSlim(1, 1));
+        if (!await gate.WaitAsync(Timeout, ct)) throw new PrinterException($"Port {portName} is busy with another print job.");
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var port = new SerialPort(portName, target.Baud, Parity.None, 8, StopBits.One)
+                {
+                    WriteTimeout = (int)Timeout.TotalMilliseconds,
+                    Handshake = target.Flow switch
+                    {
+                        SerialSettings.FlowHardware => Handshake.RequestToSend,
+                        SerialSettings.FlowXonXoff => Handshake.XOnXOff,
+                        _ => Handshake.None,
+                    },
+                    // DTR/DSR printers (Epson default): the printer's DTR line reaches the PC's CTS/DSR in Epson's cables.
+                    DtrEnable = true,
+                };
+                try
+                {
+                    port.Open();
+                    for (var offset = 0; offset < job.Length; offset += 1024)
+                        port.Write(job, offset, Math.Min(1024, job.Length - offset));
+                    var until = DateTime.UtcNow + Timeout;
+                    while (port.BytesToWrite > 0 && DateTime.UtcNow < until) Thread.Sleep(20);
+                    if (port.BytesToWrite > 0) throw new PrinterException($"The printer on {portName} did not take the data (offline, out of paper or wrong flow control).");
+                }
+                catch (TimeoutException) { throw new PrinterException($"The printer on {portName} did not take the data within {Timeout.TotalSeconds:0} seconds (offline, out of paper, or wrong speed or flow control)."); }
+                catch (UnauthorizedAccessException) { throw new PrinterException($"Port {portName} is used by another program."); }
+                catch (IOException ex) { throw new PrinterException($"Cannot open port {portName}: {ex.Message}"); }
+                catch (ArgumentException) { throw new PrinterException($"Port {portName} does not exist on this server."); }
+            }, ct);
+        }
+        finally { gate.Release(); }
+    }
+
     private static void SendWindows(string printerName, byte[] job)
     {
         if (!OperatingSystem.IsWindows())
-            throw new PrinterException("Windows printers can be used only when the fiscal server runs on Windows.");
+            throw new PrinterException("USB printers installed in Windows can be used only when the fiscal server runs on Windows.");
         if (!OpenPrinter(printerName.Trim(), out var handle, IntPtr.Zero))
             throw new PrinterException($"Windows printer \"{printerName}\" was not found: {new Win32Exception().Message}");
         try
@@ -85,6 +150,35 @@ public sealed class PrinterTransport : IPrinterTransport
         }
         finally { ClosePrinter(handle); }
     }
+
+    private static IReadOnlyList<string> EnumPrintersWindows()
+    {
+        const int Local = 0x2, Connections = 0x4;
+        EnumPrinters(Local | Connections, null, 4, IntPtr.Zero, 0, out var needed, out _);
+        if (needed <= 0) return [];
+        var buffer = Marshal.AllocHGlobal(needed);
+        try
+        {
+            if (!EnumPrinters(Local | Connections, null, 4, buffer, needed, out _, out var count)) return [];
+            var size = Marshal.SizeOf<PrinterInfo4>();
+            var names = new List<string>();
+            for (var i = 0; i < count; i++)
+                if (Marshal.PtrToStructure<PrinterInfo4>(buffer + i * size).PrinterName is { } name) names.Add(name);
+            return names.Order().ToList();
+        }
+        finally { Marshal.FreeHGlobal(buffer); }
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct PrinterInfo4
+    {
+        [MarshalAs(UnmanagedType.LPWStr)] public string? PrinterName;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? ServerName;
+        public uint Attributes;
+    }
+
+    [DllImport("winspool.drv", EntryPoint = "EnumPrintersW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool EnumPrinters(int flags, string? name, int level, IntPtr buffer, int size, out int needed, out int returned);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct DocInfo1

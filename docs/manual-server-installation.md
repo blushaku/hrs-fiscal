@@ -43,7 +43,7 @@ OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fisc
 | Inbound | Admin PCs → fiscal server | TCP 5080 (HTTP) | Admin web UI |
 | Outbound | fiscal server → `fiskalizimi.atk-ks.org` (production), `fiskalizimi-test.atk-ks.org` (test) | TCP 443 | ATK API. Allow through the hotel firewall/proxy without TLS inspection |
 | Local | fiscal server → PostgreSQL | TCP 5432 | Only if PostgreSQL is on another machine |
-| Local | fiscal server → receipt printers | TCP 9100 | Only with thermal printing on network printers (Settings › Printing) |
+| Local | fiscal server → receipt printers | TCP 9100 | Only with thermal printing on network printers (Settings › Printing); USB and serial printers are connected to the fiscal server itself |
 
 Nothing is exposed to the internet. Do not forward ports 5080/5100 from outside.
 
@@ -277,13 +277,24 @@ the 10th of the following month.
 
 **Workstation printers › Set up** (one printer per workstation):
 
-- **Connection**: *Network* — a receipt printer with an Ethernet/Wi-Fi interface (Epson TM-T20/T88, Star TSP in ESC/POS
-  mode, Bixolon, Xprinter …). Enter its IP address; the port is 9100 unless you add another (`192.168.1.50:9100`). Give
-  the printer a fixed IP address (or a DHCP reservation) and allow the fiscal server to reach port 9100.
-  *Windows printer* — a printer installed on the fiscal server; enter its exact name as shown in *Printers & scanners*.
-  The service runs as Local System, so install the printer **for all users** on the server; a printer shared from a
-  front-desk PC may not be visible to the service — prefer *Network*. The job is sent as raw ESC/POS through the spooler.
-- **Paper width**: 80 mm (48 characters per line) or 58 mm (32).
+- **Connection**
+  - *Network (Ethernet / Wi-Fi)* — for printers at the front desk. The Epson TM-T88VII has a built-in Ethernet port.
+    Enter the printer's IP address; the port is 9100 unless you add another (`192.168.1.50:9100`). Give the printer a
+    fixed IP address (or a DHCP reservation) and allow the fiscal server to reach port 9100.
+  - *USB, on the fiscal server* — the printer is plugged into the fiscal server and installed in Windows (Epson
+    Advanced Printer Driver, or Windows' generic driver). Pick its name from the list of printers found on the server.
+    The service runs as Local System, so install the printer **for all users**. The job is sent as raw ESC/POS
+    through the spooler.
+  - *Serial (COM port), on the fiscal server* — RS-232 cable to the server's COM port (or a USB printer exposed as a
+    COM port by Epson's *TM Virtual Port Driver*). Choose the port, the speed and the flow control; 8 data bits, no
+    parity, 1 stop bit. Epson TM printers leave the factory at 38400 bps with hardware (DTR/DSR) flow control: check the
+    printer's self-test page (hold FEED while switching on) and use the same values.
+
+  USB and serial printers must be connected to the **fiscal server**: the front-desk PCs only run a browser, so a
+  printer plugged into a front-desk PC is not reachable. Connect front-desk printers by network.
+- **Printer model** sets the paper width and characters per line: *Epson TM-T88 (VII, VI, V), 80 mm* — 42 characters
+  (180 dpi), the default; *Epson TM-T88, 58 mm* — 30; *Other ESC/POS printer, 80 mm* — 48 (most 203 dpi printers);
+  *Other, 58 mm* — 32.
 - **Print automatically after each fiscalization**: on by default. When off, receipts are printed from the receipt page.
 
 **Test print** sends a test page (not a fiscal receipt) with the workstation, the paper width, the letters ë Ë ç Ç and a
@@ -366,7 +377,7 @@ retention period. Export or hand over a backup instead.
 | "Register with ATK" says to use the client | The workstation is in workstation-client mode (Signing column) |
 | Workstation shows *register again* | The signing mode was changed after registration. Register it again |
 | Dashboard: receipts waiting | ATK unreachable; receipts are kept and resent automatically. ATK's limit is 48 hours |
-| Receipts do not print / dashboard *Receipt … was not printed* | Settings › Printing › Test print. *Cannot reach the printer*: IP address, printer on, port 9100 open, same network. *Windows printer … was not found*: exact name, printer installed for all users on the server |
+| Receipts do not print / dashboard *Receipt … was not printed* | Settings › Printing › Test print. *Cannot reach the printer*: IP address, printer on, port 9100 open, same network. *Windows printer … was not found*: exact name, printer installed for all users on the server. *Serial*: port number, speed and flow control as on the printer's self-test page; no other program (e.g. OPOS) holding the port |
 | Printed letters wrong (ë, ç) | Set the printer's code page to PC850 with its utility or self-test menu |
 | Integrity check fails | Stop and escalate to the software maintainer: the archive was changed outside the application. Do not repair it yourself |
 

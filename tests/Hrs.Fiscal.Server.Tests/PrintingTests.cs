@@ -23,7 +23,7 @@ public class ThermalReceiptTests
     public void Escpos_wraps_long_text_and_aligns_right_values()
     {
         Assert.Equal(["ARSYEJA E ANULIMIT: GABIM NË", "SHUMË"], EscPos.Wrap("ARSYEJA E ANULIMIT: GABIM NË SHUMË", 30).ToArray());
-        var job = new EscPos(58).LeftRight("TOTALI", "12.50").ToArray();
+        var job = new EscPos(PrinterModels.Get("generic-58")).LeftRight("TOTALI", "12.50").ToArray();
         Assert.True(ContainsText(job, "TOTALI" + new string(' ', 32 - 6 - 5) + "12.50"));
     }
 
@@ -31,12 +31,26 @@ public class ThermalReceiptTests
     public void Test_page_has_albanian_letters_qr_and_cut()
     {
         var clock = new PropertyClock(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
-        var job = ThermalReceipt.TestPage("POS 1", "network printer 10.0.0.5", 80, clock);
+        var job = ThermalReceipt.TestPage("POS 1", "network printer 10.0.0.5", PrinterModels.Get("epson-tm-t88-80"), clock);
         Assert.Equal(new byte[] { 0x1B, 0x40 }, job[..2]);                         // initialise
         Assert.True(Contains(job, [0x1B, 0x74, 0x02]));                            // code page PC850
         Assert.True(Contains(job, [0x89, 0x20, 0xD3, 0x20, 0x87, 0x20, 0x80]));     // ë Ë ç Ç
         Assert.True(Contains(job, [0x1D, 0x28, 0x6B, 0x07, 0x00, 0x31, 0x50, 0x30, (byte)'T', (byte)'E', (byte)'S', (byte)'T']));
         Assert.True(Contains(job, [0x1D, 0x56, 0x42]));                            // cut
+        // Epson TM-T88: 42 characters per line on 80 mm paper (the ruler line has exactly 42 digits).
+        Assert.True(ContainsText(job, "123456789012345678901234567890123456789012\n"));
+        Assert.False(ContainsText(job, "1234567890123456789012345678901234567890123"));
+    }
+
+    [Fact]
+    public void Printer_models_set_characters_per_line()
+    {
+        Assert.Equal(42, PrinterModels.Get("epson-tm-t88-80").Columns);
+        Assert.Equal(48, PrinterModels.Get("generic-80").Columns);
+        Assert.Equal(32, PrinterModels.Get("generic-58").Columns);
+        Assert.Equal("epson-tm-t88-80", PrinterModels.Get("unknown").Key);   // default: the most common printer
+        Assert.Equal(("192.168.1.50", 9100), PrinterTransport.ParseAddress("192.168.1.50"));
+        Assert.Equal(("printer.local", 9101), PrinterTransport.ParseAddress("printer.local:9101"));
     }
 }
 
@@ -62,6 +76,7 @@ public sealed class PrintingTests(ServerFixture app) : IClassFixture<ServerFixtu
         await settings.SaveBusinessAsync(b, "test");
         await settings.SaveVatRateAsync(new VatRateRow { Letter = "D", Percent = 6, Description = "test" }, "test");
         await settings.SaveTerminalAsync(new TerminalEdit { PosId = 31, OperaTerminalId = "OPERA9TERMINAL", Hostname = "OPERA9", Status = "pending", SigningMode = "server" }, "test");
+        await settings.SaveTerminalAsync(new TerminalEdit { PosId = 32, OperaTerminalId = "OPERA-SERIAL", Hostname = "OPERA-SERIAL", Status = "pending", SigningMode = "server" }, "test");
         var id = (await settings.TerminalsAsync()).Single(t => t.OperaTerminalId == "OPERA9TERMINAL").Id;
         await s.GetRequiredService<TerminalEnrollment>().EnrollAsync(id, "test");
         return id;
@@ -88,7 +103,7 @@ public sealed class PrintingTests(ServerFixture app) : IClassFixture<ServerFixtu
         Assert.Contains("printed on the workstations' thermal printers", html);
         html = await PostFormAsync(admin, $"/Settings/Printing?Edit={terminalId}", $"/Settings/Printing?handler=Printer&Edit={terminalId}", new()
         {
-            ["Printer.Kind"] = "network", ["Printer.Address"] = $"127.0.0.1:{_printer.Port}", ["Printer.PaperMm"] = "80", ["Printer.Auto"] = "true",
+            ["Printer.Kind"] = "network", ["Printer.Address"] = $"127.0.0.1:{_printer.Port}", ["Printer.Model"] = "epson-tm-t88-80", ["Printer.Auto"] = "true",
         });
         Assert.Contains("Printer for workstation POS 31 saved", html);
         Assert.Contains($"127.0.0.1:{_printer.Port}", html);
@@ -122,6 +137,20 @@ public sealed class PrintingTests(ServerFixture app) : IClassFixture<ServerFixtu
         Assert.Contains("KOPJE E KUPONIT", Decode(await _printer.NextAsync()));
         Assert.Equal(1L, await app.ScalarAsync<long>($"SELECT count(*) FROM fiscal.audit_log WHERE action = 'RECEIPT_PRINTED' AND entity_id = '{receiptId}' AND details->>'copy' = 'false'"));
         Assert.Equal(1L, await app.ScalarAsync<long>($"SELECT count(*) FROM fiscal.audit_log WHERE action = 'RECEIPT_PRINTED' AND entity_id = '{receiptId}' AND details->>'copy' = 'true'"));
+
+        // 5b. A serial printer is saved with its port settings; a missing port is reported, not a crash.
+        var otherId = await app.ScalarAsync<long>("SELECT id FROM fiscal.terminal WHERE opera_terminal_id = 'OPERA-SERIAL'");
+        {
+            html = await PostFormAsync(admin, $"/Settings/Printing?Edit={otherId}", $"/Settings/Printing?handler=Printer&Edit={otherId}", new()
+            {
+                ["Printer.Kind"] = "serial", ["Printer.Address"] = "com9", ["Printer.Model"] = "generic-80", ["Printer.Baud"] = "19200", ["Printer.Flow"] = "xonxoff", ["Printer.Auto"] = "false",
+            });
+            Assert.Contains("COM9 · 19200", html);
+            Assert.Equal("serial|COM9|19200|xonxoff|generic-80", await app.ScalarAsync<string>($"SELECT concat_ws('|', printer_kind, printer_address, printer_baud, printer_flow, printer_model) FROM fiscal.terminal WHERE id = {otherId}"));
+            html = await PostFormAsync(admin, "/Settings/Printing", $"/Settings/Printing?handler=Test&id={otherId}", []);
+            Assert.Contains("Test print failed", html);
+            Assert.Contains("COM9", html);
+        }
 
         // 6. Printer switched off: the receipt is still fiscalized; the failure is logged and shown on the dashboard.
         _printer.Dispose();

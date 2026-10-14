@@ -32,14 +32,19 @@ public sealed class TerminalEdit
     /// <summary>Where the current key and certificate live ("server" / "client"); null = not registered.</summary>
     public string? EnrolledMode { get; set; }
     public string? KeyReference { get; set; }
-    /// <summary>Thermal printer for this workstation: "none", "network" (host:port, ESC/POS) or "windows" (printer name).</summary>
+    /// <summary>Thermal printer for this workstation: "none", "network" (IP[:port], ESC/POS), "usb" (printer name in
+    /// Windows on the fiscal server) or "serial" (COM port on the fiscal server).</summary>
     public string PrinterKind { get; set; } = "none";
     public string? PrinterAddress { get; set; }
-    /// <summary>Paper width: 80 or 58 mm.</summary>
+    /// <summary>Printer model key (Printing.PrinterModels): paper width and characters per line.</summary>
+    public string PrinterModel { get; set; } = "epson-tm-t88-80";
     public short PrinterPaperMm { get; set; } = 80;
+    public int PrinterBaud { get; set; } = 38400;
+    /// <summary>Serial flow control: hardware, xonxoff or none.</summary>
+    public string PrinterFlow { get; set; } = "hardware";
     /// <summary>Print the receipt automatically after each fiscalization (when receipts are printed on printers).</summary>
     public bool PrinterAuto { get; set; } = true;
-    public bool HasPrinter => PrinterKind is "network" or "windows" && !string.IsNullOrWhiteSpace(PrinterAddress);
+    public bool HasPrinter => PrinterKind is "network" or "usb" or "serial" && !string.IsNullOrWhiteSpace(PrinterAddress);
 
     public string EffectiveMode(string propertyDefault) => SigningMode ?? propertyDefault;
 
@@ -50,6 +55,9 @@ public sealed class TerminalEdit
         : CertificateExpires <= (nowUtc ?? DateTime.UtcNow) ? TerminalSigningState.Expired
         : TerminalSigningState.Ready;
 }
+
+/// <summary>A workstation's printer as entered in Settings › Printing.</summary>
+public sealed record PrinterSetup(string Kind, string? Address, string Model, int Baud, string Flow, bool Auto);
 
 public enum TerminalSigningState { Ready, NotRegistered, RegisterAgain, Expired, Disabled }
 
@@ -245,7 +253,8 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         await using var conn = await db.OpenConnectionAsync(ct);
         return (await conn.QueryAsync<TerminalEdit>("""
             SELECT id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, certificate_expires,
-                   signing_mode, enrolled_mode, key_reference, printer_kind, printer_address, printer_paper_mm, printer_auto
+                   signing_mode, enrolled_mode, key_reference, printer_kind, printer_address, printer_paper_mm, printer_auto,
+                   printer_model, printer_baud, printer_flow
             FROM fiscal.terminal ORDER BY pos_id
             """)).ToList();
     }
@@ -280,22 +289,25 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     }
 
     /// <summary>Saves a workstation's thermal printer (Settings › Printing); audited with old and new values.</summary>
-    public async Task SaveTerminalPrinterAsync(long terminalId, string kind, string? address, short paperMm, bool auto, string actor, CancellationToken ct = default)
+    public async Task SaveTerminalPrinterAsync(long terminalId, PrinterSetup p, string actor, CancellationToken ct = default)
     {
         var before = (await TerminalsAsync(ct)).SingleOrDefault(x => x.Id == terminalId) ?? throw new InvalidOperationException("Unknown workstation.");
-        if (kind is not ("none" or "network" or "windows")) throw new InvalidOperationException("Unknown printer connection.");
-        if (paperMm is not (58 or 80)) throw new InvalidOperationException("Paper width is 58 or 80 mm.");
-        address = kind == "none" ? null : address?.Trim();
+        if (!Printing.PrinterKinds.All.Contains(p.Kind)) throw new InvalidOperationException("Unknown printer connection.");
+        var model = Printing.PrinterModels.Get(p.Model);
+        if (!Printing.SerialSettings.BaudRates.Contains(p.Baud)) throw new InvalidOperationException("Unknown serial speed.");
+        if (!Printing.SerialSettings.Flows.Contains(p.Flow)) throw new InvalidOperationException("Unknown flow control.");
+        var address = p.Kind == Printing.PrinterKinds.None ? null : p.Address?.Trim();
         await using var conn = await db.OpenConnectionAsync(ct);
         await conn.ExecuteAsync("""
-            UPDATE fiscal.terminal SET printer_kind = @kind, printer_address = @address, printer_paper_mm = @paperMm, printer_auto = @auto
+            UPDATE fiscal.terminal SET printer_kind = @Kind, printer_address = @address, printer_model = @model,
+                   printer_paper_mm = @paper, printer_baud = @Baud, printer_flow = @Flow, printer_auto = @Auto
             WHERE id = @terminalId
-            """, new { terminalId, kind, address, paperMm, auto });
+            """, new { terminalId, p.Kind, address, model = model.Key, paper = (short)model.PaperMm, p.Baud, p.Flow, p.Auto });
         await audit.WriteAsync(actor, AuditLog.Actions.TerminalChanged, "terminal", terminalId.ToString(), new
         {
             printer = true,
-            old = new { before.PrinterKind, before.PrinterAddress, before.PrinterPaperMm, before.PrinterAuto },
-            @new = new { PrinterKind = kind, PrinterAddress = address, PrinterPaperMm = paperMm, PrinterAuto = auto },
+            old = new { before.PrinterKind, before.PrinterAddress, before.PrinterModel, before.PrinterBaud, before.PrinterFlow, before.PrinterAuto },
+            @new = new { PrinterKind = p.Kind, PrinterAddress = address, PrinterModel = model.Key, PrinterBaud = p.Baud, PrinterFlow = p.Flow, PrinterAuto = p.Auto },
         }, terminalId, ct);
     }
 

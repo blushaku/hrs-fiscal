@@ -53,7 +53,7 @@ OFIS dhe FLIP nuk fiskalizojnë vetë: ato vetëm dërgojnë faturën. Fiskalizi
 
 Një faturë e dërguar përsëri (rishtypje ose dërgim i përsëritur nga OPERA) nuk krijon kupon të ri: softueri kthen kuponin e parë.
 
-**Shtypja e kuponit.** Hoteli zgjedh në cilësime ku shtypet kuponi për mysafirin: në bllokun fiskal të faturës së OPERA-s, ose në printerin termik (58 ose 80 mm) të vendpunësit. Në rastin e dytë serveri fiskal e shtyp vetë kuponin e plotë sipas shembujve të ATK-së, menjëherë pas fiskalizimit, në printer në rrjet ose në printer të instaluar në Windows. Shtypja e parë është origjinali; shtypjet e mëvonshme shënohen "KOPJE E KUPONIT". Çdo shtypje dhe çdo dështim regjistrohen në auditim; një printer që nuk punon nuk e ndal fiskalizimin.
+**Shtypja e kuponit.** Hoteli zgjedh në cilësime ku shtypet kuponi për mysafirin: në bllokun fiskal të faturës së OPERA-s, ose në printerin termik (58 ose 80 mm) të vendpunësit. Në rastin e dytë serveri fiskal e shtyp vetë kuponin e plotë sipas shembujve të ATK-së, menjëherë pas fiskalizimit, në printer të lidhur në rrjet, me USB ose me portë seriale (COM) në serverin fiskal (p.sh. Epson TM-T88VII). Shtypja e parë është origjinali; shtypjet e mëvonshme shënohen "KOPJE E KUPONIT". Çdo shtypje dhe çdo dështim regjistrohen në auditim; një printer që nuk punon nuk e ndal fiskalizimin.
 
 **Llojet e kuponit.**
 
@@ -147,7 +147,7 @@ Kur ATK-ja nuk përgjigjet, lëshimi i kuponeve vazhdon pa ndërprerje dhe pa hu
 | Formati i të dhënave për ATK | Protocol Buffers (Google.Protobuf), JSON mbi HTTPS |
 | Kriptografia | ECDSA P-256 / SHA-256 (.NET System.Security.Cryptography, Windows CNG, TPM kur ekziston); hash-e SHA-256 për integritetin; ASP.NET Core Data Protection |
 | Kodi QR dhe PDF | QRCoder; QuestPDF |
-| Printimi i kuponit | Komandat ESC/POS (QR i printerit, faqja e kodeve PC850) në printerë termikë në rrjet (TCP 9100) ose të instaluar në Windows (RAW) |
+| Printimi i kuponit | Komandat ESC/POS (QR i printerit, faqja e kodeve PC850) në printerë termikë në rrjet (TCP 9100), me USB (Windows, RAW) ose me portë seriale COM |
 | Integrimi me hotelin | Oracle OPERA Cloud — OFIS (OPERA Fiscal Integration Solution) me FLIP në rrjetin lokal (HTTP/JSON) |
 | Ndërfaqja | Shfletues web (Edge, Chrome, Firefox); pa varësi nga interneti për asetet |
 | Testimi | xUnit, teste integrimi me PostgreSQL dhe me shërbim ATK simulues; teste në mjedisin TEST të ATK-së |

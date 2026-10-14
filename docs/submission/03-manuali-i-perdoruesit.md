@@ -76,7 +76,7 @@ Të gjitha cilësimet janë te **Cilësimet**. Çdo pllakë hapet me **Ndrysho**
 5. **Të përgjithshme › Lidhja OPERA / FLIP** — mënyra e punës (Regjistrim për testim, Live për fiskalizim) dhe tokeni i qasjes për FLIP (**Gjenero tokenin**), i cili tregohet vetëm një herë.
 6. **Të përgjithshme › Validimi i faturës** — kontrolli i numrit tatimor dhe toleranca e rrumbullakimit.
 7. **Përdoruesit** dhe **Rolet dhe të drejtat** — llogari personale për çdo përdorues; përdoruesit nuk fshihen, çaktivizohen.
-8. **Printimi** — ku shtypet kuponi për mysafirin: në bllokun fiskal të faturës së OPERA-s (parazgjedhje) ose në printerin termik të vendpunësit. Për çdo vendpunës, me **Konfiguro**: lidhja (rrjet, me adresën IP dhe portën 9100, ose printer i instaluar në Windows në serverin fiskal), gjerësia e letrës (58 ose 80 mm) dhe shtypja automatike pas fiskalizimit. **Provë printimi** shtyp një faqe prove (jo kupon fiskal).
+8. **Printimi** — ku shtypet kuponi për mysafirin: në bllokun fiskal të faturës së OPERA-s (parazgjedhje) ose në printerin termik të vendpunësit. Për çdo vendpunës, me **Konfiguro**: lidhja (rrjet me adresën IP dhe portën 9100; USB ose portë seriale COM në serverin fiskal, me shpejtësinë dhe kontrollin e rrjedhës), modeli i printerit (p.sh. Epson TM-T88VII, 80 mm, 42 shkronja për rresht) dhe shtypja automatike pas fiskalizimit. **Provë printimi** shtyp një faqe prove (jo kupon fiskal).
 
 Pllakat e tjera: **Nënshkrimi** (ku ruhen çelësat; parazgjedhur: qendror në server), **Zëvendësimet e OPERA-s dhe vlerat e parazgjedhura të kuponit**, **Llogaritja e TVSH-së**, **Ruajtja dhe kopja rezervë**, **Alarmet** (adresa për njoftime). Ora e serverit kontrollohet automatikisht me ATK-në çdo 15 minuta.
 

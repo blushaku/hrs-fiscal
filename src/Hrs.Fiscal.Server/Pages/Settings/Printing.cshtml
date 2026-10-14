@@ -4,7 +4,7 @@
 @{
     ViewData["Title"] = "Printing";
     var onPrinter = Model.Mode == "printer";
-    string Connection(Hrs.Fiscal.Server.Data.TerminalEdit t) => t.PrinterKind switch { "network" => "Network", "windows" => "Windows printer", _ => "None" };
+    string Connection(Hrs.Fiscal.Server.Data.TerminalEdit t) => Hrs.Fiscal.Server.Pages.Settings.PrintingModel.ConnectionLabel(t.PrinterKind);
 }
 <partial name="_SettingsNav" />
 
@@ -32,13 +32,13 @@
 <section class="card" id="printers">
     <div class="tile-head"><h2>Workstation printers</h2></div>
     <p class="small muted" style="margin: 0 0 12px">
-        Each workstation prints on its own thermal receipt printer (58 or 80 mm, ESC/POS). <strong>Network</strong>: the printer's IP address, port 9100 unless you add another (192.168.1.50 or 192.168.1.50:9100).
-        <strong>Windows printer</strong>: the exact name of a printer installed on this server for all users. The first print of a receipt is the original; later prints are marked KOPJE E KUPONIT.
+        Each workstation prints on its own thermal receipt printer (ESC/POS, e.g. Epson TM-T88VII). <strong>Network</strong>: the printer's IP address, port 9100 unless you add another; use this for printers at the front desk.
+        <strong>USB</strong> and <strong>Serial (COM)</strong>: the printer is connected to the fiscal server itself (the front-desk PCs only run a browser). The first print of a receipt is the original; later prints are marked KOPJE E KUPONIT.
         @if (!onPrinter) { <span>Printers are used only when receipts are printed on a thermal printer (above).</span> }
     </p>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Workstation</th><th>OPERA terminal</th><th>Connection</th><th>Printer</th><th>Paper</th><th>Automatic</th><th><span class="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th>Workstation</th><th>OPERA terminal</th><th>Connection</th><th>Printer</th><th>Model</th><th>Automatic</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
             @foreach (var t in Model.Terminals)
             {
@@ -46,8 +46,8 @@
                     <td>POS <span class="mono">@t.PosId</span>@(string.IsNullOrWhiteSpace(t.Description) ? "" : " · " + t.Description)</td>
                     <td class="mono">@t.OperaTerminalId</td>
                     <td>@Connection(t)</td>
-                    <td class="mono">@(t.HasPrinter ? t.PrinterAddress : "")</td>
-                    <td>@(t.HasPrinter ? $"{t.PrinterPaperMm} mm" : "")</td>
+                    <td class="mono">@(t.HasPrinter ? t.PrinterAddress + (t.PrinterKind == "serial" ? $" · {t.PrinterBaud}" : "") : "")</td>
+                    <td>@(t.HasPrinter ? PrinterModels.Get(t.PrinterModel).Label : "")</td>
                     <td>@(t.HasPrinter ? (t.PrinterAuto ? "yes" : "no, on request") : "")</td>
                     <td class="row-actions">
                         <a class="btn small" href="/Settings/Printing?Edit=@t.Id">Set up</a>
@@ -88,19 +88,43 @@
             <div asp-validation-summary="All" class="validation"></div>
             <div class="form-grid">
                 <label class="field">Connection
-                    <select asp-for="Printer.Kind">
-                        <option value="network">Network (IP address)</option>
-                        <option value="windows">Windows printer on this server</option>
+                    <select asp-for="Printer.Kind" id="printer-kind">
+                        <option value="network">Network (Ethernet / Wi-Fi)</option>
+                        <option value="usb">USB, on the fiscal server</option>
+                        <option value="serial">Serial (COM port), on the fiscal server</option>
                         <option value="none">No printer</option>
                     </select>
                 </label>
-                <label class="field">IP address or Windows printer name <input type="text" asp-for="Printer.Address" autocomplete="off" placeholder="192.168.1.50:9100"></label>
-                <label class="field">Paper width
-                    <select asp-for="Printer.PaperMm">
-                        <option value="80">80 mm (48 characters)</option>
-                        <option value="58">58 mm (32 characters)</option>
+                <label class="field">Printer model
+                    <select asp-for="Printer.Model">
+                        @foreach (var m in PrinterModels.All) { <option value="@m.Key">@m.Label (@m.Columns characters)</option> }
                     </select>
                 </label>
+            </div>
+            <div class="form-grid" data-show-for="printer-kind:network">
+                <label class="field">IP address <input type="text" name="Printer.Address" value="@(Model.Printer.Kind == "network" ? Model.Printer.Address : "")" autocomplete="off" placeholder="192.168.1.50 or 192.168.1.50:9100"></label>
+            </div>
+            <div data-show-for="printer-kind:usb">
+                <label class="field">Printer in Windows
+                    <input type="text" name="Printer.Address" list="installed-printers" value="@(Model.Printer.Kind == "usb" ? Model.Printer.Address : "")" autocomplete="off" placeholder="EPSON TM-T88VII Receipt">
+                    <datalist id="installed-printers">@foreach (var name in Model.InstalledPrinters) { <option value="@name"></option> }</datalist>
+                </label>
+                <p class="small muted" style="margin: 4px 0 0">Install the printer on the fiscal server for all users (Epson Advanced Printer Driver or the generic driver)@(Model.InstalledPrinters.Count > 0 ? $"; printers found: {Model.InstalledPrinters.Count}" : "").</p>
+            </div>
+            <div data-show-for="printer-kind:serial">
+                <div class="form-grid">
+                    <label class="field">COM port
+                        <input type="text" name="Printer.Address" list="serial-ports" value="@(Model.Printer.Kind == "serial" ? Model.Printer.Address : "")" autocomplete="off" placeholder="COM1">
+                        <datalist id="serial-ports">@foreach (var port in Model.SerialPorts) { <option value="@port"></option> }</datalist>
+                    </label>
+                    <label class="field">Speed (bps)
+                        <select asp-for="Printer.Baud">@foreach (var b in SerialSettings.BaudRates) { <option value="@b">@b</option> }</select>
+                    </label>
+                    <label class="field">Flow control
+                        <select asp-for="Printer.Flow">@foreach (var f in SerialSettings.Flows) { <option value="@f">@Hrs.Fiscal.Server.Pages.Settings.PrintingModel.FlowLabel(f)</option> }</select>
+                    </label>
+                </div>
+                <p class="small muted" style="margin: 4px 0 0">8 data bits, no parity, 1 stop bit. Epson TM printers: 38400 bps and hardware flow control unless changed; the self-test page shows the settings. A USB printer with Epson's TM Virtual Port Driver also appears as a COM port.</p>
             </div>
             <label class="check"><input type="checkbox" asp-for="Printer.Auto"> Print automatically after each fiscalization</label>
             <p class="small muted" style="margin: 0">Without automatic printing, receipts are printed from the receipt page (Print on thermal printer).</p>

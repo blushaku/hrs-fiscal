@@ -128,3 +128,20 @@
         if (back) { e.preventDefault(); resetConfirm(back.closest('form')); }
     });
 })();
+
+// Fields that apply to one choice only: <div data-show-for="selectId:value1,value2">. Hidden groups are also disabled,
+// so their fields are neither posted nor listed in the confirmation.
+(function () {
+    function sync() {
+        document.querySelectorAll('[data-show-for]').forEach(function (g) {
+            var spec = g.getAttribute('data-show-for').split(':');
+            var select = document.getElementById(spec[0]);
+            if (!select) return;
+            var on = spec[1].split(',').indexOf(select.value) >= 0;
+            g.hidden = !on;
+            g.querySelectorAll('input, select, textarea').forEach(function (el) { el.disabled = !on; });
+        });
+    }
+    document.addEventListener('change', function (e) { if (e.target.tagName === 'SELECT') sync(); });
+    sync();
+})();

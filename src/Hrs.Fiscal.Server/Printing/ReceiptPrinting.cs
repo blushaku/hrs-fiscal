@@ -30,11 +30,11 @@ public sealed class ReceiptPrinting(
         var coupon = PosCoupon.Parser.ParseFrom(r.PosCoupon);
         var rates = (await settings.VatRatesAsync(ct)).ToDictionary(v => v.Letter, v => v.Percent);
         DateTime? referenceAt = r.ReferenceCouponId is { } refId ? await receipts.IssuedAtAsync(refId, ct) : null;
-        var job = ThermalReceipt.Build(r, coupon, rates, clock, terminal.PrinterPaperMm, isCopy, referenceAt);
+        var job = ThermalReceipt.Build(r, coupon, rates, clock, PrinterModels.Get(terminal.PrinterModel), isCopy, referenceAt);
         var printer = Describe(terminal);
         try
         {
-            await transport.SendAsync(terminal.PrinterKind, terminal.PrinterAddress!, job, ct);
+            await transport.SendAsync(PrinterTarget.From(terminal), job, ct);
         }
         catch (PrinterException ex)
         {
@@ -64,8 +64,8 @@ public sealed class ReceiptPrinting(
         if (terminal is null) return new(false, "Unknown workstation.");
         if (!terminal.HasPrinter) return new(false, $"Workstation POS {terminal.PosId} has no printer yet.");
         var printer = Describe(terminal);
-        var job = ThermalReceipt.TestPage($"POS {terminal.PosId} · {terminal.OperaTerminalId ?? terminal.Hostname}", printer, terminal.PrinterPaperMm, clock);
-        try { await transport.SendAsync(terminal.PrinterKind, terminal.PrinterAddress!, job, ct); }
+        var job = ThermalReceipt.TestPage($"POS {terminal.PosId} · {terminal.OperaTerminalId ?? terminal.Hostname}", printer, PrinterModels.Get(terminal.PrinterModel), clock);
+        try { await transport.SendAsync(PrinterTarget.From(terminal), job, ct); }
         catch (PrinterException ex)
         {
             await audit.WriteAsync(actor, AuditLog.Actions.TestPrint, "terminal", terminalId.ToString(), new { printer, ok = false, error = ex.Message }, terminalId, ct);
@@ -77,8 +77,9 @@ public sealed class ReceiptPrinting(
 
     public static string Describe(TerminalEdit t) => t.PrinterKind switch
     {
-        "network" => $"network printer {t.PrinterAddress}",
-        "windows" => $"Windows printer \"{t.PrinterAddress}\"",
+        PrinterKinds.Network => $"network printer {t.PrinterAddress}",
+        PrinterKinds.Usb => $"USB printer \"{t.PrinterAddress}\"",
+        PrinterKinds.Serial => $"serial printer {t.PrinterAddress} ({t.PrinterBaud} bps)",
         _ => "no printer",
     };
 }

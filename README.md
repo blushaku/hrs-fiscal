@@ -92,8 +92,9 @@ createdb hrs_fiscal_test && psql -d hrs_fiscal_test -f db/migrations/V001__initi
 | Settings | General (retention, backup, ATK environment, timeouts, VAT rounding); business and unit, set up in two steps (NUI, fiscalization no., unit no. and ApplicationId validated with ATK, then the rest prefilled from ATK's answer); signing mode; workstations (POS ID ↔ OPERA Fiscal Terminal, ATK registration); VAT rates, user-defined (the list starts empty; one rate per percentage matches OPERA); units with ATK's list as suggestions; optional OPERA overrides per transaction code and payment method; users | Admin |
 
 **Printing** (Settings › Printing): the guest's fiscal receipt is printed either in the fiscal block of the OPERA folio
-(default) or by the fiscal server on each workstation's **thermal printer** (58/80 mm, ESC/POS): a network printer
-(IP:port 9100) or a Windows printer on the server. With thermal printing the whole receipt (items, VAT, totals,
+(default) or by the fiscal server on each workstation's **thermal printer** (58/80 mm, ESC/POS, e.g. Epson TM-T88VII):
+connected by network (IP:port 9100), by USB to the fiscal server (Windows printer, raw) or by serial COM port to the
+fiscal server (speed, flow control). The printer model sets the characters per line (Epson TM-T88: 42 on 80 mm). With thermal printing the whole receipt (items, VAT, totals,
 NUIKF, daily number, OFFLINE, QR, e-kupon) prints automatically after fiscalization (`Printing/`); failures are
 logged and shown on the dashboard, and the receipt page reprints it as a copy.
 
