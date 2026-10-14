@@ -27,7 +27,7 @@ public sealed record ManualReceiptResult(long ReceiptId, long CouponId, AtkOutco
 /// </summary>
 public sealed class ManualReceipts(
     NpgsqlDataSource db, SettingsStore settings, ReceiptArchive archive, ReceiptQueries receipts, AuditLog audit,
-    TerminalEnrollment enrollment, IAtkClientFactory atkFactory, PropertyClock clock)
+    TerminalEnrollment enrollment, IAtkClientFactory atkFactory, PropertyClock clock, Printing.PrintQueue printQueue)
 {
     /// <summary>Paper-block receipts must be entered within 48 hours + 5 days of the failure (UA Art 45.5–45.6).</summary>
     public static readonly TimeSpan PaperDeadline = TimeSpan.FromDays(7);
@@ -74,6 +74,7 @@ public sealed class ManualReceipts(
         coupon.TransactionNo = 0;
 
         var result = await SignArchiveSendAsync(coupon, terminal, original.SourceDocument, new ReceiptExtras(CancelReason: reason), ct);
+        if (result.Outcome != AtkOutcome.Rejected) await printQueue.EnqueueIfAutomaticAsync(settings, result.ReceiptId, terminal.Id, ct);
         await audit.WriteAsync(actor, AuditLog.Actions.ReceiptCancelled, "receipt", result.ReceiptId.ToString(), new
         {
             cancels = original.CouponId, couponId = result.CouponId, reason, total = coupon.Total, atk = result.Outcome.ToString().ToLowerInvariant(),

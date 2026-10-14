@@ -4,15 +4,15 @@ Behar Lushaku · 12.10.2026
 
 ## Summary
 
-**Updated 12.10.2026, after the build: the app side is ready; two outside items remain.** Of 40 technical and functional requirements, 28 are met, 6 are partly met, none is missing, 2 depend on Oracle (what OPERA prints on the folio) and 4 need a written answer from ATK.
+**Updated 14.10.2026: the app side is ready, including printing the receipt on a thermal printer.** Of 40 technical and functional requirements, 30 are met, 6 are partly met, none is missing, 1 depends on Oracle (e-receipt delivery by OPERA) and 3 need a written answer from ATK.
 
 The six missing functions were built and tested on 12.10.2026: daily receipt number, OFFLINE mark, Cancel receipt with reason, entry of paper-block receipts, Albanian/Serbian interface, clock check against ATK. Central signing is now the default, so a fresh installation can fiscalize. The description (5.5) and the user manual (5.6) were updated to match.
 
 What still stands before submission:
 
-1. **The receipt the guest gets is the OPERA folio.** The fiscal server now returns every field and the ready-to-print lines; printing them needs Oracle's FLIP response format and the folio template.
+1. **The receipt the guest gets.** Since 14.10.2026 the fiscal server can print the whole receipt on each workstation's thermal printer (58/80 mm), as in ATK's samples. Printing the fiscal block on the OPERA folio instead still needs Oracle's FLIP response format and the folio template.
 2. **The ATK TEST profile returns 404.** The Commission demo needs a new TEST fiscalization number.
-3. **Four written answers from ATK** (central signing for several POS, A4 folio instead of thermal paper, developer identification, hotel deposits).
+3. **Three written answers from ATK** (central signing for several POS, developer identification, hotel deposits) and, only for properties that keep the A4 folio, whether it is accepted instead of thermal paper.
 4. **Signatures:** application form (from ATK) and the declaration, signed last.
 
 ## Sources reviewed
@@ -46,7 +46,7 @@ All documents ATK asks for exist. The description and the user manual match the 
 
 ## Technical and functional requirements
 
-28 of 40 are met (19 at the review on 12.10.2026 morning; 9 more after the build the same day). *Spec* = Doc. 01-06-1967 (with the 22.06.2026 amendment); *UA* = Administrative Instruction 01/2026.
+30 of 40 are met (19 at the review on 12.10.2026 morning; 9 more after the build the same day; 2 more with thermal printing on 14.10.2026). *Spec* = Doc. 01-06-1967 (with the 22.06.2026 amendment); *UA* = Administrative Instruction 01/2026.
 
 | # | Area | Requirement (source) | Current state in the app | Status |
 | --- | --- | --- | --- | --- |
@@ -72,11 +72,11 @@ All documents ATK asks for exist. The description and the user manual match the 
 | T20 | Receipt content | Identical items on one line (Spec 25.18) | Identical lines grouped before signing | Met |
 | T21 | Configuration | Units of measure and categories configurable, per ATK's unit list (Spec 25) | Unit per OPERA code with ATK's units list as suggestions (free text allowed, as ATK's note permits); categories with ATK codes | Met |
 | T22 | Receipt content | Daily receipt number, "Kupon fiskal ditor nr." (UA 7.2.15; Spec 25.18, Annex F) | Since 12.10.2026: per workstation and property day, assigned in the archive; on the receipt page, copy and the answer to OPERA | Met |
-| T23 | Receipt content | QR, NUIKF, SEF ID, receipt type, "e-kupon", RKS logo on the receipt the customer gets (UA 7, 39; Spec 25.18, 28) | Server returns receipt no., NUIKF, SEF ID and QR to OPERA; printing them on the folio needs Oracle's FLIP response format and the folio template (manual written) | Depends on Oracle |
+| T23 | Receipt content | QR, NUIKF, SEF ID, receipt type, "e-kupon", RKS logo on the receipt the customer gets (UA 7, 39; Spec 25.18, 28) | Thermal printing (Settings › Printing, since 14.10.2026): the fiscal server prints the whole receipt with all these elements on the workstation's printer. Folio printing remains possible; it needs Oracle's FLIP response format and the folio template (manual written) | Met |
 | T24 | Receipt content | Operator name and identification number (UA 7.2.5) | OPERA user with the OPERA cashier ID, e.g. "TEST.USER (2)"; manual receipts: name with user name | Met |
 | T25 | Copies | Copies marked "KOPJE E KUPONIT" (Spec 25.18) | Fiscal server PDF copies marked and logged (80 mm layout per Annex F); folio reprints from OPERA are not marked | Partly met |
 | T26 | Delivery | Print preview with scannable QR; electronic receipt with customer consent (Spec 25.18, 28.1–28.2) | Folio PDF/e-mail is OPERA's function | Depends on Oracle |
-| T27 | Printing | Thermal paper 58–100 mm, legible (Spec 26.14) | OPERA prints the folio on A4 | Ask ATK |
+| T27 | Printing | Thermal paper 58–100 mm, legible (Spec 26.14) | Since 14.10.2026: receipts printed by the fiscal server on 58 or 80 mm thermal printers (ESC/POS, network or Windows), per workstation. Printing on the A4 folio instead is a property's choice that still needs ATK's answer | Met |
 | T28 | Numbering | NUIKF alphanumeric, one value, max 16 characters (Spec 26.10) | 16 characters from 31 unambiguous letters and digits, generated per receipt | Met |
 | T29 | Language | Interface and functions in the official languages, Latin script with special characters (Spec 25.14; UA 32.2.9) | Since 12.10.2026: interface in Albanian (default), Serbian (Latin) and English, switch in the header; receipt texts in Albanian as in ATK's samples | Met |
 | T30 | Time | Time synchronised with ATK, to the second (Spec 26.5) | Since 12.10.2026: every 15 minutes against ATK's server time; drift over 30 s shown on the dashboard and logged (CLOCK\_DRIFT / CLOCK\_OK) | Met |
@@ -98,7 +98,7 @@ After the build, four of the five criteria would pass on the app side; receipt a
 | Criterion | Would pass now? | What decides it |
 | --- | --- | --- |
 | Security and integrity of data | Yes | Append-only archive, hash chain, audit log, roles (T12–T17). Code signing (T32) would strengthen it |
-| Accuracy of fiscal receipt generation | Yes on the server; the folio waits for Oracle | Daily number, operator ID and copies done (T22, T24); the folio fiscal block depends on Oracle (T23) |
+| Accuracy of fiscal receipt generation | Yes | Daily number, operator ID and copies done (T22, T24); the whole receipt prints on a thermal printer (T23, T27). The folio fiscal block depends on Oracle |
 | Correct, real-time reporting to ATK | Yes, once the TEST profile works | Works in ATK TEST; the current TEST fiscalization number returns 404 |
 | Storage and automatic sending after communication returns | Yes | Queue and resend (T5), OFFLINE mark (T7), 48 h and 10th-of-month reminders (T8) |
 | Other technical and functional aspects | Yes | Cancel (T11), paper block (T9), languages (T29), clock check (T30) |
@@ -137,6 +137,7 @@ Do the first two groups before applying. Most of the app work needs no outside i
 - [x] Default signing mode set to central (server); the workstation client stays a later, notified change
 - [x] Operator identification number next to the name (T24); copy PDF with RKS logo and total without VAT
 - [x] Offer ATK's units list as choices for the unit (T21)
+- [x] Print the whole receipt on a 58/80 mm thermal printer per workstation, as an alternative to the folio (T23, T27)
 
 **Get from outside**
 

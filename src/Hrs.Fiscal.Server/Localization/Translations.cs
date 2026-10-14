@@ -39,8 +39,11 @@ public sealed class Dictionary
             var regex = "^" + Regex.Replace(Regex.Escape(k), @"\\\{(\d)}", m => $"(?<p{m.Groups[1].Value}>.+?)") + "$";
             _patterns.Add((k[..k.IndexOf('{')], new Regex(regex, RegexOptions.CultureInvariant | RegexOptions.Compiled), value));
         }
-        // Longer literal prefixes first, so the most specific sentence wins.
-        _patterns.Sort((a, b) => b.Prefix.Length.CompareTo(a.Prefix.Length));
+        // Longer literal prefixes first, then longer sentences, so the most specific sentence wins
+        // ("Receipt {0} was not printed." before "Receipt {0}").
+        _patterns.Sort((a, b) => b.Prefix.Length != a.Prefix.Length
+            ? b.Prefix.Length.CompareTo(a.Prefix.Length)
+            : b.Pattern.ToString().Length.CompareTo(a.Pattern.ToString().Length));
     }
 
     public int Count => _exact.Count + _patterns.Count;

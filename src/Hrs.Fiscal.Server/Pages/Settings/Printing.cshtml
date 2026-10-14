@@ -1,0 +1,111 @@
+@page
+@model Hrs.Fiscal.Server.Pages.Settings.PrintingModel
+@using Hrs.Fiscal.Server.Printing
+@{
+    ViewData["Title"] = "Printing";
+    var onPrinter = Model.Mode == "printer";
+    string Connection(Hrs.Fiscal.Server.Data.TerminalEdit t) => t.PrinterKind switch { "network" => "Network", "windows" => "Windows printer", _ => "None" };
+}
+<partial name="_SettingsNav" />
+
+<div class="tile-grid">
+    <section class="card" id="mode">
+        <h2>Fiscal receipt for the guest</h2>
+        <dl class="kv">
+            <dt>Printed</dt>
+            <dd>@(onPrinter ? "On a thermal printer at the workstation" : "In the fiscal block of the OPERA folio")</dd>
+        </dl>
+        <p class="small muted" style="margin: 0">
+            @if (onPrinter)
+            {
+                @:The fiscal server prints the whole receipt (items, VAT, totals, NUIKF, QR) on the workstation's printer right after fiscalization. OPERA still receives the fiscal data for its folio.
+            }
+            else
+            {
+                @:OPERA prints the fiscal data and the QR on its folio, from the answer it receives through FLIP (see the folio printing manual).
+            }
+        </p>
+        <div class="tile-foot"><a class="btn small" href="/Settings/Printing?Change=true" data-dialog-open="dlg-mode">Change</a></div>
+    </section>
+</div>
+
+<section class="card" id="printers">
+    <div class="tile-head"><h2>Workstation printers</h2></div>
+    <p class="small muted" style="margin: 0 0 12px">
+        Each workstation prints on its own thermal receipt printer (58 or 80 mm, ESC/POS). <strong>Network</strong>: the printer's IP address, port 9100 unless you add another (192.168.1.50 or 192.168.1.50:9100).
+        <strong>Windows printer</strong>: the exact name of a printer installed on this server for all users. The first print of a receipt is the original; later prints are marked KOPJE E KUPONIT.
+        @if (!onPrinter) { <span>Printers are used only when receipts are printed on a thermal printer (above).</span> }
+    </p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Workstation</th><th>OPERA terminal</th><th>Connection</th><th>Printer</th><th>Paper</th><th>Automatic</th><th><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Terminals)
+            {
+                <tr class="@(Model.Edit == t.Id ? "row-current" : "")">
+                    <td>POS <span class="mono">@t.PosId</span>@(string.IsNullOrWhiteSpace(t.Description) ? "" : " · " + t.Description)</td>
+                    <td class="mono">@t.OperaTerminalId</td>
+                    <td>@Connection(t)</td>
+                    <td class="mono">@(t.HasPrinter ? t.PrinterAddress : "")</td>
+                    <td>@(t.HasPrinter ? $"{t.PrinterPaperMm} mm" : "")</td>
+                    <td>@(t.HasPrinter ? (t.PrinterAuto ? "yes" : "no, on request") : "")</td>
+                    <td class="row-actions">
+                        <a class="btn small" href="/Settings/Printing?Edit=@t.Id">Set up</a>
+                        @if (t.HasPrinter)
+                        {
+                            <form method="post" asp-page-handler="Test" asp-route-id="@t.Id" style="display: inline"><button type="submit" class="btn small">Test print</button></form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Terminals.Count == 0) { <tr><td colspan="7" class="muted">No workstations yet. Add them under <a href="/Settings/Workstations">Workstations</a>.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@* Where the receipt is printed *@
+<dialog class="modal" id="dlg-mode" aria-labelledby="mode-title" data-autoopen="@(Model.ChangeMode ? "1" : null)" open="@Model.ChangeMode">
+    <div class="modal-head"><h2 id="mode-title">Fiscal receipt for the guest</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Printing" aria-label="Close">×</button></div>
+    <form method="post" asp-page-handler="Mode" class="modal-body" data-confirm="Change where fiscal receipts are printed?">
+        <fieldset class="field">
+            <legend>Where is the receipt printed?</legend>
+            <label class="check"><input type="radio" name="NewMode" value="folio" checked="@(!onPrinter)"> In the fiscal block of the OPERA folio</label>
+            <label class="check"><input type="radio" name="NewMode" value="printer" checked="@onPrinter"> On a thermal printer at the workstation (whole receipt)</label>
+        </fieldset>
+        <p class="small muted" style="margin: 0">With thermal printers, set up a printer for each workstation. OPERA still receives the fiscal data in both cases.</p>
+        <partial name="_ConfirmBox" model="@("Yes, change")" />
+        <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Printing">Cancel</button></div>
+    </form>
+</dialog>
+
+@* Printer of one workstation *@
+@if (Model.Current is { } cur)
+{
+    <dialog class="modal" id="dlg-printer" aria-labelledby="printer-title" data-autoopen="1" open>
+        <div class="modal-head"><h2 id="printer-title">Printer for POS @cur.PosId</h2><button type="button" class="modal-close" data-dialog-close data-return="/Settings/Printing" aria-label="Close">×</button></div>
+        <form method="post" asp-page-handler="Printer" asp-route-Edit="@cur.Id" class="modal-body" data-confirm="Save the printer for POS @cur.PosId?">
+            <div asp-validation-summary="All" class="validation"></div>
+            <div class="form-grid">
+                <label class="field">Connection
+                    <select asp-for="Printer.Kind">
+                        <option value="network">Network (IP address)</option>
+                        <option value="windows">Windows printer on this server</option>
+                        <option value="none">No printer</option>
+                    </select>
+                </label>
+                <label class="field">IP address or Windows printer name <input type="text" asp-for="Printer.Address" autocomplete="off" placeholder="192.168.1.50:9100"></label>
+                <label class="field">Paper width
+                    <select asp-for="Printer.PaperMm">
+                        <option value="80">80 mm (48 characters)</option>
+                        <option value="58">58 mm (32 characters)</option>
+                    </select>
+                </label>
+            </div>
+            <label class="check"><input type="checkbox" asp-for="Printer.Auto"> Print automatically after each fiscalization</label>
+            <p class="small muted" style="margin: 0">Without automatic printing, receipts are printed from the receipt page (Print on thermal printer).</p>
+            <partial name="_ConfirmBox" model="@("Yes, save")" />
+            <div class="actions" data-hide-on-confirm><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-dialog-close data-return="/Settings/Printing">Cancel</button></div>
+        </form>
+    </dialog>
+}

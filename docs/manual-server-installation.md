@@ -43,6 +43,7 @@ OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fisc
 | Inbound | Admin PCs → fiscal server | TCP 5080 (HTTP) | Admin web UI |
 | Outbound | fiscal server → `fiskalizimi.atk-ks.org` (production), `fiskalizimi-test.atk-ks.org` (test) | TCP 443 | ATK API. Allow through the hotel firewall/proxy without TLS inspection |
 | Local | fiscal server → PostgreSQL | TCP 5432 | Only if PostgreSQL is on another machine |
+| Local | fiscal server → receipt printers | TCP 9100 | Only with thermal printing on network printers (Settings › Printing) |
 
 Nothing is exposed to the internet. Do not forward ports 5080/5100 from outside.
 
@@ -265,7 +266,40 @@ issued while ATK cannot be reached is marked **OFFLINE**: on its copy, on the re
 which must print it on the folio. Unsent receipts are resent automatically; the dashboard warns at 48 hours and before
 the 10th of the following month.
 
-### 5.8 Reports and logs per workstation
+### 5.8 Settings › Printing: where the guest's receipt is printed
+
+**Fiscal receipt for the guest › Change** chooses one of two ways:
+
+| Choice | What happens |
+|---|---|
+| **In the fiscal block of the OPERA folio** (default) | OPERA prints the fiscal data and the QR on its folio from the answer it receives through FLIP. Set up the folio template as in the folio printing manual |
+| **On a thermal printer at the workstation** | Right after fiscalization the fiscal server prints the **whole receipt** (taxpayer, items, totals, payments, VAT, receipt number, date, SEF ID, NUIKF, daily number, OFFLINE when it applies, QR, *e-kupon*, fiscal logo) on the workstation's own receipt printer, 58 or 80 mm, as in ATK's sample receipts. OPERA still receives the fiscal data |
+
+**Workstation printers › Set up** (one printer per workstation):
+
+- **Connection**: *Network* — a receipt printer with an Ethernet/Wi-Fi interface (Epson TM-T20/T88, Star TSP in ESC/POS
+  mode, Bixolon, Xprinter …). Enter its IP address; the port is 9100 unless you add another (`192.168.1.50:9100`). Give
+  the printer a fixed IP address (or a DHCP reservation) and allow the fiscal server to reach port 9100.
+  *Windows printer* — a printer installed on the fiscal server; enter its exact name as shown in *Printers & scanners*.
+  The service runs as Local System, so install the printer **for all users** on the server; a printer shared from a
+  front-desk PC may not be visible to the service — prefer *Network*. The job is sent as raw ESC/POS through the spooler.
+- **Paper width**: 80 mm (48 characters per line) or 58 mm (32).
+- **Print automatically after each fiscalization**: on by default. When off, receipts are printed from the receipt page.
+
+**Test print** sends a test page (not a fiscal receipt) with the workstation, the paper width, the letters ë Ë ç Ç and a
+QR code. If the letters print wrongly, set the printer's code page to PC850 (most printers' default for Europe).
+
+**Originals and copies.** The first successful print of a receipt is the original. *Receipts › open a receipt › Print
+on thermal printer* prints it if it was never printed (e.g. the printer was off); afterwards the button reads *Print copy
+on thermal printer* and the print carries **KOPJE E KUPONIT** (permission *Download and print receipt copies*). An
+OPERA reprint of the same folio returns the same receipt and prints nothing. A cancellation receipt is printed on the
+original workstation's printer.
+
+**When a print fails** (printer off, out of paper, wrong address) the receipt is still fiscalized and sent to ATK; the
+failure is written to the audit log (*PRINT_FAILED*) and shown on the dashboard until the receipt is printed. Every print
+is logged (*RECEIPT_PRINTED*, original or copy) and every test page (*TEST_PRINT*).
+
+### 5.9 Reports and logs per workstation
 
 Receipts, Audit log and Export all filter by **workstation**. *Receipts* and *Audit log* have **Export CSV / PDF**
 buttons that export exactly the filtered view (period, workstation, status or event). *Export* also offers a
@@ -332,6 +366,8 @@ retention period. Export or hand over a backup instead.
 | "Register with ATK" says to use the client | The workstation is in workstation-client mode (Signing column) |
 | Workstation shows *register again* | The signing mode was changed after registration. Register it again |
 | Dashboard: receipts waiting | ATK unreachable; receipts are kept and resent automatically. ATK's limit is 48 hours |
+| Receipts do not print / dashboard *Receipt … was not printed* | Settings › Printing › Test print. *Cannot reach the printer*: IP address, printer on, port 9100 open, same network. *Windows printer … was not found*: exact name, printer installed for all users on the server |
+| Printed letters wrong (ë, ç) | Set the printer's code page to PC850 with its utility or self-test menu |
 | Integrity check fails | Stop and escalate to the software maintainer: the archive was changed outside the application. Do not repair it yourself |
 
 ## 10. Security checklist

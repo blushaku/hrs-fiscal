@@ -29,7 +29,7 @@ public static class Permissions
     [
         new(DashboardSystem, "System status on the dashboard", "OPERA → FLIP → ATK status, alerts, certificate expiry"),
         new(ReceiptsView, "View receipts", "Search receipts and open their details and QR"),
-        new(ReceiptsCopy, "Download receipt copies", "PDF copy marked KOPJE E KUPONIT (logged as reprint)"),
+        new(ReceiptsCopy, "Download and print receipt copies", "PDF copy or thermal print marked KOPJE E KUPONIT (logged)"),
         new(ReceiptsCancel, "Cancel receipts", "Issue a cancellation receipt with the reason, linked to the original sale"),
         new(ReceiptsPaper, "Enter paper-block receipts", "Enter receipts written from the special paper block while the system was down"),
         new(Export, "Export reports", "CSV/PDF of receipts, workstation summary and audit log"),

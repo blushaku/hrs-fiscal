@@ -24,6 +24,8 @@ public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receip
     public string? LastFlipMode { get; private set; }
     public DateTime? LastAcceptedAt { get; private set; }
     public long FlipToday { get; private set; }
+    /// <summary>Receipts of the last 24 hours whose printing failed and that have not been printed since (thermal printing).</summary>
+    public IReadOnlyList<(long ReceiptId, long CouponId, string Error)> Unprinted { get; private set; } = [];
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -43,6 +45,14 @@ public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receip
             "SELECT received_at, mode FROM fiscal.flip_message ORDER BY id DESC LIMIT 1");
         FlipToday = await conn.ExecuteScalarAsync<long>("SELECT count(*) FROM fiscal.flip_message WHERE received_at >= @dayStart", new { dayStart });
         LastAcceptedAt = await conn.ExecuteScalarAsync<DateTime?>("SELECT max(attempted_at) FROM fiscal.transmission WHERE outcome = 'accepted'");
+        Unprinted = (await conn.QueryAsync<(long, long, string)>("""
+            SELECT DISTINCT ON (f.entity_id) f.entity_id::bigint, (f.details->>'couponId')::bigint, f.details->>'error'
+            FROM fiscal.audit_log f
+            WHERE f.action = 'PRINT_FAILED' AND f.at > now() - interval '24 hours'
+              AND NOT EXISTS (SELECT 1 FROM fiscal.audit_log p WHERE p.action = 'RECEIPT_PRINTED' AND p.entity_id = f.entity_id AND p.id > f.id)
+            ORDER BY f.entity_id, f.id DESC
+            LIMIT 20
+            """)).ToList();
         return Page();
     }
 

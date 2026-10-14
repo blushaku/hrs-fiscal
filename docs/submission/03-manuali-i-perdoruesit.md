@@ -30,6 +30,8 @@ Të drejtat varen nga roli i përdoruesit. Administratori mund t'i ndryshojë t�
 
 **Pa lidhje me ATK-në (OFFLINE).** Puna vazhdon normalisht: kuponi lëshohet dhe fatura shtypet me shënimin OFFLINE. Softueri e dërgon kuponin automatikisht sapo rikthehet lidhja. Nuk nevojitet asnjë veprim nga recepsioni.
 
+**Kuponi në printer termik.** Nëse hoteli e ka zgjedhur këtë mënyrë (Cilësimet › Printimi), menjëherë pas fiskalizimit kuponi i plotë shtypet në printerin termik të vendpunësit (58 ose 80 mm), me artikujt, TVSH-në, totalet, NUIKF, numrin ditor, kodin QR dhe "e-kupon". Nëse printeri nuk punon, kuponi mbetet i fiskalizuar: paneli tregon alarm dhe kuponi shtypet nga faqja e tij (**Shtyp në printerin termik**) pasi të rregullohet printeri. Çdo shtypje e mëvonshme shënohet "KOPJE E KUPONIT".
+
 **Rishtypja.** Rishtypja e faturës në OPERA nuk krijon kupon të ri; shtypen të njëjtat të dhëna fiskale. Kopja e kuponit nga softueri fiskal shënohet "KOPJE E KUPONIT".
 
 **Korrigjimi i një fature të fiskalizuar.** Kuponi i lëshuar nuk mund të ndryshohet ose fshihet. Bëni korrigjimin në OPERA (shumë negative ose faturë kreditore që i referohet faturës origjinale): softueri lëshon **kupon kthimi** që i referohet kuponit origjinal.
@@ -74,6 +76,7 @@ Të gjitha cilësimet janë te **Cilësimet**. Çdo pllakë hapet me **Ndrysho**
 5. **Të përgjithshme › Lidhja OPERA / FLIP** — mënyra e punës (Regjistrim për testim, Live për fiskalizim) dhe tokeni i qasjes për FLIP (**Gjenero tokenin**), i cili tregohet vetëm një herë.
 6. **Të përgjithshme › Validimi i faturës** — kontrolli i numrit tatimor dhe toleranca e rrumbullakimit.
 7. **Përdoruesit** dhe **Rolet dhe të drejtat** — llogari personale për çdo përdorues; përdoruesit nuk fshihen, çaktivizohen.
+8. **Printimi** — ku shtypet kuponi për mysafirin: në bllokun fiskal të faturës së OPERA-s (parazgjedhje) ose në printerin termik të vendpunësit. Për çdo vendpunës, me **Konfiguro**: lidhja (rrjet, me adresën IP dhe portën 9100, ose printer i instaluar në Windows në serverin fiskal), gjerësia e letrës (58 ose 80 mm) dhe shtypja automatike pas fiskalizimit. **Provë printimi** shtyp një faqe prove (jo kupon fiskal).
 
 Pllakat e tjera: **Nënshkrimi** (ku ruhen çelësat; parazgjedhur: qendror në server), **Zëvendësimet e OPERA-s dhe vlerat e parazgjedhura të kuponit**, **Llogaritja e TVSH-së**, **Ruajtja dhe kopja rezervë**, **Alarmet** (adresa për njoftime). Ora e serverit kontrollohet automatikisht me ATK-në çdo 15 minuta.
 
@@ -87,6 +90,7 @@ Pllakat e tjera: **Nënshkrimi** (ku ruhen çelësat; parazgjedhur: qendror në 
 | ATK-ja refuzon kuponin | Ruan përgjigjen e ATK-së te kuponi; shfaqet si Refuzuar | Administratori shqyrton arsyen te detajet e kuponit dhe kontakton mirëmbajtësin |
 | Certifikata e POS-it skadon | Paralajmëron në panel para skadimit | Regjistroni POS-in përsëri te **Vendpunët** |
 | Serveri fiskal nuk punon | OPERA nuk merr përgjigje; fatura nuk fiskalizohet | Rinisni shërbimin "Opera Cloud Fiscal Solution - Kosovo - Server"; nëse mungon gjatë, përdorni procedurën e ATK-së për pajisje jashtë funksionit dhe kontaktoni mirëmbajtësin |
+| Kuponi nuk shtypet në printerin termik | Kuponi fiskalizohet dhe dërgohet në ATK; paneli tregon alarm dhe dështimi regjistrohet në auditim | Kontrolloni printerin (i ndezur, letër, rrjeti) dhe bëni Provë printimi te Cilësimet › Printimi; pastaj shtypeni kuponin nga faqja e tij |
 | Kontrolli i integritetit dështon | Tregon "Kontrolli i integritetit DËSHTOI" | Mos bëni ndryshime; njoftoni menjëherë mirëmbajtësin |
 
 **Zhvilluesi dhe mirëmbajtësi:** Behar Lushaku · tel. \_\_\_\_\_\_\_\_\_\_\_\_\_\_ · e-mail \_\_\_\_\_\_\_\_\_\_\_\_\_\_

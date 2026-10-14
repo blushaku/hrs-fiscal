@@ -32,6 +32,14 @@ public sealed class TerminalEdit
     /// <summary>Where the current key and certificate live ("server" / "client"); null = not registered.</summary>
     public string? EnrolledMode { get; set; }
     public string? KeyReference { get; set; }
+    /// <summary>Thermal printer for this workstation: "none", "network" (host:port, ESC/POS) or "windows" (printer name).</summary>
+    public string PrinterKind { get; set; } = "none";
+    public string? PrinterAddress { get; set; }
+    /// <summary>Paper width: 80 or 58 mm.</summary>
+    public short PrinterPaperMm { get; set; } = 80;
+    /// <summary>Print the receipt automatically after each fiscalization (when receipts are printed on printers).</summary>
+    public bool PrinterAuto { get; set; } = true;
+    public bool HasPrinter => PrinterKind is "network" or "windows" && !string.IsNullOrWhiteSpace(PrinterAddress);
 
     public string EffectiveMode(string propertyDefault) => SigningMode ?? propertyDefault;
 
@@ -134,6 +142,11 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
     public async Task<string> SigningModeDefaultAsync(CancellationToken ct = default) =>
         await GetAsync("signing_mode_default", "server", ct) is "client" ? "client" : "server";
 
+    /// <summary>Where the guest's fiscal receipt is printed (setting receipt_print_mode): "folio" (OPERA prints the fiscal
+    /// block on its folio, default) or "printer" (the fiscal server prints the whole receipt on the workstation's thermal printer).</summary>
+    public async Task<string> ReceiptPrintModeAsync(CancellationToken ct = default) =>
+        await GetAsync("receipt_print_mode", "folio", ct) is "printer" ? "printer" : "folio";
+
     // ---- business / branch --------------------------------------------------------------
 
     public async Task<BusinessInfo?> BusinessAsync(CancellationToken ct = default)
@@ -232,7 +245,7 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         await using var conn = await db.OpenConnectionAsync(ct);
         return (await conn.QueryAsync<TerminalEdit>("""
             SELECT id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, certificate_expires,
-                   signing_mode, enrolled_mode, key_reference
+                   signing_mode, enrolled_mode, key_reference, printer_kind, printer_address, printer_paper_mm, printer_auto
             FROM fiscal.terminal ORDER BY pos_id
             """)).ToList();
     }
@@ -264,6 +277,26 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
                 """, t);
         }
         await audit.WriteAsync(actor, AuditLog.Actions.TerminalChanged, "terminal", t.Id.ToString(), new { old = before, @new = t }, t.Id, ct);
+    }
+
+    /// <summary>Saves a workstation's thermal printer (Settings › Printing); audited with old and new values.</summary>
+    public async Task SaveTerminalPrinterAsync(long terminalId, string kind, string? address, short paperMm, bool auto, string actor, CancellationToken ct = default)
+    {
+        var before = (await TerminalsAsync(ct)).SingleOrDefault(x => x.Id == terminalId) ?? throw new InvalidOperationException("Unknown workstation.");
+        if (kind is not ("none" or "network" or "windows")) throw new InvalidOperationException("Unknown printer connection.");
+        if (paperMm is not (58 or 80)) throw new InvalidOperationException("Paper width is 58 or 80 mm.");
+        address = kind == "none" ? null : address?.Trim();
+        await using var conn = await db.OpenConnectionAsync(ct);
+        await conn.ExecuteAsync("""
+            UPDATE fiscal.terminal SET printer_kind = @kind, printer_address = @address, printer_paper_mm = @paperMm, printer_auto = @auto
+            WHERE id = @terminalId
+            """, new { terminalId, kind, address, paperMm, auto });
+        await audit.WriteAsync(actor, AuditLog.Actions.TerminalChanged, "terminal", terminalId.ToString(), new
+        {
+            printer = true,
+            old = new { before.PrinterKind, before.PrinterAddress, before.PrinterPaperMm, before.PrinterAuto },
+            @new = new { PrinterKind = kind, PrinterAddress = address, PrinterPaperMm = paperMm, PrinterAuto = auto },
+        }, terminalId, ct);
     }
 
     // ---- OPERA overrides (optional) ---------------------------------------------------------

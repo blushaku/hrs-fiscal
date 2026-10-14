@@ -3,6 +3,10 @@
 **Audience:** OPERA Cloud administrator / implementation consultant. **Applies to:** OPERA Cloud with OFIS
 (on-premise FLIP) and fiscal server 1.0 in live mode.
 
+**Thermal printer instead of the folio.** If the property prefers the receipt on a 58/80 mm receipt printer, choose
+*Settings › Printing › On a thermal printer at the workstation* in the fiscal server: it then prints the whole fiscal
+receipt itself, and this folio set-up is optional (see the installation manual, 5.8).
+
 Items marked **[Oracle]** depend on how FLIP stores the partner response in OPERA and must be confirmed with Oracle
 (FLIP installation guide / Oracle support) before go-live. Everything else uses standard OPERA Cloud features.
 

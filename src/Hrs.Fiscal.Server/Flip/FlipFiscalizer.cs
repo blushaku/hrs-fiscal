@@ -45,7 +45,7 @@ public sealed record FlipResult
 /// </summary>
 public sealed class FlipFiscalizer(
     NpgsqlDataSource db, SettingsStore settings, ReceiptArchive archive, AuditLog audit, TerminalEnrollment enrollment,
-    IAtkClientFactory atkFactory, PropertyClock clock, ILogger<FlipFiscalizer> log)
+    IAtkClientFactory atkFactory, PropertyClock clock, Printing.PrintQueue printQueue, ILogger<FlipFiscalizer> log)
 {
     public const string Source = "OFIS";
 
@@ -130,6 +130,9 @@ public sealed class FlipFiscalizer(
             }, "receipt", receiptId.ToString(), new { result.HttpStatus, result.Message, transaction = result.TransactionId?.ToString() }, terminal.Id, ct);
 
             var view = await ViewAsync(receiptId, folio.FiscalFolioId, environment, ct);
+            // Thermal printing (Settings › Printing): the original is printed once, here; an OPERA reprint of the same
+            // folio returns the same receipt above and prints nothing.
+            if (result.Outcome != AtkOutcome.Rejected) await printQueue.EnqueueIfAutomaticAsync(settings, receiptId, terminal.Id, ct);
             if (result.Outcome == AtkOutcome.Rejected)
                 return view with { Status = "ERROR", Message = "ATK rejected the receipt: " + result.Message, HttpStatus = 422 };
             return view with

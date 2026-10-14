@@ -17,6 +17,12 @@
     </div>
     <div class="actions">
         @if ((await RolePerms.ForUserAsync(User)).Contains(Permissions.ReceiptsCopy)) { <a class="btn primary" href="/receipts/@r.Id/copy.pdf">Download copy (PDF)</a> }
+        @if (Model.CanPrint)
+        {
+            <form method="post" asp-page-handler="Print" asp-route-id="@r.Id" style="display: inline">
+                <button type="submit" class="btn" title="@Model.PrinterLabel">@(Model.OriginalPrinted ? "Print copy on thermal printer" : "Print on thermal printer")</button>
+            </form>
+        }
         @if (Model.CanCancel) { <a class="btn" href="/Receipts/Detail/@r.Id?Cancel=true" data-dialog-open="dlg-cancel">Cancel receipt…</a> }
     </div>
 </div>

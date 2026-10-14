@@ -40,6 +40,10 @@ builder.Services.AddScoped<Hrs.Fiscal.Server.Services.ManualReceipts>();
 builder.Services.AddScoped<FlipCapture>();
 builder.Services.AddScoped<FlipAuth>();
 builder.Services.AddScoped<FlipFiscalizer>();
+builder.Services.AddSingleton<Hrs.Fiscal.Server.Printing.IPrinterTransport, Hrs.Fiscal.Server.Printing.PrinterTransport>();
+builder.Services.AddScoped<Hrs.Fiscal.Server.Printing.ReceiptPrinting>();
+builder.Services.AddSingleton<Hrs.Fiscal.Server.Printing.PrintQueue>();
+builder.Services.AddHostedService<Hrs.Fiscal.Server.Printing.PrintQueueService>();
 builder.Services.AddHostedService<AtkResendService>();
 builder.Services.AddSingleton<Hrs.Fiscal.Server.Services.ClockStatus>();
 builder.Services.AddSingleton<Hrs.Fiscal.Server.Services.ClockCheckService>();
@@ -77,7 +81,7 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AuthorizeFolder("/Audit", Permissions.Policy(Permissions.AuditView));
     o.Conventions.AuthorizeFolder("/Export", Permissions.Policy(Permissions.Export));
     o.Conventions.AuthorizeFolder("/FlipMessages", Permissions.Policy(Permissions.FlipView));
-    foreach (var page in new[] { "/Settings/Index", "/Settings/Business", "/Settings/Mapping" })
+    foreach (var page in new[] { "/Settings/Index", "/Settings/Business", "/Settings/Mapping", "/Settings/Printing" })
         o.Conventions.AuthorizePage(page, Permissions.Policy(Permissions.SettingsManage));
     o.Conventions.AuthorizePage("/Settings/Workstations", Permissions.Policy(Permissions.WorkstationsManage));
     o.Conventions.AuthorizePage("/Settings/Users", Permissions.Policy(Permissions.UsersManage));
