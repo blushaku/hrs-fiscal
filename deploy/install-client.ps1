@@ -19,6 +19,12 @@ $ErrorActionPreference = "Stop"
 $svc = "OperaCloudFiscalKosovoClient"
 $data = Join-Path $env:ProgramData "Opera Cloud Fiscal Solution\Client"
 
+# The client needs the ASP.NET Core 8 runtime (x64), as the fiscal server does.
+$runtimes = try { & dotnet --list-runtimes 2>$null } catch { @() }
+if (-not ($runtimes | Where-Object { $_ -match '^Microsoft\.AspNetCore\.App 8\.' })) {
+  throw "ASP.NET Core Runtime 8 (x64) is not installed on this PC. Install it from https://dotnet.microsoft.com/download/dotnet/8.0 (ASP.NET Core Runtime, Windows x64 installer) and run this script again."
+}
+
 if (Get-Service $svc -ErrorAction SilentlyContinue) { Stop-Service $svc; sc.exe delete $svc | Out-Null; Start-Sleep 2 }
 New-Item -ItemType Directory -Force $InstallDir, $data | Out-Null
 # Package layout: Client\ next to this script; release layout: the script inside the client folder itself.

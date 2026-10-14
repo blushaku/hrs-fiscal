@@ -34,7 +34,8 @@ OPERA Cloud ─OFIS─▶ Oracle FLIP (on-premise) ──LAN :5100──▶ fisc
 - [.NET 8 ASP.NET Core Runtime — Windows Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) (x64).
 - [PostgreSQL 16 for Windows](https://www.postgresql.org/download/windows/) (EDB installer).
 - `Opera-Cloud-Fiscal-Solution-Kosovo-win-x64.zip` (release package: application, `install-server.ps1`, `backup-db.ps1`,
-  and in `client\` the Fiscal Client with `install-client.ps1`). The Fiscal Client needs no runtime on the PCs.
+  and in `client\` the Fiscal Client with `install-client.ps1`). PCs with the Fiscal Client need the
+  [ASP.NET Core Runtime 8](https://dotnet.microsoft.com/download/dotnet/8.0) (x64 installer); the client installer checks for it.
 
 **Network**
 
