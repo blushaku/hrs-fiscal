@@ -212,6 +212,12 @@ One line per workstation that can issue a folio. Each one is a separate ATK POS 
 
 Each workstation is shown as a tile with its POS ID, OPERA terminal, signing and certificate state. **Add workstation** opens one form: in central signing it adds the workstation *and* registers it with ATK in the same step (or imports the key and certificate from ATK's onboarder tool, or registers later). If registration fails, the workstation stays *pending* and its tile offers **Register with ATK** again.
 
+**Removing a workstation.** *Edit › Remove this workstation*: a workstation that has **not issued any receipt** (added by
+mistake, wrong POS ID) can be deleted; the deletion is logged with its details. If it was already registered with ATK,
+the registration stays at ATK and ATK does not register that POS ID again, so give the replacement a new POS ID. A
+workstation **with receipts** cannot be deleted, because its receipts must be kept with it: set its *Status* to
+*disabled*; it then no longer fiscalizes.
+
 ### 5.5 Signing mode and ATK registration
 
 Every workstation is its own ATK POS with its own key and certificate in both modes. The difference is where the key lives.

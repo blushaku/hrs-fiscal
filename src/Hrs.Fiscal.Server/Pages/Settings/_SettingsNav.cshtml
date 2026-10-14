@@ -27,5 +27,5 @@
 </nav>
 <p class="small muted settings-intro">
     @if (intro is IHtmlContent html) { @html } else if (intro is string s && s.Length > 0) { @s }
-    @(intro is null ? "" : " ")Every change is recorded in the audit log with its old and new value.
+    @(intro is null ? "" : " ")<span>Every change is recorded in the audit log with its old and new value.</span>
 </p>

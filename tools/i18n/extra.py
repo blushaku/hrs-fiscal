@@ -195,3 +195,24 @@ E += [
      "Printerët USB të instaluar në Windows mund të përdoren vetëm kur serveri fiskal punon në Windows.",
      "USB štampači instalirani u Windows-u mogu da se koriste samo kada fiskalni server radi na Windows-u."),
 ]
+# Deleting unused workstations
+E += [
+    ("Remove this workstation", "Hiqe këtë vendpunës", "Ukloni ovo radno mesto"),
+    ("Delete workstation", "Fshi vendpunësin", "Obriši radno mesto"),
+    ("Delete workstation POS {0}?", "Të fshihet vendpunësi POS {0}?", "Obrisati radno mesto POS {0}?"),
+    ("Delete workstation POS {0}? It stays registered with ATK, and ATK does not register the same POS ID again: a new workstation needs a new POS ID.",
+     "Të fshihet vendpunësi POS {0}? Ai mbetet i regjistruar në ATK dhe ATK nuk e regjistron sërish të njëjtin ID të POS-it: një vendpunës i ri ka nevojë për ID të re.",
+     "Obrisati radno mesto POS {0}? Ostaje registrovano u ATK, a ATK ne registruje ponovo isti POS ID: novo radno mesto treba novi POS ID."),
+    ("POS {0} has not issued any receipt, so it can be deleted.", "POS {0} nuk ka lëshuar asnjë kupon, prandaj mund të fshihet.", "POS {0} nije izdao nijedan račun, pa može da se obriše."),
+    ("POS {0} has not issued any receipt, so it can be deleted. It is registered with ATK; that registration stays at ATK.",
+     "POS {0} nuk ka lëshuar asnjë kupon, prandaj mund të fshihet. Është i regjistruar në ATK; ky regjistrim mbetet në ATK.",
+     "POS {0} nije izdao nijedan račun, pa može da se obriše. Registrovan je u ATK; ta registracija ostaje u ATK."),
+    ("POS {0} has issued receipts, which must be kept with it, so it cannot be deleted. To stop using it, set Status to disabled above and save: it can then no longer fiscalize.",
+     "POS {0} ka lëshuar kuponë, të cilët duhet të ruhen bashkë me të, prandaj nuk mund të fshihet. Për ta ndalur, vendosni Statusi në «çaktivizuar» më lart dhe ruajeni: atëherë nuk mund të fiskalizojë më.",
+     "POS {0} je izdao račune, koji moraju da se čuvaju uz njega, pa ne može da se obriše. Da biste prestali da ga koristite, postavite Status na „onemogućeno” iznad i sačuvajte: tada više ne može da fiskalizuje."),
+    ("Workstation POS {0} deleted.", "Vendpunësi POS {0} u fshi.", "Radno mesto POS {0} je obrisano."),
+    ("Workstation POS {0} has issued receipts, which must be kept with it. Set its status to disabled instead.",
+     "Vendpunësi POS {0} ka lëshuar kuponë, të cilët duhet të ruhen bashkë me të. Vendosni statusin «çaktivizuar».",
+     "Radno mesto POS {0} je izdao račune, koji moraju da se čuvaju uz njega. Umesto toga postavite status „onemogućeno”."),
+    ("Yes, delete", "Po, fshi", "Da, obriši"),
+]

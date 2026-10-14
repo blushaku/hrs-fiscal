@@ -44,6 +44,8 @@ public sealed class TerminalEdit
     public string PrinterFlow { get; set; } = "hardware";
     /// <summary>Print the receipt automatically after each fiscalization (when receipts are printed on printers).</summary>
     public bool PrinterAuto { get; set; } = true;
+    /// <summary>The workstation issued at least one receipt: it can be disabled, not deleted.</summary>
+    public bool HasReceipts { get; set; }
     public bool HasPrinter => PrinterKind is "network" or "usb" or "serial" && !string.IsNullOrWhiteSpace(PrinterAddress);
 
     public string EffectiveMode(string propertyDefault) => SigningMode ?? propertyDefault;
@@ -254,7 +256,8 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
         return (await conn.QueryAsync<TerminalEdit>("""
             SELECT id, pos_id, opera_terminal_id, hostname, client_endpoint, description, status, certificate_expires,
                    signing_mode, enrolled_mode, key_reference, printer_kind, printer_address, printer_paper_mm, printer_auto,
-                   printer_model, printer_baud, printer_flow
+                   printer_model, printer_baud, printer_flow,
+                   EXISTS (SELECT 1 FROM fiscal.receipt r WHERE r.terminal_id = fiscal.terminal.id) AS has_receipts
             FROM fiscal.terminal ORDER BY pos_id
             """)).ToList();
     }
@@ -286,6 +289,27 @@ public sealed class SettingsStore(NpgsqlDataSource db, AuditLog audit)
                 """, t);
         }
         await audit.WriteAsync(actor, AuditLog.Actions.TerminalChanged, "terminal", t.Id.ToString(), new { old = before, @new = t }, t.Id, ct);
+    }
+
+    /// <summary>
+    /// Deletes a workstation that never issued a receipt. One with receipts must stay (its receipts refer to it); disable it.
+    /// A workstation registered with ATK stays registered there: ATK will not register the same POS ID again.
+    /// </summary>
+    public async Task DeleteTerminalAsync(long terminalId, string actor, CancellationToken ct = default)
+    {
+        var t = (await TerminalsAsync(ct)).SingleOrDefault(x => x.Id == terminalId) ?? throw new InvalidOperationException("Unknown workstation.");
+        if (t.HasReceipts)
+            throw new InvalidOperationException($"Workstation POS {t.PosId} has issued receipts, which must be kept with it. Set its status to disabled instead.");
+        await using var conn = await db.OpenConnectionAsync(ct);
+        try { await conn.ExecuteAsync("DELETE FROM fiscal.terminal WHERE id = @terminalId", new { terminalId }); }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+        {
+            throw new InvalidOperationException($"Workstation POS {t.PosId} has issued receipts, which must be kept with it. Set its status to disabled instead.");
+        }
+        await audit.WriteAsync(actor, AuditLog.Actions.TerminalDeleted, "terminal", terminalId.ToString(), new
+        {
+            t.PosId, t.OperaTerminalId, t.Hostname, t.Description, t.Status, registeredWithAtk = t.EnrolledMode is not null, t.KeyReference,
+        }, ct: ct);
     }
 
     /// <summary>Saves a workstation's thermal printer (Settings › Printing); audited with old and new values.</summary>

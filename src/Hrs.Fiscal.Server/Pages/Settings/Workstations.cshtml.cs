@@ -124,6 +124,23 @@ public sealed class WorkstationsModel(SettingsStore settings, PropertyClock cloc
         $" Note: ATK has the business as \u201c{r.BusinessName}\u201d, but Settings › Business has \u201c{r.NameInSettings}\u201d. Review it under Business & unit.";
 
     /// <summary>Central mode: generate a key on this server and get the workstation's certificate from ATK.</summary>
+    /// <summary>Deletes a workstation that never issued a receipt.</summary>
+    public async Task<IActionResult> OnPostDeleteAsync(long id)
+    {
+        try
+        {
+            var t = (await settings.TerminalsAsync()).SingleOrDefault(x => x.Id == id);
+            await settings.DeleteTerminalAsync(id, User.Identity!.Name!);
+            TempData["Message"] = $"Workstation POS {t?.PosId} deleted.";
+            return RedirectToPage(new { Edit = (long?)null });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToPage(new { Edit = id });
+        }
+    }
+
     public async Task<IActionResult> OnPostRegisterAsync(long id)
     {
         try

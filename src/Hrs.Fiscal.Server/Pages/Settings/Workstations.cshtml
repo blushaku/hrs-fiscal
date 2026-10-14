@@ -138,5 +138,21 @@
                 <p class="small muted">This workstation signs with the Fiscal Client. Install the client on @cur.Hostname and register it there.</p>
             }
         </div>
+        <div class="modal-body" style="border-top: 1px solid var(--line)">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 500; color: var(--hrs-navy)">Remove this workstation</h3>
+            @if (cur.HasReceipts)
+            {
+                <p class="small muted" style="margin: 0">POS @cur.PosId has issued receipts, which must be kept with it, so it cannot be deleted. To stop using it, set Status to disabled above and save: it can then no longer fiscalize.</p>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Delete" asp-route-id="@cur.Id" data-new
+                      data-confirm="@(cur.EnrolledMode is null ? $"Delete workstation POS {cur.PosId}?" : $"Delete workstation POS {cur.PosId}? It stays registered with ATK, and ATK does not register the same POS ID again: a new workstation needs a new POS ID.")">
+                    <p class="small muted" style="margin: 0 0 10px">POS @cur.PosId has not issued any receipt, so it can be deleted.@(cur.EnrolledMode is null ? "" : " It is registered with ATK; that registration stays at ATK.")</p>
+                    <partial name="_ConfirmBox" model="@("Yes, delete")" />
+                    <div class="actions" data-hide-on-confirm><button type="submit" class="btn danger">Delete workstation</button></div>
+                </form>
+            }
+        </div>
     }
 </dialog>
