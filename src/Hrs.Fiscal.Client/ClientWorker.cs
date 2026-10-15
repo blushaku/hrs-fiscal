@@ -58,7 +58,7 @@ public sealed class ServerRefusedException(int status, string message) : Excepti
 
 /// <summary>
 /// Runs in the background: pairs with the server (pairing.json from the installation package), creates the key and
-/// registers it with ATK through the server, then reports to the server every minute.
+/// registers it with ATK through the server, then reports to the server every 15 seconds and learns ATK's status.
 /// </summary>
 public sealed class ClientWorker(ClientStore store, ServerApi server, ClientOptions options, IPrinterTransport printers, ILogger<ClientWorker> log) : BackgroundService
 {
@@ -97,6 +97,7 @@ public sealed class ClientWorker(ClientStore store, ServerApi server, ClientOpti
         var cert = store.State.CertificatePem is { } pem ? X509Certificate2.CreateFromPem(pem).Thumbprint : null;
         var answer = await server.HeartbeatAsync(new HeartbeatRequest(ClientStore.Version, Environment.MachineName, options.Port,
             string.IsNullOrWhiteSpace(options.AdvertiseUrl) ? null : options.AdvertiseUrl, cert, printers.InstalledPrinters(), printers.SerialPorts()), ct);
+        store.Atk = answer.Atk;
         store.Update(s => s.LastHeartbeatUtc = DateTime.UtcNow);
         if (!answer.Registered && store.State.Registered)
         {

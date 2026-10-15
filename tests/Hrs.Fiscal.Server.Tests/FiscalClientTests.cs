@@ -137,6 +137,44 @@ public sealed class FiscalClientTests(ServerFixture app) : IClassFixture<ServerF
             Assert.Equal(1, store.State.SignedCount);
             Assert.Contains("NUIKF", await File.ReadAllTextAsync(Path.Combine(folder, "signed.log")));
 
+            // 3b. ATK's status reaches the workstation: the tray program shows the offline notice from /status.
+            using var local = new HttpClient();
+            async Task<JsonElement> StatusAsync()
+            {
+                await worker.StepAsync(CancellationToken.None);
+                return JsonDocument.Parse(await local.GetStringAsync(clientUrl + "/status")).RootElement;
+            }
+            var st = await StatusAsync();
+            var demoPending = st.GetProperty("atk").GetProperty("pending").GetInt32();   // demo receipts never sent
+            Assert.Equal(demoPending > 0 ? "pending" : "online", st.GetProperty("atk").GetProperty("state").GetString());   // ATK answered the last folio
+            Assert.Equal(JsonValueKind.Null, st.GetProperty("notice").ValueKind);
+            Assert.True(st.GetProperty("serverReachable").GetBoolean());
+
+            app.FakeAtk.Offline = true;
+            try
+            {
+                var queued = JsonDocument.Parse(await (await app.Anonymous().PostAsync("/flip/fiscal",
+                    new StringContent(WithFolio("91003"), Encoding.UTF8, "application/json"))).Content.ReadAsStringAsync()).RootElement;
+                Assert.True(queued.GetProperty("Offline").GetBoolean());
+                st = await StatusAsync();
+                Assert.Equal("atk-offline", st.GetProperty("notice").GetString());
+                var atk = st.GetProperty("atk");
+                Assert.Equal("offline", atk.GetProperty("state").GetString());
+                Assert.Equal(demoPending + 1, atk.GetProperty("pending").GetInt32());
+                Assert.NotEqual(JsonValueKind.Null, atk.GetProperty("offlineSinceUtc").ValueKind);
+                Assert.NotEqual(JsonValueKind.Null, atk.GetProperty("deadlineUtc").ValueKind);
+                Assert.Contains("ATK cannot be reached since", WebUtility.HtmlDecode(await admin.GetStringAsync("/")));
+            }
+            finally { app.FakeAtk.Offline = false; }
+
+            // ATK is back: the offline queue resends, the notice goes away.
+            using (var scope = app.Services.CreateScope())
+                Assert.True(await Hrs.Fiscal.Server.Flip.AtkResendService.ResendPendingAsync(scope.ServiceProvider, CancellationToken.None) >= 1);
+            st = await StatusAsync();
+            Assert.Equal(JsonValueKind.Null, st.GetProperty("notice").ValueKind);
+            Assert.NotEqual("offline", st.GetProperty("atk").GetProperty("state").GetString());
+            Assert.Equal(demoPending, st.GetProperty("atk").GetProperty("pending").GetInt32());
+
             // 4. The client signs only for its own POS, and only for the server.
             var foreign = new PosCoupon { BusinessId = (ulong)store.State.Nui, BranchId = (ulong)store.State.BranchId, PosId = 99 };
             Assert.Contains("POS 99", ClientHost.Check(new SignItem("pos", Convert.ToBase64String(foreign.ToByteArray())), store.State, out _));

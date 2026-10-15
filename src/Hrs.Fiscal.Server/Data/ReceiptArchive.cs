@@ -11,7 +11,7 @@ namespace Hrs.Fiscal.Server.Data;
 /// <param name="PaperSerial">Serial number of a receipt written from the special paper block.</param>
 public sealed record ReceiptExtras(string? CancelReason = null, string? PaperSerial = null);
 
-public sealed class ReceiptArchive(NpgsqlDataSource db, PropertyClock clock)
+public sealed class ReceiptArchive(NpgsqlDataSource db, PropertyClock clock, Hrs.Fiscal.Server.Services.AtkStatus atkStatus)
 {
     public async Task<long> NextCouponIdAsync(long branchId, CancellationToken ct = default)
     {
@@ -86,5 +86,7 @@ public sealed class ReceiptArchive(NpgsqlDataSource db, PropertyClock clock)
             tx = result.TransactionId is { } t ? (decimal?)t : null,
             message = result.Message,
         });
+        // ATK answered (accepted or rejected) = reachable; no answer, timeout or 5xx = offline.
+        atkStatus.Record(result.Outcome != AtkOutcome.Transient, sentBy.Contains("queue") ? "queue" : "send", result.Message, at);
     }
 }

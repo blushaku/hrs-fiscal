@@ -280,3 +280,11 @@ E += [
      "Një printer në vetë vendpunësin ka nevojë për Fiscal Client: vendosni fillimisht nënshkrimin «Klienti në vendpunës» për vendpunësin.",
      "Štampač na samom radnom mestu zahteva Fiscal Client: najpre podesite potpisivanje radnog mesta na „Klijent na radnom mestu”."),
 ]
+
+# ATK reachability (dashboard; the Fiscal Client tray has its own texts)
+E += [
+    ("ATK cannot be reached since {0}.", "ATK-ja nuk arrihet që nga {0}.", "ATK nije dostupan od {0}."),
+    ("Receipts are still issued, marked OFFLINE, and sent automatically when the connection returns. Workstations with the Fiscal Client show this notice too.",
+     "Kuponët lëshohen ende, shënohen OFFLINE dhe dërgohen automatikisht kur kthehet lidhja. Vendpunët me Fiscal Client e shfaqin edhe ata këtë njoftim.",
+     "Računi se i dalje izdaju, označavaju se OFFLINE i automatski se šalju kada se veza vrati. Radna mesta sa Fiscal Client takođe prikazuju ovo obaveštenje."),
+]

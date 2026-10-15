@@ -137,6 +137,10 @@ else if (canReceipts)
         {
             <div class="notice warn"><strong>No VAT rates are set up.</strong> Receipts cannot be fiscalized until they are added under <a href="/Settings/Mapping#vat">Settings › OPERA overrides &amp; VAT</a>.</div>
         }
+        @if (Model.Atk.Offline)
+        {
+            <div class="notice bad"><strong>ATK cannot be reached since @Model.Clock.FormatShort(Model.Atk.OfflineSinceUtc!.Value).</strong> Receipts are still issued, marked OFFLINE, and sent automatically when the connection returns. Workstations with the Fiscal Client show this notice too.</div>
+        }
         @if (Model.ClockCheck.OutOfSync)
         {
             <div class="notice bad"><strong>The server clock differs from ATK's by @Math.Abs(Model.ClockCheck.DriftSeconds!.Value).ToString("0") seconds</strong> (limit @Model.ClockCheck.MaxDriftSeconds s). Receipt times must match ATK's time: synchronise the Windows clock (w32tm /resync) or check the time server.</div>
@@ -162,7 +166,7 @@ else if (canReceipts)
         {
             <div class="notice neutral"><strong>Certificate renewal</strong> needed for @t.Label within @((int)(t.CertificateExpires!.Value - Model.UtcNow).TotalDays) days.</div>
         }
-        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0 && Model.VatRates > 0 && !Model.ClockCheck.OutOfSync)
+        @if (s.Pending == 0 && s.Overdue48h == 0 && expiring.Count == 0 && Model.VatRates > 0 && !Model.ClockCheck.OutOfSync && !Model.Atk.Offline)
         {
             <div class="notice ok">No alerts. All receipts are fiscalized.</div>
         }

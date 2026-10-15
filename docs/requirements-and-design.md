@@ -187,7 +187,10 @@ A certificate is bound to where it was registered; after a mode change the works
 - Step 4 is split: the client signs (after checking NUI, unit and POS of the coupon), the **server transmits** to ATK
   and keeps the offline queue, so a receipt signed by the client is not lost if ATK is down. The server verifies the
   signature against the workstation certificate before archiving. If the PC does not answer (8 s), the folio is refused.
-- The client also prints on a USB or COM receipt printer connected to its PC, and reports its printers every minute.
+- The client also prints on a USB or COM receipt printer connected to its PC, and reports its printers every 15 seconds.
+- Offline notice (15.10.2026): the server decides ATK's status from the real sendings (at issue, offline queue) and the
+  clock check (every 2 minutes while offline or receipts wait), and returns it in every heartbeat. The tray program on
+  the PC shows a status dot and, while ATK or the server is unreachable, an always-on-top window (T6).
 
 **Clarify with ATK:**
 - For a cloud PMS whose workstations are browsers: is central signing with one key and certificate per workstation

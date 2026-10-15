@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Hrs.Fiscal.Core.Client;
 using Hrs.Fiscal.Core.Signing;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -21,7 +22,8 @@ public sealed class ClientOptions
     public bool PreferTpm { get; set; } = true;
     /// <summary>Pairing code, when not taken from pairing.json.</summary>
     public string? PairingCode { get; set; }
-    public int HeartbeatSeconds { get; set; } = 60;
+    /// <summary>How often the client reports to the server and learns ATK's status (offline notice within this time).</summary>
+    public int HeartbeatSeconds { get; set; } = 15;
 
     public string Folder() => string.IsNullOrWhiteSpace(DataFolder)
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) is { Length: > 0 } pd ? pd : AppContext.BaseDirectory,
@@ -78,6 +80,9 @@ public sealed class ClientStore
     public string KeyKind => ResolveKeyStore();
 
     public ClientState State { get { lock (_gate) return _state; } }
+
+    /// <summary>ATK's status from the server's last answer (kept in memory only; refreshed every heartbeat).</summary>
+    public AtkHealth? Atk { get; set; }
 
     public void Update(Action<ClientState> change)
     {

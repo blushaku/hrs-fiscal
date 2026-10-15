@@ -268,7 +268,8 @@ with the server address and pairing code shown on the server after *Create insta
 
 The installer copies the client to `C:\Program Files\Opera Cloud Fiscal Solution\Client`, keeps its data in
 `%ProgramData%\Opera Cloud Fiscal Solution\Client` (Administrators and SYSTEM only), installs the service
-*Opera Cloud Fiscal Solution - Kosovo - Client* (restarts by itself) and opens TCP 5110 for the fiscal server's IP only.
+*Opera Cloud Fiscal Solution - Kosovo - Client* (restarts by itself), opens TCP 5110 for the fiscal server's IP only,
+and sets the tray program (offline notice, below) to start at every user's logon.
 Within a minute the client then, by itself:
 
 1. **pairs** with the server using the code (the code is then used up; the server and the client share a secret that
@@ -276,10 +277,28 @@ Within a minute the client then, by itself:
 2. creates the workstation's **key in the PC's Windows key store**, non-exportable, in the TPM when there is one;
 3. **registers with ATK through the server**: the server checks the business with ATK and sends ATK the certificate
    request from the PC; the private key never leaves the PC. The workstation becomes *active* on the server;
-4. reports to the server every minute (version, address, printers and COM ports of the PC).
+4. reports to the server every 15 seconds (version, address, printers and COM ports of the PC) and receives ATK's status.
 
 Settings › Workstations shows *Fiscal Client: online / offline since …*, the address, the version and the last contact.
 On the PC, `http://localhost:5110` shows the client's status (only on that PC).
+
+**Offline notice at the workstation** (Doc. 01-06-1967 Art 26.13). The tray program (`Hrs.Fiscal.Tray.exe`, .NET
+Framework 4.8, built into Windows 10/11) runs in every user's session and shows a dot in the notification area:
+**green** ATK online · **orange** receipts are being sent · **red** a problem · **grey** not ready or checking. On a
+problem it opens a small window in the bottom-right corner, always on top, without taking the focus from OPERA:
+
+| Window | When | What it says |
+|---|---|---|
+| *No connection to ATK* | The fiscal server's last contact with ATK failed | Since when, that receipts are still issued, marked OFFLINE and sent automatically, how many are waiting and the 48-hour deadline |
+| *No connection to the fiscal server* | The PC has not reached the fiscal server for 45 s | Folios of this workstation cannot be fiscalized until it is back |
+| *The Fiscal Client is not running* | The local service does not answer for 30 s | Same; inform the administrator |
+
+The window cannot be closed while the problem lasts; *Hide* puts it away for 10 minutes. When ATK is back, a short
+message says so. The texts follow the server's default language (Albanian, Serbian or English).
+
+Whether ATK is online is decided by the **fiscal server**, from the two contacts that really reach ATK: every sending of
+a receipt (at issue and by the offline queue) and the clock check's request to ATK's server. The clock check runs every
+15 minutes, and every 2 minutes while ATK is offline or receipts are waiting. The dashboard shows the same notice.
 
 **How receipts are signed.** The server builds the receipt and asks the PC's client to sign it. The client checks that
 the receipt is for its own business, unit and POS before signing and keeps a local log of everything it signed
@@ -291,7 +310,8 @@ receipt is archived and sent to ATK. If the PC is off or the service is stopped,
 creates a new key and registers with ATK again (the old certificate stays in the audit log). Running
 `install-client.ps1` again without a new package only upgrades the program; the key and registration are kept.
 **Uninstall**: `Stop-Service OperaCloudFiscalKosovoClient; sc.exe delete OperaCloudFiscalKosovoClient`, then remove the
-program folder and the firewall rule *Fiscal Client (5110)*.
+program folder, the firewall rule *Fiscal Client (5110)* and the value *OperaCloudFiscalKosovoTray* under
+`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`.
 
 > The connection between the server and the clients is HTTP on the hotel LAN, protected by the per-workstation secret
 > (HMAC) and the firewall rule; the receipts themselves are signed by the workstation's key. HTTPS between server and

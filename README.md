@@ -50,7 +50,8 @@ paper before submitting):
 |---|---|
 | `src/Hrs.Fiscal.Core` | Shared fiscal library: ATK protobuf model, coupon builder and validation, VAT, ECDSA signing (DER), QR, CSR, ATK API client |
 | `src/Hrs.Fiscal.Server` | Property server (ASP.NET Core, Windows service): admin web UI (receipts, audit log, exports, settings), archive, migrations, FLIP endpoint (capture / live), central signing, offline queue |
-| `src/Hrs.Fiscal.Client` | Fiscal Client for *workstation client* signing mode (Windows service, port 5110): pairing, own key (CNG/TPM), ATK registration through the server, signing with its own POS check, printing on the PC's USB/COM printer, status page |
+| `src/Hrs.Fiscal.Client` | Fiscal Client for *workstation client* signing mode (Windows service, port 5110): pairing, own key (CNG/TPM), ATK registration through the server, signing with its own POS check, printing on the PC's USB/COM printer, status page, `/status` for the tray |
+| `src/Hrs.Fiscal.Tray` | Tray program of the Fiscal Client (.NET Framework 4.8, no runtime needed): ATK status dot and the offline notice window at the workstation (Art 26.13) |
 | `tests/Hrs.Fiscal.Core.Tests` | Unit tests (xUnit) |
 | `tests/Hrs.Fiscal.Server.Tests` | Integration tests against PostgreSQL (set `HRS_TEST_PG`) |
 | `db/migrations` | PostgreSQL schema |

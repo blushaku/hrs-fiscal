@@ -22,12 +22,25 @@ public sealed record EnrollFinishRequest(string CsrPem);
 /// <summary>Server → client: ATK's certificate for this workstation.</summary>
 public sealed record EnrollFinishResponse(string CertificatePem, DateTime ExpiresUtc);
 
-/// <summary>Client → server every minute: alive, version, its address, certificate and local printers.</summary>
+/// <summary>Client → server every 15 seconds: alive, version, its address, certificate and local printers.</summary>
 public sealed record HeartbeatRequest(string ClientVersion, string Hostname, int ListenPort, string? AdvertiseUrl, string? CertificateThumbprint,
     IReadOnlyList<string> Printers, IReadOnlyList<string> SerialPorts);
 
-/// <summary>Server → client: what the server expects (e.g. register again).</summary>
-public sealed record HeartbeatResponse(bool Registered, string? Message);
+/// <summary>Server → client: what the server expects (e.g. register again) and whether ATK is reachable.</summary>
+public sealed record HeartbeatResponse(bool Registered, string? Message, AtkHealth? Atk = null);
+
+/// <summary>
+/// ATK as the fiscal server sees it (last sending of a receipt or clock check, and the offline queue). The Fiscal Client
+/// shows it at the workstation; while offline the user gets a notice (Doc. 01-06-1967 Art 26.13).
+/// </summary>
+public sealed record AtkHealth(string State, string Environment, int Pending, DateTime? OldestPendingUtc, DateTime? DeadlineUtc,
+    DateTime? OfflineSinceUtc, DateTime? LastContactUtc, string? Message, string Language);
+
+/// <summary>Values of <see cref="AtkHealth.State"/>.</summary>
+public static class AtkStates
+{
+    public const string Online = "online", Pending = "pending", Offline = "offline", Unknown = "unknown";
+}
 
 /// <summary>One text to sign: the Base64 of a PosCoupon ("pos") or of a CitizenCoupon for the QR ("citizen").</summary>
 public sealed record SignItem(string Kind, string Details);

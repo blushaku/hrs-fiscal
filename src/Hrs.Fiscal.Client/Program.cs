@@ -47,6 +47,7 @@ public static class ClientHost
         if (background) builder.Services.AddHostedService(sp => sp.GetRequiredService<ClientWorker>());
 
         var app = builder.Build();
+        options = app.Services.GetRequiredService<ClientOptions>();
         var store = app.Services.GetRequiredService<ClientStore>();
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
@@ -89,6 +90,10 @@ public static class ClientHost
             catch (PrinterException ex) { return Results.Json(new ClientError(ex.Message), statusCode: 502); }
             return Results.Ok(new ClientError("printed"));
         });
+
+        // Status for the tray program of this computer (offline notice): only from this computer, no secrets in it.
+        app.MapGet("/status", (HttpContext http) =>
+            http.Connection.RemoteIpAddress is { } ip && !IPAddress.IsLoopback(ip) ? Results.NotFound() : Results.Json(Status(store, options), json));
 
         // Status page, only on this computer: http://localhost:5110
         app.MapGet("/", (HttpContext http) =>
@@ -144,9 +149,39 @@ public static class ClientHost
         return null;
     }
 
+    /// <summary>
+    /// What the workstation shows the user. <c>notice</c>: "atk-offline", "server-unreachable" or null; with a notice the
+    /// tray program opens its window (Doc. 01-06-1967 Art 26.13: visual notice while offline).
+    /// </summary>
+    public static object Status(ClientStore store, ClientOptions options)
+    {
+        var s = store.State;
+        var stale = TimeSpan.FromSeconds(Math.Max(45, options.HeartbeatSeconds * 3));
+        var serverReachable = s.LastHeartbeatUtc is { } h && DateTime.UtcNow - h < stale;
+        var atk = serverReachable ? store.Atk : null;
+        var notice = !s.Paired ? null
+            : !serverReachable ? "server-unreachable"
+            : atk?.State == AtkStates.Offline ? "atk-offline"
+            : null;
+        return new
+        {
+            version = ClientStore.Version, paired = s.Paired, registered = s.Registered, posId = s.PosId, business = s.BusinessName,
+            environment = s.Environment, serverUrl = s.ServerUrl, serverReachable, lastHeartbeatUtc = s.LastHeartbeatUtc, lastError = s.LastError,
+            notice, atk,
+        };
+    }
+
     private static string StatusPage(ClientStore store)
     {
         var s = store.State;
+        var atk = store.Atk;
+        var atkText = atk is null ? "unknown" : atk.State switch
+        {
+            AtkStates.Offline => $"OFFLINE since {atk.OfflineSinceUtc?.ToLocalTime():dd.MM.yyyy HH:mm} · {atk.Pending} receipt(s) waiting",
+            AtkStates.Pending => $"online · {atk.Pending} receipt(s) being sent",
+            AtkStates.Online => "online",
+            _ => "not checked yet",
+        };
         string E(object? v) => WebUtility.HtmlEncode(v?.ToString() ?? "");
         var status = !s.Paired ? "Not paired" : !s.Registered ? "Paired, not registered with ATK yet" : "Ready";
         return $$"""
@@ -158,6 +193,7 @@ public static class ClientHost
             <dt>Workstation</dt><dd>POS {{E(s.PosId)}} · NUI {{E(s.Nui)}} · unit {{E(s.BranchId)}} · {{E(s.BusinessName)}} · ATK {{E(s.Environment)}}</dd>
             <dt>Certificate valid until</dt><dd>{{E(s.CertificateExpiresUtc?.ToString("dd.MM.yyyy"))}}</dd>
             <dt>Key</dt><dd>{{E(store.KeyKind == "cng" ? "Windows key store, non-exportable (TPM when available)" : "file (test only)")}}</dd>
+            <dt>ATK</dt><dd>{{E(atkText)}}</dd>
             <dt>Last contact with the server</dt><dd>{{E(s.LastHeartbeatUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss"))}}</dd>
             <dt>Receipts signed</dt><dd>{{E(s.SignedCount)}} (last {{E(s.LastSignedUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss"))}})</dd>
             <dt>Last problem</dt><dd>{{E(s.LastError ?? "none")}}</dd>

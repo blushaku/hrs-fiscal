@@ -24,7 +24,7 @@ namespace Hrs.Fiscal.Server.Signing;
 /// </summary>
 public sealed class ClientRegistry(
     NpgsqlDataSource db, SettingsStore settings, AuditLog audit, IAtkClientFactory atkFactory, IDataProtectionProvider protection,
-    PropertyClock clock, ILogger<ClientRegistry> log)
+    PropertyClock clock, Hrs.Fiscal.Server.Services.AtkHealthQuery atkHealth, ILogger<ClientRegistry> log)
 {
     private readonly IDataProtector _protector = protection.CreateProtector("Hrs.Fiscal.Server.FiscalClient.v1");
     /// <summary>ATK's verification between the two enrolment steps (start → finish), per workstation, for 10 minutes.</summary>
@@ -160,7 +160,7 @@ public sealed class ClientRegistry(
         if (endpoint != terminal.ClientEndpoint)
             log.LogInformation("Fiscal Client of POS {PosId} now answers at {Endpoint}", terminal.PosId, endpoint);
         var registered = terminal.EnrolledMode == SigningModes.Client && terminal.CertificateExpires > DateTime.UtcNow;
-        return new HeartbeatResponse(registered, registered ? null : "Not registered with ATK yet.");
+        return new HeartbeatResponse(registered, registered ? null : "Not registered with ATK yet.", await atkHealth.GetAsync(ct));
     }
 
     private async Task<(BusinessInfo Business, long ApplicationId, AtkClient Atk)> PrepareAsync(TerminalEdit terminal, CancellationToken ct)

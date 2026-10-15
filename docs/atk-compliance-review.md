@@ -4,7 +4,7 @@ Behar Lushaku · 12.10.2026
 
 ## Summary
 
-**Updated 14.10.2026: the app side is ready, including printing the receipt on a thermal printer.** Of 40 technical and functional requirements, 30 are met, 6 are partly met, none is missing, 1 depends on Oracle (e-receipt delivery by OPERA) and 3 need a written answer from ATK.
+**Updated 14.10.2026: the app side is ready, including printing the receipt on a thermal printer.** Of 40 technical and functional requirements, 30 are met, 6 are partly met, none is missing, 1 depends on Oracle (e-receipt delivery by OPERA) and 3 need a written answer from ATK. Update 15.10.2026: with the Fiscal Client (workstation-client signing), T6 (offline notice at the workstation) is met too: 31 met and 5 partly met in that configuration.
 
 The six missing functions were built and tested on 12.10.2026: daily receipt number, OFFLINE mark, Cancel receipt with reason, entry of paper-block receipts, Albanian/Serbian interface, clock check against ATK. Central signing is now the default, so a fresh installation can fiscalize. The description (5.5) and the user manual (5.6) were updated to match.
 
@@ -55,7 +55,7 @@ All documents ATK asks for exist. The description and the user manual match the 
 | T3 | Real time | Data reaches ATK before the receipt is printed (Spec 26.5) | Archived, sent to ATK, then answered to OPERA, which prints the folio after the answer | Met |
 | T4 | Real time | Error message to the user for unsent or refused receipts; automatic retry (Spec 26.5) | Automatic resend; refusal reason returned to FLIP and shown on the dashboard. Whether the front desk sees it depends on how OPERA shows FLIP's answer | Partly met |
 | T5 | Offline | Keep issuing, store securely, keep numbering in order, send automatically on reconnect, log a technical event (Spec 25.15, 26.13; UA 32.3, 44) | Offline queue with automatic resend in order; QUEUED\_OFFLINE and resend outcomes in the audit log; numbering unaffected | Met |
-| T6 | Offline | Visual notice to the user while offline (Spec 26.13) | Dashboard of the fiscal server shows pending receipts; the front desk works in OPERA and sees nothing there | Partly met |
+| T6 | Offline | Visual notice to the user while offline (Spec 26.13) | Since 15.10.2026 with the Fiscal Client: tray icon and an always-on-top window at the workstation while ATK (or the fiscal server) cannot be reached, with the number of waiting receipts and the 48-hour deadline; status from the real sendings and the clock check. Dashboard notice too. In central signing nothing runs on the PCs, so only the dashboard and the OFFLINE line on the folio | Met (client mode); partly met (central) |
 | T7 | Offline | Every receipt issued offline marked "OFFLINE" (Spec 26.13, 28.6) | Since 12.10.2026: a receipt whose first sending at issue fails is marked OFFLINE (receipt status, receipt page, copy); the answer to OPERA has `Offline` and OFFLINE in the lines to print. Printing on the folio follows T23 | Met |
 | T8 | Offline | 48-hour limit; notify ATK; submit unsent receipts by the 10th of next month (UA 44) | 48-hour overdue alert; since 12.10.2026 also a dashboard reminder for last month's unsent receipts before and after the 10th | Met |
 | T9 | Device failure | Register receipts issued from the paper block in SEF within 5 days (Spec 25.16; UA 45) | Since 12.10.2026: Receipts › Enter paper receipt (serial, written time, POS, lines, payment); signed and sent; serial unique; permission-controlled | Met |

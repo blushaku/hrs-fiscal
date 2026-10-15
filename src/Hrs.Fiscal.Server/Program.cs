@@ -46,6 +46,8 @@ builder.Services.AddSingleton<Hrs.Fiscal.Server.Printing.PrintQueue>();
 builder.Services.AddHostedService<Hrs.Fiscal.Server.Printing.PrintQueueService>();
 builder.Services.AddHostedService<AtkResendService>();
 builder.Services.AddSingleton<Hrs.Fiscal.Server.Services.ClockStatus>();
+builder.Services.AddSingleton<Hrs.Fiscal.Server.Services.AtkStatus>();
+builder.Services.AddScoped<Hrs.Fiscal.Server.Services.AtkHealthQuery>();
 builder.Services.AddSingleton<Hrs.Fiscal.Server.Services.ClockCheckService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Hrs.Fiscal.Server.Services.ClockCheckService>());
 builder.Services.AddHostedService<FlipTcpListener>();

@@ -7,7 +7,7 @@ using Npgsql;
 
 namespace Hrs.Fiscal.Server.Pages;
 
-public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receipts, SettingsStore settings, PropertyClock clock, NpgsqlDataSource db, IAuthorizationService auth, Hrs.Fiscal.Server.Services.ClockStatus clockStatus) : PageModel
+public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receipts, SettingsStore settings, PropertyClock clock, NpgsqlDataSource db, IAuthorizationService auth, Hrs.Fiscal.Server.Services.ClockStatus clockStatus, Hrs.Fiscal.Server.Services.AtkStatus atkStatus) : PageModel
 {
     public DashboardStats Stats { get; private set; } = new();
     public IReadOnlyList<TerminalRow> Terminals { get; private set; } = [];
@@ -15,6 +15,7 @@ public sealed class IndexModel(DashboardQueries dashboard, ReceiptQueries receip
     public int VatRates { get; private set; }
     public PropertyClock Clock => clock;
     public Hrs.Fiscal.Server.Services.ClockStatus ClockCheck => clockStatus;
+    public Hrs.Fiscal.Server.Services.AtkStatus Atk => atkStatus;
     public DateTime UtcNow { get; private set; }
 
     // Pipeline OPERA → FLIP → HRS → ATK

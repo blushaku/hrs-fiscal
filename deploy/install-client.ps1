@@ -26,6 +26,8 @@ if (-not ($runtimes | Where-Object { $_ -match '^Microsoft\.AspNetCore\.App 8\.'
 }
 
 if (Get-Service $svc -ErrorAction SilentlyContinue) { Stop-Service $svc; sc.exe delete $svc | Out-Null; Start-Sleep 2 }
+# The tray program (offline notice) runs in each user's session: close it so its file can be replaced.
+Get-Process Hrs.Fiscal.Tray -ErrorAction SilentlyContinue | Stop-Process -Force
 New-Item -ItemType Directory -Force $InstallDir, $data | Out-Null
 # Package layout: Client\ next to this script; release layout: the script inside the client folder itself.
 $source = if (Test-Path (Join-Path $PSScriptRoot "Client\Hrs.Fiscal.Client.exe")) { Join-Path $PSScriptRoot "Client" } else { $PSScriptRoot }
@@ -68,5 +70,12 @@ New-NetFirewallRule -DisplayName "Fiscal Client ($Port)" -Direction Inbound -Pro
   -Profile Domain,Private -Action Allow | Out-Null
 
 Start-Service $svc
+
+# Offline notice at the workstation: the tray program starts at every user's logon (and now for this user, unelevated).
+$tray = Join-Path $InstallDir "Hrs.Fiscal.Tray.exe"
+if (Test-Path $tray) {
+  New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "OperaCloudFiscalKosovoTray" -Value "`"$tray`"" -PropertyType String -Force | Out-Null
+  Start-Process explorer.exe -ArgumentList "`"$tray`""
+}
 Write-Host "Fiscal Client installed. It pairs with $server and registers with ATK by itself within a minute."
 Write-Host "Status on this computer: http://localhost:$Port   ·   On the server: Settings › Workstations."

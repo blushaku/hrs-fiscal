@@ -55,6 +55,7 @@ public sealed class ServerFixture : WebApplicationFactory<Program>, IAsyncLifeti
         builder.UseSetting("I18n:DefaultLanguage", "en");   // tests read the English texts; LanguageTests covers sq/sr
         builder.UseSetting("Signing:KeyFolder", KeyFolder);
         builder.UseSetting("FiscalClient:PackageFolder", ClientFolder);
+        builder.UseSetting("ClockCheck:Enabled", "false");
         builder.ConfigureTestServices(s => s.AddSingleton<IAtkClientFactory>(FakeAtk));
     }
 
